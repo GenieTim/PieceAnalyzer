@@ -1,4 +1,10 @@
 {
+    "bacanu/blwrap": {
+        "version": "v1.0.0"
+    },
+    "composer/ca-bundle": {
+        "version": "1.1.0"
+    },
     "doctrine/annotations": {
         "version": "1.0",
         "recipe": {
@@ -71,6 +77,18 @@
     "fig/link-util": {
         "version": "1.0.0"
     },
+    "guzzlehttp/guzzle": {
+        "version": "6.3.0"
+    },
+    "guzzlehttp/oauth-subscriber": {
+        "version": "0.3.0"
+    },
+    "guzzlehttp/promises": {
+        "version": "v1.3.1"
+    },
+    "guzzlehttp/psr7": {
+        "version": "1.4.2"
+    },
     "jdorn/sql-formatter": {
         "version": "v1.2.17"
     },
@@ -95,6 +113,9 @@
     "psr/container": {
         "version": "1.0.0"
     },
+    "psr/http-message": {
+        "version": "1.0.1"
+    },
     "psr/link": {
         "version": "1.0.0"
     },
@@ -111,6 +132,15 @@
             "branch": "master",
             "version": "4.0",
             "ref": "aaddfdf43cdecd4cf91f992052d76c2cadc04543"
+        }
+    },
+    "sensiolabs/security-checker": {
+        "version": "4.0",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "master",
+            "version": "4.0",
+            "ref": "e65a105bf4cd5b1b79012ba029954927f05922e8"
         }
     },
     "swiftmailer/swiftmailer": {
