@@ -22,8 +22,7 @@ class SetRepository extends ServiceEntityRepository
        $qb = $this->createQueryBuilder('s');
        $qb->leftJoin('s.pieces', 'p')->addSelect('p');
        $qb->groupBy('s.id');
-       $qb->addSelect('COUNT(p.id) AS HIDDEN num_p');
-       $qb->orderBy('s.price / num_p', 'ASC');
+       $qb->orderBy('s.price / COUNT(p.id)', 'ASC');
        $qb->setMaxResults($limit);
        return $qb;
    }

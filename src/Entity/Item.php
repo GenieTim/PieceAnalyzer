@@ -6,7 +6,9 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\ItemRepository")
- * @ORM\MappedSuperclass
+ * @ORM\InheritanceType("JOINED")
+ * @ORM\DiscriminatorColumn(name="discriminator", type="string")
+ * @ORM\DiscriminatorMap({"undefined" = "Item", "set" = "Set", "piece" = "Piece"})
  */
 class Item {
 
@@ -19,7 +21,6 @@ class Item {
 
     /**
      * Bricklink identification number
-     * @ORM\Index
      * @ORM\Column(type="string")
      */
     private $no;

@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\Routing\Annotation\Route;
 
 /**
  * Description of GeneralController
@@ -15,6 +16,6 @@ class IndexController extends Controller {
      * @Route("/", name="index")
      */
     public function indexAction() {
-        return $this->renderView('static/index.html.twig');
+        return $this->render('static/index.html.twig');
     }
 }

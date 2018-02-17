@@ -30,8 +30,8 @@ class ListController extends Controller
      * @param Request $request
      */
     public function filterAction(Request $request) {
-        $em = $this->getDoctrine()->getManager(Set::class);
-        $set_repo = $em->getRepository()
+        $em = $this->getDoctrine()->getManager();
+        $set_repo = $em->getRepository(Set::class);
         $form = $this->createForm(FilterFormType::class);
         $form->handleRequest($request);
         $sets = array();
@@ -41,7 +41,7 @@ class ListController extends Controller
             $sets = $set_repo->findMostValuableBy();
         }
         
-        return $this->renderView('list:list_all.html.twig', array(
+        return $this->render('list/list_all.html.twig', array(
             'sets' => $sets,
             'form' => $form->createView()
         ));

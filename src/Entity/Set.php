@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\SetRepository")
+ * @ORM\Table(name="lego_set")
  */
 class Set extends Item
 {

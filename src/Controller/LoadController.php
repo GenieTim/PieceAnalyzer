@@ -29,7 +29,7 @@ class LoadController extends Controller {
             return $this->redirectToRoute('index');
         }
         
-        return $this->renderView('form:load_form.html.twig', array(
+        return $this->render('form/load_form.html.twig', array(
             'form' => $form->createView()
         ));
     }

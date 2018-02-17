@@ -37,3 +37,11 @@ services:
     App\Service\LegoLoaderService:
         arguments:
             $credentials: "%bricklink%"
+            
+    app.menu_builder:
+        class: App\Menu\Builder
+        autowire: false
+        arguments: 
+            - "@knp_menu.factory"
+        tags:
+            - { name: knp_menu.menu_builder, method: createMainMenu, alias: main } # The alias is what is used to retrieve the menu
