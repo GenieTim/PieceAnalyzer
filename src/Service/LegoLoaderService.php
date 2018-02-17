@@ -5,6 +5,8 @@ namespace App\Service;
 use Bacanu\BlWrap\Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Common\Collections\ArrayCollection;
+use RuntimeException;
+use App\Entity\Item;
 use App\Entity\Piece;
 use App\Entity\Set;
 
@@ -26,7 +28,15 @@ class LegoLoaderService {
     }
 
     private function loadExtern($endpoint, $method = 'GET', $body = "") {
-        return $this->client->execute($method, $endpoint, $body);
+        $response = json_decode($this->client->execute($method, $endpoint, $body));
+        $meta = array();
+        if (property_exists($response, 'meta')) {
+            $meta = $response->meta;
+        }
+        if (property_exists($meta, 'code') && $meta->code != 200) {
+            throw new RuntimeException('API did not return properly');
+        }
+        return $response->data;
     }
 
     public function loadSets($from, $to) {
@@ -41,11 +51,8 @@ class LegoLoaderService {
 
     private function setKnownItems() {
         $this->known_numbers = array();
-        $set_repo = $this->em->getRepository('App\Set');
-        $piece_repo = $this->em->getRepository('App\Piece');
-        $sets = $set_repo->findAll();
-        $pieces = $piece_repo->findAll();
-        $items = array_merge($sets, $pieces);
+        $piece_repo = $this->em->getRepository(Item::class);
+        $items = $piece_repo->findAll();
         foreach ($items as $item) {
             $this->known_numbers[$item->getNo()][] = $item;
         }
@@ -82,10 +89,10 @@ class LegoLoaderService {
 
     public function getSetFromAssoc($set) {
         $new_set = new Set();
-        $new_set->setNo($set['no']);
-        $new_set->setName($set['name']);
-        $new_set->setObsolete($set['is_obsolete']);
-        $new_set->setImageUrl($set['image_url']);
+        $new_set->setNo($set->no);
+        $new_set->setName($set->name);
+        $new_set->setObsolete($set->is_obsolete);
+        $new_set->setImageUrl($set->image_url);
         $pieces = $this->getPiecesOfSet($new_set->getNo());
         $new_set->setPieces($pieces);
         return $new_set;
@@ -105,13 +112,13 @@ class LegoLoaderService {
         }
         $subset = $this->loadExtern('items/SET/' . $set_no . '/subsets', $method);
         $pieces = array();
-        foreach ($subset['entries'] as $piece) {
+        foreach ($subset->entries as $piece) {
             // careful when loading locally as pieces can have different color for same no
-            $p = $this->loadItemLocally($piece['no']);
+            $p = $this->loadItemLocally($piece->no);
             $is_loaded = $p;
             if (is_array($p)) {
                 foreach ($p as $loaded_piece) {
-                    if ($loaded_piece->getColor() == $piece['color_id']) {
+                    if ($loaded_piece->getColor() == $piece->color_id) {
                         $p = $loaded_piece;
                         $is_loaded = TRUE;
                         break;
@@ -127,7 +134,7 @@ class LegoLoaderService {
                     $this->em->flush();
                 }
             }
-            for ($i = 0; $i < $piece['quantity']; $i++) {
+            for ($i = 0; $i < $piece->quantity; $i++) {
                 $pieces[] = $p;
             }
         }
@@ -136,12 +143,12 @@ class LegoLoaderService {
 
     public static function getPieceFromAssoc($piece) {
         $new_piece = new Piece();
-        $item = $piece['item'];
-        $new_piece->setName($item['name']);
-        $new_piece->setNo($item['no']);
-        $new_piece->setCategory($item['categoryID']);
-        $new_piece->setType($item['type']);
-        $new_piece->setColor($piece['color_id']);
+        $item = $piece->item;
+        $new_piece->setName($item->name);
+        $new_piece->setNo($item->no);
+        $new_piece->setCategory($item->categoryID);
+        $new_piece->setType($item->type);
+        $new_piece->setColor($piece->color_id);
         return $new_piece;
     }
 
