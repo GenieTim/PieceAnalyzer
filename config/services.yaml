@@ -2,6 +2,7 @@
 # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
     locale: 'en'
+    data_path: "%env(resolve:DATA_PATH)%"
     bricklink:
         consumer:
             key: "%env(CONSUMER_KEY)%"
@@ -36,7 +37,8 @@ services:
             
     App\Service\LegoLoaderService:
         arguments:
-            $credentials: "%bricklink%"
+#            $credentials: "%bricklink%"
+            $import_save_path: "%data_path%"
             
     app.menu_builder:
         class: App\Menu\Builder

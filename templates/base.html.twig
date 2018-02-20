@@ -8,6 +8,11 @@
 <body>
     {% block body %}
         {{ knp_menu_render('main') }}
+        {% for type, messages in app.session.flashbag.all() %}
+            {% for message in messages %}
+                <div class="callout {{type}}">{{message}}</div>
+            {% endfor %}
+        {% endfor %}
         {% block content %}
         {% endblock %}
     {% endblock %}

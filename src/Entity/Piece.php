@@ -22,7 +22,7 @@ class Piece extends Item
     private $category;
 
     /**
-     * @ORM\Column(type="string")
+     * @ORM\Column(type="string", nullable=true)
      */
     private $type;
 

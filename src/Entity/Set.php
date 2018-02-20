@@ -9,8 +9,8 @@ use Doctrine\Common\Collections\ArrayCollection;
  * @ORM\Entity(repositoryClass="App\Repository\SetRepository")
  * @ORM\Table(name="lego_set")
  */
-class Set extends Item
-{
+class Set extends Item {
+
     /**
      * @ORM\Id
      * @ORM\GeneratedValue
@@ -19,7 +19,7 @@ class Set extends Item
     private $id;
 
     /**
-     * @ORM\Column(type="float")
+     * @ORM\Column(type="float", nullable=true)
      */
     private $price;
 
@@ -32,17 +32,21 @@ class Set extends Item
      * @ORM\Column(type="boolean")
      */
     private $obsolete;
-    
+
     /**
-     * @ORM\Column(type="string")
+     * @ORM\Column(type="date")
+     */
+    private $year;
+
+    /**
+     * @ORM\Column(type="string", nullable=true)
      */
     private $image_url;
 
     /**
      * Get the value of price
-     */ 
-    public function getPrice()
-    {
+     */
+    public function getPrice() {
         return $this->price;
     }
 
@@ -50,19 +54,17 @@ class Set extends Item
      * Set the value of price
      *
      * @return  self
-     */ 
-    public function setPrice($price)
-    {
-        $this->price = $price;
+     */
+    public function setPrice($price) {
+        $this->price = floatval($price);
 
         return $this;
     }
 
     /**
      * Get the value of pieces
-     */ 
-    public function getPieces()
-    {
+     */
+    public function getPieces() {
         return $this->pieces;
     }
 
@@ -70,25 +72,23 @@ class Set extends Item
      * Set the value of pieces
      *
      * @return  self
-     */ 
-    public function setPieces(ArrayCollection $pieces)
-    {
+     */
+    public function setPieces(ArrayCollection $pieces) {
         $this->pieces = $pieces;
 
         return $this;
     }
-    
+
     public function addPiece(Piece $p) {
         $this->pieces->add($p);
-        
+
         return $this;
     }
 
     /**
      * Get the value of obsolete
-     */ 
-    public function getObsolete()
-    {
+     */
+    public function getObsolete() {
         return $this->obsolete;
     }
 
@@ -96,14 +96,13 @@ class Set extends Item
      * Set the value of obsolete
      *
      * @return  self
-     */ 
-    public function setObsolete($obsolete)
-    {
+     */
+    public function setObsolete($obsolete) {
         $this->obsolete = $obsolete;
 
         return $this;
     }
-    
+
     /**
      * 
      * @return string
@@ -111,7 +110,7 @@ class Set extends Item
     public function getImageUrl() {
         return $this->image_url;
     }
-    
+
     /**
      * 
      * @param string $url
@@ -119,7 +118,18 @@ class Set extends Item
      */
     public function setImageUrl($url) {
         $this->image_url = $url;
-        
+
         return $this;
     }
+
+    public function getYear() {
+        return $this->year;
+    }
+
+    public function setYear(\DateTime $year) {
+        $this->year = $year;
+
+        return $this;
+    }
+
 }

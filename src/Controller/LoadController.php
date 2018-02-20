@@ -5,7 +5,6 @@ namespace App\Controller;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
-
 use App\Form\SelectLoadFormType;
 use App\Service\LegoLoaderService;
 
@@ -21,16 +20,36 @@ class LoadController extends Controller {
      */
     public function loadRangeAction(Request $request, LegoLoaderService $loader) {
         $form = $this->createForm(SelectLoadFormType::class);
-        
+
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
             $data = $form->getData();
             $loader->loadSets($data['from'], $data['to']);
             return $this->redirectToRoute('index');
         }
-        
+
         return $this->render('form/load_form.html.twig', array(
-            'form' => $form->createView()
+                    'form' => $form->createView()
         ));
     }
+
+    /**
+     * Load sets from csv files
+     * 
+     * @Route("/files", name="load_files")
+     * @param Request $request
+     * @param LegoLoaderService $loader
+     * @return Response
+     */
+    public function refreshAction(Request $request, LegoLoaderService $loader) {
+        try {
+            $loader->loadSets();
+            $this->addFlash('success', 'Refreshed sets successfully.');
+        } catch (\Exception $e) {
+            $this->addFlash('alert', 'Failed to load Sets. Error message: ' . $e->getMessage());
+        }
+
+        return $this->redirect($request->headers->get('referer'));
+    }
+
 }
