@@ -43,13 +43,13 @@ class LoadController extends Controller {
      */
     public function refreshAction(Request $request, LegoLoaderService $loader) {
         try {
-            $loader->loadSets();
-            $this->addFlash('success', 'Refreshed sets successfully.');
+            $sets = $loader->loadSets();
+            $this->addFlash('success', 'Refreshed and loaded ' . count($sets) . 'sets successfully.');
         } catch (\Exception $e) {
             $this->addFlash('alert', 'Failed to load Sets. Error message: ' . $e->getMessage());
         }
 
-        return $this->redirect($request->headers->get('referer'));
+        return $this->redirectToRoute('list_all');
     }
 
 }

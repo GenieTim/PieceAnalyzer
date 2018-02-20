@@ -16,6 +16,7 @@ class Builder {
     
     public function createMainMenu(array $options) {
         $menu = $this->factory->createItem('root');
+        $menu->setChildrenAttribute('class', 'nav navbar-nav navbar-right');
 
         $menu->addChild('Home', array('route' => 'index'));
         $menu->addChild('List Sets', array('route' => 'list_all'));

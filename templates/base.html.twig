@@ -2,20 +2,47 @@
 <html>
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <title>{% block title %}Welcome!{% endblock %} -  Piece Analyzer</title>
-    {% block stylesheets %}{% endblock %}
-</head>
-<body>
-    {% block body %}
-        {{ knp_menu_render('main') }}
-        {% for type, messages in app.session.flashbag.all() %}
-            {% for message in messages %}
-                <div class="callout {{type}}">{{message}}</div>
-            {% endfor %}
-        {% endfor %}
-        {% block content %}
+        {% block stylesheets %}
+            <link rel="stylesheet" href="{{ asset('build/css/global.css') }}">
         {% endblock %}
-    {% endblock %}
-{% block javascripts %}{% endblock %}
-</body>
+    </head>
+    <body>
+        {% block body %}
+
+            <div class="navbar navbar-default navbar-fixed-top">
+                <div class="container-fluid">
+                    {# Brand and toggle get grouped for better mobile display #}
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#admin-navbar-collapse-1">
+                            <span class="sr-only">Toggle navigation</span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </button>
+                        <a class="navbar-brand" href="#">Piece Analyzer!</a>
+                    </div>
+
+                    {# Collect the nav links, forms, and other content for toggling #}
+                    <div class="collapse navbar-collapse" id="admin-navbar-collapse-1">
+                        {{ knp_menu_render('main', {'currentClass': 'active', 'template': 'other/knp_menu.html.twig'}) }}
+                    </div>
+                </div>
+            </div>
+            <div class="content" style="margin-top: 60px;">
+                {% for type, messages in app.session.flashbag.all() %}
+                    {% for message in messages %}
+                        <div class="callout {{type}}">{{message}}</div>
+                    {% endfor %}
+                {% endfor %}
+                {% block content %}
+                {% endblock %}
+            </div>
+        {% endblock %}
+
+        {% block javascripts %}
+            <script src="{{ asset('build/js/main.js') }}"></script>
+        {% endblock %}
+    </body>
 </html>
