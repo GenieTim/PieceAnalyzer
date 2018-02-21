@@ -31,6 +31,12 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         $this->source_path = $import_save_path;
     }
 
+    /**
+     * dump a whole CSV file at once
+     * 
+     * @param type $file
+     * @return type
+     */
     private function getCsvData($file) {
         $file_path = $this->normalizeCsvPath($file);
         if (array_key_exists($file, $this->cached_data)) {
@@ -40,15 +46,24 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         return $this->cached_data[$file];
     }
 
-    private function findDataInCsv($file, $property, array $values) {
+    /**
+     * Loop a csv file to call a function on each element
+     * 
+     * @param string $file name of the csv file to load
+     * @param callable $callback function to call with each csv line. function should return the desired object to be pushed
+     *                                              in the returned array
+     * @return array $results all the return values of the callback != false
+     */
+    private function loopCsv($file, $callback) {
         $file = $this->normalizeCsvPath($file);
         $results = array();
         if (($handle = fopen($file, "r")) !== FALSE) {
             while (($data = fgetcsv($handle)) !== FALSE) {
-                if (array_key_exists($property, $data)) {
-                    if (in_array($data[$property], $values)) {
-                        $results[] = $data;
-                    }
+                $result = call_user_func($callback, $data);
+                if ($result) {
+                    $results[] = $result;
+                } else if ($result === NULL) {
+                    break;
                 }
             }
             fclose($handle);
@@ -56,13 +71,29 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         return $results;
     }
 
-    public function loadSets($from = 0, $to = 100) {
-        $data = $this->getCsvData('sets');
-        $sets = array();
+    /**
+     * 
+     * @param string $file
+     * @param string $property
+     * @param array $values
+     * @return array
+     */
+    private function findDataInCsv($file, $property, array $values) {
+        return $this->loopCsv($file, function($data) use ($property, $values) {
+                    if (array_key_exists($property, $data)) {
+                        if (in_array($data[$property], $values)) {
+                            return $data;
+                        }
+                    }
+                    return FALSE;
+                });
+    }
 
-        foreach ($data as $item) {
-            $sets[] = $this->loadSet($item, FALSE);
-        }
+    public function loadSets() {
+        $sets = $this->loopCsv('sets', function ($set) use ($this) {
+            return $this->loadSet($set, FALSE);
+        });
+
         $this->em->flush();
         return array_filter($sets);
     }
@@ -92,7 +123,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         return FALSE;
     }
 
-    public function loadSet($set, $flush = TRUE) {
+    public function loadSet(array $set, $flush = TRUE) {
         $set = $this->loadItemLocally($set["set_num"]);
         if (!$set) {
             $set = $this->getSetFromAssoc($set);
