@@ -35,9 +35,12 @@ services:
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
             
-    App\Service\LegoLoaderService:
+    App\Service\BricklinkLegoLoaderService:
         arguments:
-#            $credentials: "%bricklink%"
+            $credentials: "%bricklink%"
+            
+    App\Service\CsvLegoLoaderService:
+        arguments:
             $import_save_path: "%data_path%"
             
     app.menu_builder:

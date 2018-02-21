@@ -6,7 +6,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use App\Form\SelectLoadFormType;
-use App\Service\LegoLoaderService;
+use App\Service\CsvLegoLoaderService;
+use App\Service\BricklinkLegoLoaderService;
 
 class LoadController extends Controller {
 
@@ -15,10 +16,10 @@ class LoadController extends Controller {
      * 
      * @Route("/range", name="load_range")
      * @param Request $request
-     * @param LegoLoaderService $loader
+     * @param CsvLegoLoaderService $loader
      * @return Response
      */
-    public function loadRangeAction(Request $request, LegoLoaderService $loader) {
+    public function loadRangeAction(Request $request, BricklinkLegoLoaderService $loader) {
         $form = $this->createForm(SelectLoadFormType::class);
 
         $form->handleRequest($request);
@@ -38,10 +39,10 @@ class LoadController extends Controller {
      * 
      * @Route("/files", name="load_files")
      * @param Request $request
-     * @param LegoLoaderService $loader
+     * @param CsvLegoLoaderService $loader
      * @return Response
      */
-    public function refreshAction(Request $request, LegoLoaderService $loader) {
+    public function refreshAction(Request $request, CsvLegoLoaderService $loader) {
         try {
             $sets = $loader->loadSets();
             $this->addFlash('success', 'Refreshed and loaded ' . count($sets) . 'sets successfully.');

@@ -10,6 +10,9 @@ use Doctrine\Common\Collections\ArrayCollection;
  * @ORM\Table(name="lego_set")
  */
 class Set extends Item {
+    
+    const SOURCE_BRICKLINK = 1;
+    const SOURCE_REBRICKABLE = 2;
 
     /**
      * @ORM\Id
@@ -27,6 +30,13 @@ class Set extends Item {
      * @ORM\ManyToMany(targetEntity="Piece", inversedBy="sets", cascade={"all"})
      */
     private $pieces;
+    
+    /**
+     *
+     * @ORM\Column(type="integer")
+     * @var integer
+     */
+    private $source = 0;
 
     /**
      * @ORM\Column(type="boolean")
@@ -83,6 +93,14 @@ class Set extends Item {
         $this->pieces->add($p);
 
         return $this;
+    }
+    
+    public function getSource() {
+        return $this->source;
+    }
+    
+    public function setSource($source) {
+        $this->source = intval($source);
     }
 
     /**

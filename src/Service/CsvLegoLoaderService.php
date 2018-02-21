@@ -14,7 +14,7 @@ use App\Entity\Set;
 /**
  * Service to load Lego data from (csv) into our Set & Piece entities
  */
-class LegoLoaderService {
+class CsvLegoLoaderService implements LegoLoaderServiceInterface {
 
     private $source_path;
     private $serializer;
@@ -32,18 +32,31 @@ class LegoLoaderService {
     }
 
     private function getCsvData($file) {
-        if (substr($file, -4) != ".csv") {
-            $file .= ".csv";
-        }
+        $file_path = $this->normalizeCsvPath($file);
         if (array_key_exists($file, $this->cached_data)) {
             return $this->cached_data[$file];
         }
-        $file_path = $this->source_path . $file;
         $this->cached_data[$file] = $this->serializer->decode(file_get_contents($file_path), 'csv');
         return $this->cached_data[$file];
     }
 
-    public function loadSets() {
+    private function findDataInCsv($file, $property, array $values) {
+        $file = $this->normalizeCsvPath($file);
+        $results = array();
+        if (($handle = fopen($file, "r")) !== FALSE) {
+            while (($data = fgetcsv($handle)) !== FALSE) {
+                if (array_key_exists($property, $data)) {
+                    if (in_array($data[$property], $values)) {
+                        $results[] = $data;
+                    }
+                }
+            }
+            fclose($handle);
+        }
+        return $results;
+    }
+
+    public function loadSets($from = 0, $to = 100) {
         $data = $this->getCsvData('sets');
         $sets = array();
 
@@ -94,6 +107,7 @@ class LegoLoaderService {
 
     public function getSetFromAssoc($set) {
         $new_set = new Set();
+        $new_set->setSource(Set::SOURCE_REBRICKABLE);
         $new_set->setNo($set["set_num"]);
         $new_set->setName($set["name"]);
         $new_set->setObsolete($set["is_obsolete"]);
@@ -112,22 +126,19 @@ class LegoLoaderService {
      * @return ArrayCollection
      */
     public function getPiecesOfSet($set_no, $force_load = false, $flush = false) {
-        $inventories = array_filter($this->getCsvData('inventories'), function($data) use ($set_no) {
-            return $set_no == $data["set_num"];
-        });
+        $inventories = $this->findDataInCsv('inventories', 'set_num', array($set_no));
         $inventory_ids = array_map(function($inventory) {
             return $inventory["id"];
         }, $inventories);
         // inventory parts connects inventories/sets with parts, but each inventory_part could have another color as well as quantity
-        $inventory_parts = array_filter($this->getCsvData('inventory_parts'), function($data) use($inventory_ids) {
-            return in_array($data["inventory_id"], $inventory_ids);
-        });
+        $inventory_parts = $this->findDataInCsv('inventory_parts', 'inventory_id', $inventory_ids);
+
         $part_ids = array_map(function($inventory_part) {
             return $inventory_part["part_num"];
         }, $inventory_parts);
-        $parts = array_filter($this->getCsvData('parts'), function ($data) use ($part_ids) {
-            return in_array($data["part_num"], $part_ids);
-        });
+
+        $parts = $this->findDataInCsv('parts', 'part_num', $part_ids);
+
         $ordered_parts = array();
         foreach ($parts as $part) {
             $ordered_parts[$part["part_num"]] = $part;
@@ -201,6 +212,13 @@ class LegoLoaderService {
 
     public function getCategories() {
         return $this->getCsvData('themes');
+    }
+
+    private function normalizeCsvPath($file) {
+        if (substr($file, -4) != ".csv") {
+            $file .= ".csv";
+        }
+        return $this->source_path . $file;
     }
 
 }
