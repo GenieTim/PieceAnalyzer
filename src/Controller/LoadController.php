@@ -35,17 +35,24 @@ class LoadController extends Controller {
     }
 
     /**
-     * Load sets from csv files
+     * Load sets from csv files, NUMBER at a time, than redirect to next if still available
      * 
-     * @Route("/files", name="load_files")
+     * @Route("/files/{index}", name="load_files")
      * @param Request $request
      * @param CsvLegoLoaderService $loader
      * @return Response
      */
-    public function refreshAction(Request $request, CsvLegoLoaderService $loader) {
+    public function refreshAction(Request $request, CsvLegoLoaderService $loader, $index) {
+        $NUMBER = 5;
+        $start = intval($index);
+        $end = $start + $NUMBER;
         try {
-            $sets = $loader->loadSets();
-            $this->addFlash('success', 'Refreshed and loaded ' . count($sets) . 'sets successfully.');
+            $sets = $loader->loadSets($start, $end);
+            if (count($sets) < $NUMBER) {
+                $this->addFlash('success', 'Refreshed and loaded ' . $start + count($sets) . 'sets successfully.');
+            } else {
+                $this->redirectToRoute('load_files', array('index' => $end));
+            }
         } catch (\Exception $e) {
             $this->addFlash('alert', 'Failed to load Sets. Error message: ' . $e->getMessage());
         }

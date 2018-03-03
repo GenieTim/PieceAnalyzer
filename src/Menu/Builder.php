@@ -20,7 +20,7 @@ class Builder {
 
         $menu->addChild('Home', array('route' => 'index'));
         $menu->addChild('List Sets', array('route' => 'list_all'));
-        $menu->addChild('Refresh Set Data', array('route' => 'load_files'));
+        $menu->addChild('Refresh Set Data', array('route' => 'load_files', 'routeParameters' => array('index' => 0)));
 
         return $menu;
     }
