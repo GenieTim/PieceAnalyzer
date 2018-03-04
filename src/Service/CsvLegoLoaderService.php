@@ -22,15 +22,24 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     private $cached_data = array();
     private $known_numbers = NULL;
 
+    // fields in sets.csv
     const SET_NUM_KEY = 0;
     const SET_NAME_KEY = 1;
     const SET_YEAR_KEY = 2;
     const SET_THEME_KEY = 3;
+    // fields in parts.csv
     const PART_NUM_KEY = 0;
     const PART_NAME_KEY = 1;
     const PART_CAT_KEY = 2;
+    // fields in ininventories.csv
     const INVENTORY_ID = 0;
     const INVENTORY_SET_KEY = 2;
+    // fields in inventory_sets.csv
+    const INVENTORY_SET_INVENTORY = 0;
+    const INVENTORY_SET_SET = 1;
+    const INVENTORY_SET_QUANTITY = 2;
+    // fields in inventory_parts.csv
+    const INVENTORY_PART_INVENTORY = 0;
     const INVENTORY_PART_PART = 1;
     const INVENTORY_PART_COLOR = 2;
     const INVENTORY_PART_QUANTITY = 3;
@@ -187,8 +196,12 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         $inventory_ids = array_map(function($inventory) {
             return $inventory[$this::INVENTORY_ID];
         }, $inventories);
+        $inventory_sets = $this->findDataInCsv('inventory_sets', $this::INVENTORY_SET_SET, array($set_no));
+        $inventory_ids = array_merge($inventory_ids, array_map(function($inventory) {
+            return $inventory[$this::INVENTORY_SET_INVENTORY];
+        }, $inventory_sets));
         // inventory parts connects inventories/sets with parts, but each inventory_part could have another color as well as quantity
-        $inventory_parts = $this->findDataInCsv('inventory_parts', $this::INVENTORY_ID, $inventory_ids);
+        $inventory_parts = $this->findDataInCsv('inventory_parts', $this::INVENTORY_PART_INVENTORY, $inventory_ids);
 
         $part_ids = array_map(function($inventory_part) {
             return $inventory_part[$this::INVENTORY_PART_PART];
