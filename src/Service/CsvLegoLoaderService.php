@@ -21,20 +21,16 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     private $em;
     private $cached_data = array();
     private $known_numbers = NULL;
-    
+
     const SET_NUM_KEY = 0;
     const SET_NAME_KEY = 1;
     const SET_YEAR_KEY = 2;
     const SET_THEME_KEY = 3;
-    
     const PART_NUM_KEY = 0;
     const PART_NAME_KEY = 1;
     const PART_CAT_KEY = 2;
-    
     const INVENTORY_ID = 0;
-    
     const INVENTORY_SET_KEY = 2;
-    
     const INVENTORY_PART_PART = 1;
     const INVENTORY_PART_COLOR = 2;
     const INVENTORY_PART_QUANTITY = 3;
@@ -84,7 +80,10 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
                 $result = call_user_func($callback, $data);
                 if ($result) {
                     $results[] = $result;
-                } else if ($result === NULL || ($end && $end < $index)) {
+                } else if ($result === NULL) {
+                    break;
+                }
+                if (($end && $end < $index)) {
                     break;
                 }
             }
@@ -100,7 +99,11 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
      * @param array $values
      * @return array
      */
-    private function findDataInCsv($file, $property, array $values) {
+    private function findDataInCsv($file, $property, array $values = array()) {
+        if (!count($values) || !$property) {
+            return array();
+        }
+
         return $this->loopCsv($file, function($data) use ($property, $values) {
                     if (array_key_exists($property, $data)) {
                         if (in_array($data[$property], $values)) {
@@ -182,7 +185,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     public function getPiecesOfSet($set_no, $force_load = false, $flush = false) {
         $inventories = $this->findDataInCsv('inventories', $this::INVENTORY_SET_KEY, array($set_no));
         $inventory_ids = array_map(function($inventory) {
-            return $inventory["id"];
+            return $inventory[$this::INVENTORY_ID];
         }, $inventories);
         // inventory parts connects inventories/sets with parts, but each inventory_part could have another color as well as quantity
         $inventory_parts = $this->findDataInCsv('inventory_parts', $this::INVENTORY_ID, $inventory_ids);
