@@ -13,7 +13,7 @@
                 <td><a href="{{ path('list_item', {'id': set.id}) }}">{{ set.name }}</a></td>
                 <td>{{ set.price }}</td>
                 <td>{{ set.pieces | length }}</td>
-                <td>{{ set.price / (set.pieces | length) }}</td>
+                <td>{% if set.pieces | length %}{{ set.price / (set.pieces | length) }}{% endif %}</td>
             </tr>
         {% else %}
             <tr><td>No Sets loaded. <a href="{{ path('load_range') }}">Suggest some</a>.</td></tr>
