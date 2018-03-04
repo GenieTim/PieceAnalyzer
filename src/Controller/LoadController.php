@@ -53,6 +53,7 @@ class LoadController extends Controller {
             } else {
                 $this->redirectToRoute('load_files', array('index' => $end));
             }
+            $loader->loadPrices();
         } catch (\Exception $e) {
             $this->addFlash('alert', 'Failed to load Sets. Error message: ' . $e->getMessage());
         }

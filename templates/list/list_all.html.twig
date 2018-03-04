@@ -7,16 +7,26 @@
         {% include 'form/filter_form.html.twig' with {'form': form} only %}
     {% endif %}
 
-    <table>
-        {% for set in sets %}
+    <table class="table">
+        <thead class="thead-dark">
             <tr>
-                <td><a href="{{ path('list_item', {'id': set.id}) }}">{{ set.name }}</a></td>
-                <td>{{ set.price }}</td>
-                <td>{{ set.pieces | length }}</td>
-                <td>{% if set.pieces | length %}{{ set.price / (set.pieces | length) }}{% endif %}</td>
+                <th>Set name</th>
+                <th>Set price</th>
+                <th>#pieces</th>
+                <th>price/piece</th>
             </tr>
-        {% else %}
-            <tr><td>No Sets loaded. <a href="{{ path('load_range') }}">Suggest some</a>.</td></tr>
-        {% endfor %}
+        </thead>
+        <tbody>
+            {% for set in sets %}
+                <tr>
+                    <td><a href="{{ path('list_item', {'id': set.id}) }}">{{ set.name }}</a></td>
+                    <td>{{ set.price }}</td>
+                    <td>{{ set.pieces | length }}</td>
+                    <td>{% if set.pieces | length %}{{ set.price / (set.pieces | length) }}{% endif %}</td>
+                </tr>
+            {% else %}
+                <tr><td>No Sets loaded. <a href="{{ path('load_range') }}">Suggest some</a>.</td></tr>
+            {% endfor %}
+        </tbody>
     </table>
 {% endblock %}
