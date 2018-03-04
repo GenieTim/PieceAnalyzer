@@ -264,7 +264,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     }
 
     protected function loadPriceForSet(Set $set) {
-        return htp_get("https://www.briksets.nl/api/?set=" . $set->getNo() . "&get=rrp");
+        return \http_get("https://www.briksets.nl/api/?set=" . $set->getNo() . "&get=rrp");
     }
 
     public static function getPieceFromAssoc($item, $piece) {
