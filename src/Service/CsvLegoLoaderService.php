@@ -73,7 +73,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         $index = -1;
         if (($handle = fopen($file, "r")) !== FALSE) {
             while (($data = fgetcsv($handle)) !== FALSE) {
-                $index++;
+                ++$index;
                 if ($index < $start) {
                     continue;
                 }
@@ -83,7 +83,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
                 } else if ($result === NULL) {
                     break;
                 }
-                if (($end && $end < $index)) {
+                if ($end && $end < $index) {
                     break;
                 }
             }
@@ -149,10 +149,10 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         return FALSE;
     }
 
-    public function loadSet($set, $flush = TRUE) {
-        $set = $this->loadItemLocally($set[$this::SET_NUM_KEY]);
+    public function loadSet($set_assoc, $flush = TRUE) {
+        $set = $this->loadItemLocally($set_assoc[$this::SET_NUM_KEY]);
         if (!$set) {
-            $set = $this->getSetFromAssoc($set);
+            $set = $this->getSetFromAssoc($set_assoc);
             $this->em->persist($set);
             $this->cached_data[$set->getNo()][] = $set;
             if ($flush) {
@@ -256,10 +256,10 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
 
     public static function getPieceFromAssoc($item, $piece) {
         $new_piece = new Piece();
-        $new_piece->setName($piece["name"]);
-        $new_piece->setNo($piece["part_num"]);
-        $new_piece->setCategory($item["part_cat_id"]);
-        $new_piece->setColor($piece["color_id"]);
+        $new_piece->setName($piece[$this::PART_NAME_KEY]);
+        $new_piece->setNo($piece[$this::PART_NUM_KEY]);
+        $new_piece->setCategory($piece[$this::PART_CAT_KEY]);
+        $new_piece->setColor($item[$this::INVENTORY_PART_COLOR]);
         return $new_piece;
     }
 

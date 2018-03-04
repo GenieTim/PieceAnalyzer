@@ -39,7 +39,7 @@ class Set extends Item {
     private $source = 0;
 
     /**
-     * @ORM\Column(type="boolean")
+     * @ORM\Column(type="boolean", nullable="true")
      */
     private $obsolete;
 
