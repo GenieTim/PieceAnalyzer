@@ -16,7 +16,7 @@ use App\Entity\Set;
  * Service to load Lego data from (csv) into our Set & Piece entities
  * As CSV, data from Rebrickable is used
  */
-class CsvLegoLoaderService implements LegoLoaderServiceInterface {
+class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderServiceInterface {
 
     private $source_path;
     private $serializer;
@@ -290,10 +290,10 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         return $this;
     }
 
-    protected function loadPriceForSet(Set $set) {
-        $this->logger->info('Loading Price from Bricksets.nl for Set ' . $set->getNo());
+    public function loadPriceForSet($set_no) {
+        $this->logger->info('Loading Price from Bricksets.nl for Set ' . $set_no);
         try {
-            $price = file_get_contents("https://www.briksets.nl/api/?set=" . $set->getNo() . "&get=rrp");
+            $price = file_get_contents("https://www.briksets.nl/api/?set=" . $set_no . "&get=rrp");
         } catch (\Exception $e) {
             $this->logger->warning('Price could not be loaded', array('error' => $e));
             $price = NULL;

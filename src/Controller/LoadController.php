@@ -8,6 +8,7 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use App\Form\SelectLoadFormType;
 use App\Service\CsvLegoLoaderService;
 use App\Service\BricklinkLegoLoaderService;
+use App\Service\BrickPickerPriceLoaderService;
 
 class LoadController extends Controller {
 
@@ -43,12 +44,14 @@ class LoadController extends Controller {
      * @return Response
      */
     public function refreshAction(Request $request, CsvLegoLoaderService $loader, $index) {
-        $NUMBER = 50;
+        $NUMBER = 500;
         $start = intval($index);
+        // switch the following two lines if you want to load sets seperatly
         $end = $start + $NUMBER;
+//        $end = 0;
         try {
             $sets = $loader->loadSets($start, $end);
-            if (count($sets) < $NUMBER - 1) {
+            if (count($sets) < $NUMBER - 1 || !$end) {
                 $this->addFlash('success', 'Refreshed and loaded ' . ($start + count($sets)) . 'sets successfully.');
             } else {
                 return $this->redirectToRoute('load_files', array('index' => $end));
@@ -58,6 +61,19 @@ class LoadController extends Controller {
             $this->addFlash('alert', 'Failed to load Sets. Error message: ' . $e->getMessage());
         }
 
+        return $this->redirectToRoute('list_all');
+    }
+
+    /**
+     * Load prices of sets with BrickPickerPriceLoaderService
+     * 
+     * @Route("/price/brickpicker", name="load_prices_brickpicker")
+     * @param Request $request
+     * @param \App\Service\BrickPickerPriceLoaderService $loader
+     * @return Response
+     */
+    public function loadPrices(Request $request, BrickPickerPriceLoaderService $loader) {
+        $loader->loadPrices(FALSE);
         return $this->redirectToRoute('list_all');
     }
 

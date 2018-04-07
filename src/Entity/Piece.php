@@ -3,10 +3,14 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Doctrine\Common\Collections\ArrayCollection;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\PieceRepository")
+ * @ORM\Table(name="piece", indexes={
+ *      @ORM\Index(name="piece_price_idx", columns={"price"}),
+ *      @ORM\Index(name="piece_count_idx", columns={"count"}),
+ *      @ORM\Index(name="piece_sort_idx", columns={"category", "type"})
+ * })
  */
 class Piece extends Item
 {

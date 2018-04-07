@@ -10,7 +10,7 @@ use Doctrine\Common\Collections\ArrayCollection;
  * @ORM\Table(name="lego_set")
  */
 class Set extends Item {
-    
+
     const SOURCE_BRICKLINK = 1;
     const SOURCE_REBRICKABLE = 2;
 
@@ -30,7 +30,7 @@ class Set extends Item {
      * @ORM\OneToMany(targetEntity="Piece", mappedBy="set", cascade={"all"})
      */
     private $pieces;
-    
+
     /**
      *
      * @ORM\Column(type="integer")
@@ -94,11 +94,11 @@ class Set extends Item {
 
         return $this;
     }
-    
+
     public function getSource() {
         return $this->source;
     }
-    
+
     public function setSource($source) {
         $this->source = intval($source);
     }
@@ -148,6 +148,14 @@ class Set extends Item {
         $this->year = $year;
 
         return $this;
+    }
+
+    public function getPieceCount() {
+        $count = 0;
+        foreach ($this->getPieces() as $piece) {
+            $count += $piece->getCount();
+        }
+        return $count;
     }
 
 }

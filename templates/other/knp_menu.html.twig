@@ -30,21 +30,21 @@
         {%- set attributes = attributes|merge({'dropdown': null, 'divider_prepend': null, 'divider_append': null }) %}
 
         {%- if divider_prepend %}
-            {{ block('dividerElement') }}
+        {{ block('dividerElement') }}
         {%- endif %}
 
         {# building the class of the item #}
         {%- set classes = item.attribute('class') is not empty ? [item.attribute('class'), 'nav-item'] : ['nav-item'] %}
         {%- if matcher.isCurrent(item) %}
-            {%- set classes = classes|merge([options.currentClass]) %}
+        {%- set classes = classes|merge([options.currentClass]) %}
         {%- elseif matcher.isAncestor(item, options.depth) %}
-            {%- set classes = classes|merge([options.ancestorClass]) %}
+        {%- set classes = classes|merge([options.ancestorClass]) %}
         {%- endif %}
         {%- if item.actsLikeFirst %}
-            {%- set classes = classes|merge([options.firstClass]) %}
+        {%- set classes = classes|merge([options.firstClass]) %}
         {%- endif %}
         {%- if item.actsLikeLast %}
-            {%- set classes = classes|merge([options.lastClass]) %}
+        {%- set classes = classes|merge([options.lastClass]) %}
         {%- endif %}
 
         {# building the class of the children #}
@@ -53,27 +53,27 @@
 
         {# adding classes for dropdown #}
         {%- if is_dropdown %}
-            {%- set classes = classes|merge(['dropdown']) %}
-            {%- set childrenClasses = childrenClasses|merge(['dropdown-menu']) %}
+        {%- set classes = classes|merge(['dropdown']) %}
+        {%- set childrenClasses = childrenClasses|merge(['dropdown-menu']) %}
         {%- endif %}
 
         {# putting classes together #}
         {%- if classes is not empty %}
-            {%- set attributes = attributes|merge({'class': classes|join(' ')}) %}
+        {%- set attributes = attributes|merge({'class': classes|join(' ')}) %}
         {%- endif %}
         {%- set listAttributes = item.childrenAttributes|merge({'class': childrenClasses|join(' ') }) %}
 
         <li{{ macros.attributes(attributes) }}>
             {# displaying the item #}
             {%- if is_dropdown %}
-                {{ block('dropdownElement') }}
+            {{ block('dropdownElement') }}
             {%- elseif item.uri is not empty and (not item.current or options.currentAsLink) %}
-                {{ block('linkElement') }}
+            {{ block('linkElement') }}
             {%- else %}
-                {{ block('spanElement') }}
+            {{ block('spanElement') }}
             {%- endif %}
             {%- if divider_append %}
-                {{ block('dividerElement') }}
+            {{ block('dividerElement') }}
             {%- endif %}
             {% if item.hasChildren and options.depth is not same as(0) and item.displayChildren %}
                 {{ block('dropdownlinks') }}
@@ -85,19 +85,19 @@
 {% block dropdownlinks %}
     {% if use_multilevel %}
         <ul class="dropdown-menu">
-    {% else %}
-        <div class="dropdown-menu">
-    {% endif %}
-    {% for item in item.children %}
-        {{ block('renderDropdownlink') }}
+        {% else %}
+            <div class="dropdown-menu">
+            {% endif %}
+            {% for item in item.children %}
+                {{ block('renderDropdownlink') }}
 
-        {% if use_multilevel and item.hasChildren and options.depth is not same as(0) and item.displayChildren %}
-            {{ block('dropdownlinks') }}
-        {% endif %}
-    {% endfor %}
-    {% if not use_multilevel %}
-        </div>
-    {% else %}
+                {% if use_multilevel and item.hasChildren and options.depth is not same as(0) and item.displayChildren %}
+                    {{ block('dropdownlinks') }}
+                {% endif %}
+            {% endfor %}
+            {% if not use_multilevel %}
+            </div>
+        {% else %}
         </ul>
     {% endif %}
 {% endblock %}
@@ -110,24 +110,24 @@
 
     {% if use_multilevel %}
         <li>
-    {% endif %}
+        {% endif %}
 
-    {%- if divider_prepend %}
+        {%- if divider_prepend %}
         {{ block('dividerElementDropdown') }}
-    {%- endif %}
+        {%- endif %}
 
-    {%- if item.uri is not empty and (not item.current or options.currentAsLink) %}
+        {%- if item.uri is not empty and (not item.current or options.currentAsLink) %}
         {{ ownmacro.setCssClassAttribute(item, 'LinkAttribute', 'dropdown-item') }}
         {{ block('linkElement') }}
-    {%- else %}
+        {%- else %}
         {{ block('spanElementDropdown') }}
-    {%- endif %}
+        {%- endif %}
 
-    {%- if divider_append %}
+        {%- if divider_append %}
         {{ block('dividerElementDropdown') }}
-    {%- endif %}
+        {%- endif %}
 
-    {% if use_multilevel %}
+        {% if use_multilevel %}
         </li>
     {% endif %}
 {% endblock %}
@@ -141,7 +141,7 @@
             <i class="{{ item.attribute('icon') }}"></i>
         {% endif %}
         {{ block('label') }}
-	</div>
+    </div>
 {% endblock %}
 
 {% block dividerElementDropdown %}
@@ -151,10 +151,10 @@
 {% block dividerElement %}
     {% if item.level == 1 %}
         <li class="divider-vertical"></li>
-    {% else %}
+        {% else %}
         <li class="divider"></li>
-    {% endif %}
-{% endblock %}
+        {% endif %}
+    {% endblock %}
 
 {% block linkElement %}
     {% import "knp_menu.html.twig" as macros %}
@@ -177,7 +177,7 @@
             <i class="{{ item.attribute('icon') }}"></i>
         {% endif %}
         {{ block('label') }}
-	</span>
+    </span>
 {% endblock %}
 
 {% block dropdownElement %}

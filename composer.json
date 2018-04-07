@@ -6,12 +6,15 @@
         "ext-iconv": "*",
         "bacanu/blwrap": "^1.0",
         "knplabs/knp-menu-bundle": "^2.2",
+        "knplabs/knp-paginator-bundle": "^2.7",
         "sensio/framework-extra-bundle": "^5.1",
         "sensiolabs/security-checker": "^4.1",
         "symfony/apache-pack": "^1.0",
         "symfony/asset": "^4.0",
         "symfony/console": "^4.0",
+        "symfony/css-selector": "^4.0",
         "symfony/debug-pack": "*",
+        "symfony/dom-crawler": "^4.0",
         "symfony/dotenv": "^4.0",
         "symfony/expression-language": "^4.0",
         "symfony/flex": "^1.0",
@@ -34,7 +37,6 @@
     },
     "require-dev": {
         "symfony/browser-kit": "^4.0",
-        "symfony/css-selector": "^4.0",
         "symfony/phpunit-bridge": "^4.0",
         "symfony/profiler-pack": "*",
         "symfony/web-server-bundle": "^4.0"

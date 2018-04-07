@@ -10,23 +10,27 @@
     <table class="table">
         <thead class="thead-dark">
             <tr>
-                <th>Set name</th>
-                <th>Set price</th>
-                <th>#pieces</th>
-                <th>price/piece</th>
+                <th {% if pagination.isSorted('name') %} class="sorted"{% endif %}>{{ knp_pagination_sortable(pagination, 'Set Name', 'name') }}</th>
+                <th {% if pagination.isSorted('price') %} class="sorted"{% endif %}>{{ knp_pagination_sortable(pagination, 'Set Price', 'price') }}</th>
+                <th {% if pagination.isSorted('pieceCount') %} class="sorted"{% endif %}>{{ knp_pagination_sortable(pagination, '#Pieces', 'pieceCount') }}</th>
+                <th {% if pagination.isSorted('') %} class="sorted"{% endif %}>{{ knp_pagination_sortable(pagination, 'price/piece', '') }}</th>
             </tr>
         </thead>
         <tbody>
-            {% for set in sets %}
+            {% for set in pagination %}
                 <tr>
                     <td><a href="{{ path('list_item', {'id': set.id}) }}">{{ set.name }}</a></td>
-                    <td>{{ set.price }}</td>
-                    <td>{{ set.pieces | length }}</td>
-                    <td>{% if set.pieces | length %}{{ set.price / (set.pieces | length) }}{% endif %}</td>
+                    <td>{{ set.price }} $</td>
+                    <td>{{ set.pieceCount }}</td>
+                    <td>{% if set.pieces | length %}{{ set.price / (set.pieceCount) }} ${% endif %}</td>
                 </tr>
             {% else %}
                 <tr><td>No Sets loaded. <a href="{{ path('load_range') }}">Suggest some</a>.</td></tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <div class="navigation">
+        {{ knp_pagination_render(pagination) }}
+    </div>
 {% endblock %}

@@ -6,6 +6,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\ItemRepository")
+ * @ORM\Table(name="item", indexes={@ORM\Index(name="main_item_idx", columns={"no"})})
  * @ORM\InheritanceType("JOINED")
  * @ORM\DiscriminatorColumn(name="discriminator", type="string")
  * @ORM\DiscriminatorMap({"undefined" = "Item", "set" = "Set", "piece" = "Piece"})
