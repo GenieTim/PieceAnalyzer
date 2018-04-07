@@ -13,7 +13,7 @@ class LoadController extends Controller {
 
     /**
      * Load a range of set no's
-     * 
+     *
      * @Route("/range", name="load_range")
      * @param Request $request
      * @param CsvLegoLoaderService $loader
@@ -36,7 +36,7 @@ class LoadController extends Controller {
 
     /**
      * Load sets from csv files, NUMBER at a time, than redirect to next if still available
-     * 
+     *
      * @Route("/files/{index}", name="load_files")
      * @param Request $request
      * @param CsvLegoLoaderService $loader

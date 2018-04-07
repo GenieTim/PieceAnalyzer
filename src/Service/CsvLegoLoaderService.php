@@ -47,8 +47,9 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     const INVENTORY_PART_COLOR = 2;
     const INVENTORY_PART_QUANTITY = 3;
 
-    public function __construct(SerializerInterface $serializer, EntityManagerInterface $em, $import_save_path, LoggerInterface $logger) {
+    public function __construct(SerializerInterface $serializer, EntityManagerInterface $em, LoggerInterface $logger, $import_save_path) {
         $this->serializer = $serializer;
+        $this->logger = $logger;
         $this->em = $em;
         if (substr($import_save_path, -1) !== "/") {
             $import_save_path .= "/";
@@ -59,7 +60,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
 
     /**
      * dump a whole CSV file at once
-     * 
+     *
      * @param type $file
      * @return type
      */
@@ -74,7 +75,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
 
     /**
      * Loop a csv file to call a function on each element
-     * 
+     *
      * @param string $file name of the csv file to load
      * @param callable $callback function to call with each csv line. function should return the desired object to be pushed
      *                                              in the returned array
@@ -112,7 +113,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
 
     /**
      * Find data in CSV file where property == values
-     * 
+     *
      * @param string $file
      * @param string $property
      * @param array $values
@@ -216,7 +217,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     }
 
     /**
-     * 
+     *
      * @param integer|string $set_no
      * @param boolean $force_load
      * @param boolean $flush
@@ -278,8 +279,12 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
             ));
         }
         foreach ($unsolved_sets as $set) {
+            try {
             $set->setPrice($this->loadPriceForSet($set));
             $this->em->persist($set);
+          } catch (\Exception $e) {
+            $this->logger->warn('error while loading price', array('error' => $e));
+          }
         }
         $this->em->flush();
         return $this;
