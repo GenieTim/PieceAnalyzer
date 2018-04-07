@@ -101,7 +101,7 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         $new_set->setName($set->name);
         $new_set->setObsolete($set->is_obsolete);
         $new_set->setImageUrl($set->image_url);
-        $pieces = $this->getPiecesOfSet($new_set->getNo());
+        $pieces = $this->getPiecesOfSet($new_set);
         $new_set->setPieces($pieces);
         return $new_set;
     }
@@ -113,8 +113,8 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
      * @param boolean $flush
      * @return ArrayCollection
      */
-    public function getPiecesOfSet($set_no, $force_load = false, $flush = false) {
-        $set = $this->loadItemLocally($set_no);
+    public function getPiecesOfSet(Set &$set, $flush = false) {
+        $set_no = $set->getNo();
         if ($set && !$force_load) {
             return $set->getPieces();
         }

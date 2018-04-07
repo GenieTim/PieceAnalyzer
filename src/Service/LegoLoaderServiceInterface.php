@@ -2,6 +2,8 @@
 
 namespace App\Service;
 
+use App\Entity\Set;
+
 /**
  * LegoLoaderServiceInterface
  *
@@ -13,7 +15,7 @@ interface LegoLoaderServiceInterface {
     
     public function loadSet($set_no, $flush = true);
     
-    public function getPiecesOfSet($set_no, $force_load = false);
+    public function getPiecesOfSet(Set &$set, $flush = false);
     
     public function loadPrices($all = false);
     

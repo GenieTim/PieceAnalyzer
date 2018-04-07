@@ -210,7 +210,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         $new_set->setObsolete(@$set["is_obsolete"]);
         $new_set->setYear(new \DateTime($set[$this::SET_YEAR_KEY]));
         $new_set->setImageUrl(@$set["image_url"]);
-        $pieces = $this->getPiecesOfSet($new_set->getNo());
+        $pieces = $this->getPiecesOfSet($new_set);
         $new_set->setPieces($pieces);
         return $new_set;
     }
@@ -222,7 +222,8 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
      * @param boolean $flush
      * @return ArrayCollection
      */
-    public function getPiecesOfSet($set_no, $flush = false) {
+    public function getPiecesOfSet(Set &$set, $flush = false) {
+        $set_no = $set->getNo();
         $this->logger->info('Loading Pieces of Set ' . $set_no);
         $inventories = $this->findDataInCsv('inventories', $this::INVENTORY_SET_KEY, array($set_no));
         $inventory_ids = array_map(function($inventory) {
@@ -249,7 +250,14 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         $pieces = array();
         foreach ($inventory_parts as $piece) {
             // piece is from inventory_parts, part is from parts
-            $p = $this->getPieceFromAssoc($piece, $ordered_parts[$piece[$this::INVENTORY_PART_PART]]);
+            try {
+             $part = $ordered_parts[$piece[$this::INVENTORY_PART_PART]];
+            } catch(\Exception $e) {
+                $this->logger->alert('Failed to get ordered part form pieces array with key ' . $this::INVENTORY_PART_PART, array($piece, 'error' => $e));
+                continue;
+            }
+            $p = $this->getPieceFromAssoc($piece, $part);
+            $p->setSet($set);
             $this->em->persist($p);
 
             if ($flush) {
