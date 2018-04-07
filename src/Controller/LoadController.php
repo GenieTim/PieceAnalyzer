@@ -43,15 +43,15 @@ class LoadController extends Controller {
      * @return Response
      */
     public function refreshAction(Request $request, CsvLegoLoaderService $loader, $index) {
-        $NUMBER = 25;
+        $NUMBER = 50;
         $start = intval($index);
         $end = $start + $NUMBER;
         try {
             $sets = $loader->loadSets($start, $end);
             if (count($sets) < $NUMBER - 1) {
-                $this->addFlash('success', 'Refreshed and loaded ' . $start + count($sets) . 'sets successfully.');
+                $this->addFlash('success', 'Refreshed and loaded ' . ($start + count($sets)) . 'sets successfully.');
             } else {
-                $this->redirectToRoute('load_files', array('index' => $end));
+                return $this->redirectToRoute('load_files', array('index' => $end));
             }
             $loader->loadPrices();
         } catch (\Exception $e) {

@@ -6,6 +6,7 @@ use Bacanu\BlWrap\Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Serializer\SerializerInterface;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 use App\Entity\Item;
 use App\Entity\Piece;
@@ -13,6 +14,7 @@ use App\Entity\Set;
 
 /**
  * Service to load Lego data from (csv) into our Set & Piece entities
+ * As CSV, data from Rebrickable is used
  */
 class CsvLegoLoaderService implements LegoLoaderServiceInterface {
 
@@ -21,6 +23,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     private $em;
     private $cached_data = array();
     private $known_numbers = NULL;
+    private $logger;
 
     // fields in sets.csv
     const SET_NUM_KEY = 0;
@@ -44,13 +47,14 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     const INVENTORY_PART_COLOR = 2;
     const INVENTORY_PART_QUANTITY = 3;
 
-    public function __construct(SerializerInterface $serializer, EntityManagerInterface $em, $import_save_path) {
+    public function __construct(SerializerInterface $serializer, EntityManagerInterface $em, $import_save_path, LoggerInterface $logger) {
         $this->serializer = $serializer;
         $this->em = $em;
         if (substr($import_save_path, -1) !== "/") {
             $import_save_path .= "/";
         }
         $this->source_path = $import_save_path;
+        $this->logger = $logger;
     }
 
     /**
@@ -78,6 +82,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
      */
     private function loopCsv($file, $callback, $start = 0, $end = false) {
         $file = $this->normalizeCsvPath($file);
+        $this->logger->info('Looping CSV file ' . $file . ' from ' . $start . ' to ' . $end);
         $results = array();
         $index = -1;
         if (($handle = fopen($file, "r")) !== FALSE) {
@@ -90,6 +95,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
                 if ($result) {
                     $results[] = $result;
                 } else if ($result === NULL) {
+                    $this->logger->info("Result NULL. Exiting loop.");
                     break;
                 }
                 if ($end && $end < $index) {
@@ -97,19 +103,24 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
                 }
             }
             fclose($handle);
+        } else {
+            $this->logger->warning('Handle could not be set up for file ' . $file);
         }
+        $this->logger->info('Found ' . count($results) . ' results while looping ' . $file);
         return $results;
     }
 
     /**
+     * Find data in CSV file where property == values
      * 
      * @param string $file
      * @param string $property
      * @param array $values
      * @return array
      */
-    private function findDataInCsv($file, $property, array $values = array()) {
-        if (!count($values) || !$property) {
+    private function findDataInCsv($file, $property = FALSE, array $values = array()) {
+        if (!count($values) || $property === FALSE) {
+            $this->logger->warning('Skipping ' . $file, array('property' => $property, 'values' => $values));
             return array();
         }
 
@@ -118,21 +129,36 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
                         if (in_array($data[$property], $values)) {
                             return $data;
                         }
+                    } else {
+                        $this->logger->warning('Property ' . $property . ' does not exist in CSV', $data);
                     }
                     return FALSE;
                 });
     }
 
+    /**
+     * Load all available sets in CSV file _sets_
+     * 
+     * @param integer $from
+     * @param integer $to
+     * @return array
+     */
     public function loadSets($from = 1, $to = 0) {
         $self = $this;
-        $sets = $this->loopCsv('sets', function ($set) use ($self) {
-            return $self->loadSet($set, FALSE);
+        $sets = $this->loopCsv('sets', function ($set) use ($self, $to) {
+            return $self->loadSet($set, $to > 0);
         }, $from, $to);
 
         $this->em->flush();
         return array_filter($sets);
     }
 
+    /**
+     * Initialize the cached sets data. To trade database space for memory, uncomment the code to load data from the 
+     * database
+     * 
+     * @return array
+     */
     private function setKnownItems() {
         $this->known_numbers = array();
         $piece_repo = $this->em->getRepository(Item::class);
@@ -149,9 +175,10 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
         }
         if (array_key_exists($set_no, $this->known_numbers)) {
             $sets = $this->known_numbers[$set_no];
+            $this->logger->info('got item locally', array('no' => $set_no, 'sets' => $sets));
             if (count($sets) === 1) {
                 return $sets[0];
-            } else {
+            } else if ($sets) {
                 return $sets;
             }
         }
@@ -159,19 +186,23 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     }
 
     public function loadSet($set_assoc, $flush = TRUE) {
+        $this->logger->info('Loading set: ', array('set' => $set_assoc));
         $set = $this->loadItemLocally($set_assoc[$this::SET_NUM_KEY]);
-        if (!$set) {
+        if ($set === FALSE) {
             $set = $this->getSetFromAssoc($set_assoc);
             $this->em->persist($set);
             $this->cached_data[$set->getNo()][] = $set;
             if ($flush) {
                 $this->em->flush();
             }
+        } else if (is_array($set)) {
+            $this->logger->warning('Got array for locally loaded Set. Please clean up soon.');
         }
         return $set;
     }
 
     public function getSetFromAssoc($set) {
+        $this->logger->info('Loading set assoc: ', array('set' => $set));
         $new_set = new Set();
         $new_set->setSource(Set::SOURCE_REBRICKABLE);
         $new_set->setNo($set[$this::SET_NUM_KEY]);
@@ -191,15 +222,16 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
      * @param boolean $flush
      * @return ArrayCollection
      */
-    public function getPiecesOfSet($set_no, $force_load = false, $flush = false) {
+    public function getPiecesOfSet($set_no, $flush = false) {
+        $this->logger->info('Loading Pieces of Set ' . $set_no);
         $inventories = $this->findDataInCsv('inventories', $this::INVENTORY_SET_KEY, array($set_no));
         $inventory_ids = array_map(function($inventory) {
             return $inventory[$this::INVENTORY_ID];
         }, $inventories);
         $inventory_sets = $this->findDataInCsv('inventory_sets', $this::INVENTORY_SET_SET, array($set_no));
         $inventory_ids = array_merge($inventory_ids, array_map(function($inventory) {
-            return $inventory[$this::INVENTORY_SET_INVENTORY];
-        }, $inventory_sets));
+                    return $inventory[$this::INVENTORY_SET_INVENTORY];
+                }, $inventory_sets));
         // inventory parts connects inventories/sets with parts, but each inventory_part could have another color as well as quantity
         $inventory_parts = $this->findDataInCsv('inventory_parts', $this::INVENTORY_PART_INVENTORY, $inventory_ids);
 
@@ -216,30 +248,12 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
 
         $pieces = array();
         foreach ($inventory_parts as $piece) {
-            // careful when loading locally as pieces can have different color for same no
-            $p = $this->loadItemLocally($piece[$this::PART_NUM_KEY]);
-            $is_loaded = $p;
-            if (is_array($p)) {
-                foreach ($p as $loaded_piece) {
-                    if ($loaded_piece->getColor() == $piece[$this::INVENTORY_PART_COLOR]) {
-                        $p = $loaded_piece;
-                        $is_loaded = TRUE;
-                        break;
-                    }
-                }
-            } else if ($p instanceof Piece) {
-                $is_loaded = TRUE;
-            }
-            if (!$is_loaded) {
-                $p = $this->getPieceFromAssoc($piece, $parts[$piece[$this::INVENTORY_PART_PART]]);
-                $this->em->persist($p);
-                $this->cached_data[$p->getNo()][] = $p;
-                if ($flush) {
-                    $this->em->flush();
-                }
-            }
-            for ($i = 0; $i < $piece[$this::INVENTORY_PART_PART]; $i++) {
-                $pieces[] = $p;
+            // piece is from inventory_parts, part is from parts
+            $p = $this->getPieceFromAssoc($piece, $ordered_parts[$piece[$this::INVENTORY_PART_PART]]);
+            $this->em->persist($p);
+
+            if ($flush) {
+                $this->em->flush();
             }
         }
         return new ArrayCollection($pieces);
@@ -264,15 +278,23 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface {
     }
 
     protected function loadPriceForSet(Set $set) {
-        return \http_get("https://www.briksets.nl/api/?set=" . $set->getNo() . "&get=rrp");
+        $this->logger->info('Loading Price from Bricksets.nl for Set ' . $set->getNo());
+        try {
+            $price = file_get_contents("https://www.briksets.nl/api/?set=" . $set->getNo() . "&get=rrp");
+        } catch (\Exception $e) {
+            $this->logger->warning('Price could not be loaded', array('error' => $e));
+            $price = NULL;
+        }
+        return $price;
     }
 
     public static function getPieceFromAssoc($item, $piece) {
         $new_piece = new Piece();
-        $new_piece->setName($piece[$this::PART_NAME_KEY]);
-        $new_piece->setNo($piece[$this::PART_NUM_KEY]);
-        $new_piece->setCategory($piece[$this::PART_CAT_KEY]);
-        $new_piece->setColor($item[$this::INVENTORY_PART_COLOR]);
+        $new_piece->setName($piece[self::PART_NAME_KEY]);
+        $new_piece->setNo($piece[self::PART_NUM_KEY]);
+        $new_piece->setCategory($piece[self::PART_CAT_KEY]);
+        $new_piece->setColor($item[self::INVENTORY_PART_COLOR]);
+        $new_piece->setCount($item[self::INVENTORY_PART_PART]);
         return $new_piece;
     }
 

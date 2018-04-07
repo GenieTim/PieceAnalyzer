@@ -12,9 +12,9 @@ class Piece extends Item
 {
 
     /**
-     * @ORM\ManyToMany(targetEntity="Set", mappedBy="pieces")
+     * @ORM\ManyToOne(targetEntity="Set", inversedBy="pieces")
      */
-    private $sets;
+    private $set;
 
     /**
      * @ORM\Column(type="integer")
@@ -30,13 +30,18 @@ class Piece extends Item
      * @ORM\Column(type="integer")
      */
     private $color;
+    
+    /**
+     * @ORM\Column(type="integer")
+     */
+    private $count;
 
     /**
      * Get the value of sets
      */ 
-    public function getSets()
+    public function getSet()
     {
-        return $this->sets;
+        return $this->set;
     }
 
     /**
@@ -44,16 +49,10 @@ class Piece extends Item
      *
      * @return  self
      */ 
-    public function setSets(ArrayCollection $sets)
+    public function setSet(Set $set)
     {
-        $this->sets = $sets;
+        $this->set = $set;
 
-        return $this;
-    }
-    
-    public function addSet(Set $set) {
-        $this->sets->add($set);
-        
         return $this;
     }
 
@@ -114,6 +113,16 @@ class Piece extends Item
     {
         $this->color = $color;
 
+        return $this;
+    }
+    
+    public function getCount() {
+        return $this->count;
+    }
+    
+    public function setCount($count) {
+        $this->count = $count;
+        
         return $this;
     }
 }

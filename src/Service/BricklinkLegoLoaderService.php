@@ -87,6 +87,13 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         return $set;
     }
 
+    public function loadInventory($inventory_id) {
+        $inventory = $this->loadExtern('inventory', 'GET', array('inventory_id' => $inventory_id));
+        if ($inventory->item->type == "SET") {
+            return $this->loadSet($inventory->item->no);
+        }
+    }
+
     public function getSetFromAssoc($set) {
         $new_set = new Set();
         $new_set->setSource(Set::SOURCE_BRICKLINK);
@@ -114,29 +121,10 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         $subset = $this->loadExtern('items/SET/' . $set_no . '/subsets', $method);
         $pieces = array();
         foreach ($subset->entries as $piece) {
-            // careful when loading locally as pieces can have different color for same no
-            $p = $this->loadItemLocally($piece->no);
-            $is_loaded = $p;
-            if (is_array($p)) {
-                foreach ($p as $loaded_piece) {
-                    if ($loaded_piece->getColor() == $piece->color_id) {
-                        $p = $loaded_piece;
-                        $is_loaded = TRUE;
-                        break;
-                    }
-                }
-            } else if ($p instanceof Piece) {
-                $is_loaded = TRUE;
-            }
-            if (!$is_loaded) {
-                $p = $this->getPieceFromAssoc($piece);
-                $this->em->persist($p);
-                if ($flush) {
-                    $this->em->flush();
-                }
-            }
-            for ($i = 0; $i < $piece->quantity; $i++) {
-                $pieces[] = $p;
+            $p = $this->getPieceFromAssoc($piece);
+            $this->em->persist($p);
+            if ($flush) {
+                $this->em->flush();
             }
         }
         return new ArrayCollection($pieces);
@@ -150,6 +138,7 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         $new_piece->setCategory($item->categoryID);
         $new_piece->setType($item->type);
         $new_piece->setColor($piece->color_id);
+        $new_piece->setCount($piece->quantity);
         return $new_piece;
     }
 

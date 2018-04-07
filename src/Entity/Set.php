@@ -27,7 +27,7 @@ class Set extends Item {
     private $price;
 
     /**
-     * @ORM\ManyToMany(targetEntity="Piece", inversedBy="sets", cascade={"all"})
+     * @ORM\OneToMany(targetEntity="Piece", mappedBy="set", cascade={"all"})
      */
     private $pieces;
     
