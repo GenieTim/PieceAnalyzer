@@ -7,7 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * @ORM\Entity(repositoryClass="App\Repository\PieceRepository")
  * @ORM\Table(name="piece", indexes={
- *      @ORM\Index(name="piece_price_idx", columns={"price"}),
+ *      @ORM\Index(name="piece_color_idx", columns={"color"}),
  *      @ORM\Index(name="piece_count_idx", columns={"count"}),
  *      @ORM\Index(name="piece_sort_idx", columns={"category", "type"})
  * })
