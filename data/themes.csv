@@ -363,7 +363,7 @@ id,name,parent_id
 362,Toa Okoto,324
 363,Boat,
 364,Building Set with People,
-365,Classic,
+365,System,
 366,Basic Set,365
 367,Building,365
 368,HO 1:87 Vehicles,365
@@ -618,3 +618,6 @@ id,name,parent_id
 617,DC Super Hero Girls,
 618,Ninjago The Movie,535
 619,Cities of Wonders,408
+620,Jurassic World: Fallen Kingdom,591
+621,Classic,
+622,Series 18 Minifigures,535
