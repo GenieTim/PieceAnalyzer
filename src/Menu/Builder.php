@@ -23,7 +23,7 @@ class Builder {
         $menu->addChild('Admin', array('uri' => '#',
             'attributes' => array('dropdown' => TRUE))
         );
-        $menu['Admin']->addChild('Refresh Set Data', array('route' => 'load_files', 'routeParameters' => array('index' => 1)));
+//        $menu['Admin']->addChild('Refresh Set Data', array('route' => 'load_files', 'routeParameters' => array('index' => 1)));
         $menu['Admin']->addChild('Refresh Prices', array('route' => 'load_prices_brickpicker'));
 
         return $menu;
