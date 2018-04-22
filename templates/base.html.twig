@@ -39,11 +39,20 @@
                 {% block content %}
                 {% endblock %}
             </div>
-            <div class="fo0oter">
-              <p>
-                  Copyright © 2018 Bernhard Webstudio. All rights reserved.
-                  This webservice is provided “AS IS” and without warranty of any kind, either express or implied.
-                  LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this service.
+            <div class="container-fluid mt-5 py-5">
+                <footer class="footer bg-light">
+                    <div  class="mx-auto text-muted">
+                        <p>
+                            Copyright © Tim Bernhard, {{"now"|date("Y")}}. All rights reserved.
+                            This webservice is provided “AS IS” and without warranty of any kind, either express or implied.
+                            LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this service.
+                        </p>
+                    </div>
+                </footer>
+            </div>
+            <div class="footer">
+                <p>
+
                 </p>
             </div>
         {% endblock %}

@@ -234,38 +234,50 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         $inventory_ids = array_merge($inventory_ids, array_map(function($inventory) {
                     return $inventory[$this::INVENTORY_SET_INVENTORY];
                 }, $inventory_sets));
-        // inventory parts connects inventories/sets with parts, but each inventory_part could have another color as well as quantity
-        $inventory_parts = $this->findDataInCsv('inventory_parts', $this::INVENTORY_PART_INVENTORY, $inventory_ids);
+        $partCollection = new ArrayCollection();
 
-        $part_ids = array_map(function($inventory_part) {
-            return $inventory_part[$this::INVENTORY_PART_PART];
-        }, $inventory_parts);
-
-        $parts = $this->findDataInCsv('parts', $this::PART_NUM_KEY, $part_ids);
-
-        $ordered_parts = array();
-        foreach ($parts as $part) {
-            $ordered_parts[$part[$this::PART_NUM_KEY]] = $part;
-        }
-
-        $pieces = array();
-        foreach ($inventory_parts as $piece) {
-            // piece is from inventory_parts, part is from parts
-            try {
-             $part = $ordered_parts[$piece[$this::INVENTORY_PART_PART]];
-            } catch(\Exception $e) {
-                $this->logger->alert('Failed to get ordered part form pieces array with key ' . $this::INVENTORY_PART_PART, array($piece, 'error' => $e));
+        // each inventory has the same parts listed over and over
+        // a decision is necessary, which inventory should be used
+        foreach ($inventory_ids as $inventory_id) {
+            // inventory parts connects inventories/sets with parts, but each inventory_part could have another color as well as quantity
+            $inventory_parts = $this->findDataInCsv('inventory_parts', $this::INVENTORY_PART_INVENTORY, $inventory_ids);
+            // target for the inventory with the largest number of parts
+            if (count($inventory_parts) <= $partCollection->count()) {
                 continue;
             }
-            $p = $this->getPieceFromAssoc($piece, $part);
-            $p->setSet($set);
-            $this->em->persist($p);
 
-            if ($flush) {
-                $this->em->flush();
+            $part_ids = array_map(function($inventory_part) {
+                return $inventory_part[$this::INVENTORY_PART_PART];
+            }, $inventory_parts);
+
+            $parts = $this->findDataInCsv('parts', $this::PART_NUM_KEY, $part_ids);
+
+            $ordered_parts = array();
+            foreach ($parts as $part) {
+                $ordered_parts[$part[$this::PART_NUM_KEY]] = $part;
             }
+
+            $pieces = array();
+            foreach ($inventory_parts as $piece) {
+                // piece is from inventory_parts, part is from parts
+                try {
+                    $part = $ordered_parts[$piece[$this::INVENTORY_PART_PART]];
+                } catch (\Exception $e) {
+                    $this->logger->alert('Failed to get ordered part form pieces array with key ' . $this::INVENTORY_PART_PART, array($piece, 'error' => $e));
+                    continue;
+                }
+                $p = $this->getPieceFromAssoc($piece, $part);
+                $p->setSet($set);
+                $this->em->persist($p);
+
+                if ($flush) {
+                    $this->em->flush();
+                }
+            }
+            $partCollection = new ArrayCollection($pieces);
         }
-        return new ArrayCollection($pieces);
+        // return the part collection with the most parts
+        return $partCollection;
     }
 
     public function loadPrices($all = false) {
@@ -280,11 +292,11 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         }
         foreach ($unsolved_sets as $set) {
             try {
-            $set->setPrice($this->loadPriceForSet($set));
-            $this->em->persist($set);
-          } catch (\Exception $e) {
-            $this->logger->warn('error while loading price', array('error' => $e));
-          }
+                $set->setPrice($this->loadPriceForSet($set));
+                $this->em->persist($set);
+            } catch (\Exception $e) {
+                $this->logger->warn('error while loading price', array('error' => $e));
+            }
         }
         $this->em->flush();
         return $this;

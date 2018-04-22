@@ -6,6 +6,7 @@ cd $(dirname $(dirname "$0"))
 
 git pull
 composer install --no-dev --optimize-autoloader
+yarn install
 php bin/console cache:clear --env=prod --no-debug
 php bin/console assets:install --env=prod --no-debug
 yarn run encore production
