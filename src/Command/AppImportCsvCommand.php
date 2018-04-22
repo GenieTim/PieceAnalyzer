@@ -34,11 +34,12 @@ class AppImportCsvCommand extends Command
       
         $end = $input->getOption('count');
         
-        $cnt = $end ? $end : 'all';
-        $io->writeln("Starting to import $cnt sets.");
+        $count = $end ? $end : 'all';
+        $io->writeln("Starting to import $count sets.");
         
-        $this->loader->loadSets(1, $end);
-        
-        $io->success("Successfully imported sets");
+        $sets = $this->loader->loadSets(1, $end);
+       
+        $setCount = is_array($sets) ? count($sets) : $sets;
+        $io->success("Successfully imported $setCount sets");
     }
 }

@@ -142,16 +142,16 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
      * 
      * @param integer $from
      * @param integer $to
-     * @return array
+     * @return array|integer
      */
     public function loadSets($from = 1, $to = 0) {
         $self = $this;
         $sets = $this->loopCsv('sets', function ($set) use ($self, $to) {
-            return $self->loadSet($set, $to > 0);
+            return $self->loadSet($set, $to === 0);
         }, $from, $to);
 
         $this->em->flush();
-        return array_filter($sets);
+        return $to ? array_filter($sets) : array_sum($sets);
     }
 
     /**
@@ -199,7 +199,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         } else if (is_array($set)) {
             $this->logger->warning('Got array for locally loaded Set. Please clean up soon.');
         }
-        return $set;
+        return $flush ? $set : 1;
     }
 
     public function getSetFromAssoc($set) {
