@@ -15,7 +15,7 @@ class AppDataRemoveDuplicatesCommand extends Command {
 
     protected static $defaultName = 'app:data:remove-duplicates';
     protected $em;
-    protected $uniqueSets;
+    protected $uniqueSets = array();
 
     public function __construct(EntityManagerInterface $em) {
         parent::__construct();

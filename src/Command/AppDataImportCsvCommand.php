@@ -32,7 +32,7 @@ class AppDataImportCsvCommand extends Command {
 
         $end = $input->getOption('count');
 
-        $count = $end ? $end : 'all';
+        $count = $end ? $end : $this->getLines($this->loader->normalizeCsvPath('sets'));
         $io->writeln("Starting to import $count sets.");
 
         $numberAtOnce = 500;
@@ -40,20 +40,33 @@ class AppDataImportCsvCommand extends Command {
         $sets = 1;
         $localStart = $start;
         $localEnd = $start;
-        $io->progressStart();
-        while ((!$end || $localEnd <= $end) && $sets) {
+        $io->progressStart($count);
+        while ($localEnd <= $end && $sets) {
             $localStart = $localEnd;
             $localEnd += $numberAtOnce;
             if ($localEnd >= $end) {
                 $localEnd = $end + 1;
             }
             $sets = $this->loader->loadSets($localStart, $localEnd);
-            $setCount = is_array($sets) ? count($sets) : $sets;
+            //$setCount = is_array($sets) ? count($sets) : $sets;
             //$io->writeln("$setCount more sets loaded");
             $io->progressAdvance();
         }
         $io->progressFinish();
         $io->success("Successfully imported some sets");
+    }
+
+    protected function getLines($file) {
+        $f = fopen($file, 'rb');
+        $lines = 0;
+
+        while (!feof($f)) {
+            $lines += substr_count(fread($f, 8192), "\n");
+        }
+
+        fclose($f);
+
+        return $lines;
     }
 
 }

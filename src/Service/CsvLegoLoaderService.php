@@ -331,7 +331,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         return $this->getCsvData('themes');
     }
 
-    private function normalizeCsvPath($file) {
+    public function normalizeCsvPath($file) {
         if (substr($file, -4) != ".csv") {
             $file .= ".csv";
         }
