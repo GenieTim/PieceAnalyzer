@@ -15,7 +15,7 @@ class AppDataRemoveDuplicatesCommand extends Command {
 
     protected static $defaultName = 'app:data:remove-duplicates';
     protected $em;
-    protected $unique;
+    protected $uniqueSets;
 
     public function __construct(EntityManagerInterface $em) {
         parent::__construct();
@@ -49,15 +49,15 @@ class AppDataRemoveDuplicatesCommand extends Command {
                 $purgeNo += $this->loopDuplicates($set, NULL);
             } else {
                 $unique = true;
-                if (array_key_exists($set->getNo(), $unique)) {
-                    if ($unique[$set->getNo()] == $set->getName()) {
+                if (array_key_exists($set->getNo(), $this->uniqueSets)) {
+                    if ($this->uniqueSets[$set->getNo()] == $set->getName()) {
                         $this->em->remove($set);
                         $unique = false;
                         $purgeNo++;
                     }
                 }
                 if ($unique) {
-                    $unique[$set->getNo()] = $set->getName();
+                    $this->uniqueSets[$set->getNo()] = $set->getName();
                 }
             }
 
