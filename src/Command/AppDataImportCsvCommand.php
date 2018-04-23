@@ -10,9 +10,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use App\Service\CsvLegoLoaderService;
 
-class AppImportCsvCommand extends Command {
+class AppDataImportCsvCommand extends Command {
 
-    protected static $defaultName = 'app:import-csv';
+    protected static $defaultName = 'app:data:import-csv';
     protected $loader;
 
     public function __construct(CsvLegoLoaderService $loader) {

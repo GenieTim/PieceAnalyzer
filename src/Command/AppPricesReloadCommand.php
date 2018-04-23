@@ -62,12 +62,12 @@ class AppPricesReloadCommand extends Command {
         foreach ($rows as $row) {
             $set = $row[0];
             $this->io->progressAdvance();
-//            try {
+            try {
                 $set->setPrice($this->loader->loadPriceForSet($set->getNo()));
                 $this->em->persist($set);
-//            } catch (\Exception $e) {
-//                $this->logger->warn('error while loading price', array('error' => $e));
-//            }
+            } catch (\Exception $e) {
+                $this->logger->warn('error while loading price', array('error' => $e));
+            }
             if (($i % $batchSize) === 0) {
                 $this->em->flush(); // Executes all updates.
                 $this->em->clear(); // Detaches all objects from Doctrine!
