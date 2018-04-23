@@ -15,6 +15,7 @@ class AppDataRemoveDuplicatesCommand extends Command {
 
     protected static $defaultName = 'app:data:remove-duplicates';
     protected $em;
+    protected $unique;
 
     public function __construct(EntityManagerInterface $em) {
         parent::__construct();
@@ -29,24 +30,35 @@ class AppDataRemoveDuplicatesCommand extends Command {
         $io = new SymfonyStyle($input, $output);
 
         $qb = $this->em->createQueryBuilder()->select('s')->from(Set::class, 's')->groupBy('s.name, s.no')->having('COUNT(s) > 1');
-        
+
+        $rows = $qb->getQuery()->getResult();
+        $io->progressStart(count($rows));
+        $purgeNo = $this->loopDuplicates($rows, $io);
+        $io->progressFinish();
+        $this->em->flush();
+
+        $io->success("Purged $purgeNo duplicates from the database.");
+    }
+
+    protected function loopDuplicates($duplicates, $io) {
         $purgeNo = 0;
-        $rows = $qb->getQuery()->iterate();
-        $io->progressStart();
-        $unique = array();
         $batchSize = 50;
         $i = 0;
-        foreach ($rows as $set) {
-            $unique = true;
-            if (array_key_exists($set->getNo(), $unique)) {
-                if ($unique[$set->getNo()] == $set->getName()) {
-                    $this->em->remove($set);
-                    $unique = false;
-                    $purgeNo++;
+        foreach ($duplicates as $set) {
+            if (is_array($set)) {
+                $purgeNo += $this->loopDuplicates($set, NULL);
+            } else {
+                $unique = true;
+                if (array_key_exists($set->getNo(), $unique)) {
+                    if ($unique[$set->getNo()] == $set->getName()) {
+                        $this->em->remove($set);
+                        $unique = false;
+                        $purgeNo++;
+                    }
                 }
-            }
-            if ($unique) {
-                $unique[$set->getNo()] = $set->getName();
+                if ($unique) {
+                    $unique[$set->getNo()] = $set->getName();
+                }
             }
 
             if (($i % $batchSize) === 0) {
@@ -54,12 +66,11 @@ class AppDataRemoveDuplicatesCommand extends Command {
                 $this->em->clear(); // Detaches all objects from Doctrine!
             }
             ++$i;
-            $io->progressAdvance();
+            if ($io) {
+                $io->progressAdvance();
+            }
         }
-        $io->progressFinish();
-        $this->em->flush();
-
-        $io->success("Purged $purgeNo duplicates from the database.");
+        return $purgeNo;
     }
 
 }
