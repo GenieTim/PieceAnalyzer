@@ -1,3 +1,3 @@
 knp_menu:
     twig:
-        template: "other/knp_menu.html.twig"
+        template: "other/b4_knp_menu.html.twig"

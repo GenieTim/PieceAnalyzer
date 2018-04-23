@@ -20,11 +20,11 @@ class Builder {
 
         $menu->addChild('Home', array('route' => 'index'));
         $menu->addChild('List Sets', array('route' => 'list_all'));
-        $menu->addChild('Admin', array('uri' => '#',
-            'attributes' => array('dropdown' => TRUE))
-        );
+//        $menu->addChild('Admin', array('uri' => '#',
+//            'attributes' => array('dropdown' => TRUE))
+//        );
 //        $menu['Admin']->addChild('Refresh Set Data', array('route' => 'load_files', 'routeParameters' => array('index' => 1)));
-        $menu['Admin']->addChild('Refresh Prices', array('route' => 'load_prices_brickpicker'));
+//        $menu['Admin']->addChild('Refresh Prices', array('route' => 'load_prices_brickpicker'));
 
         return $menu;
     }

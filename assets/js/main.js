@@ -1,2 +1,5 @@
+
+
 var $ = require('jquery');
-require('bootstrap');
+//require('bootstrap');
+import 'bootstrap';
