@@ -31,7 +31,10 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface {
         $src = "https://www.brickpicker.com/bpms/set.cfm?set=$set_no";
         $crawler = new Crawler(file_get_contents($src));
         $priceList = $crawler->filter(".product-detail .retail-price ul li");
-        $american = $priceList->first()->text();
+        $american = NULL;
+        if (count($priceList)) {
+            $american = $priceList->first()->text();
+        }
         if (($price = $this->findPrice($american))) {
             return $price;
         } else {
@@ -39,7 +42,7 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface {
             return $this->loadCurrentPrice($crawler);
         }
     }
-    
+
     /**
      * extract a float value (price) from a string
      * 
@@ -54,7 +57,7 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface {
         }
         return NULL;
     }
-    
+
     /**
      * Load the price listed, not as retail price 
      * 
@@ -63,7 +66,11 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface {
      */
     protected function loadCurrentPrice(Crawler $crawler) {
         $priceList = $crawler->filter('.main .container .panel-body table tbody tr td strong');
-        return $this->findPrice($priceList->first()->text());
+        if (count($priceList)) {
+            return $this->findPrice($priceList->first()->text());
+        } else {
+            return NULL;
+        }
     }
 
     public function loadPrices($all = FALSE) {
