@@ -99,7 +99,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
                     $this->logger->info("Result NULL. Exiting loop.");
                     break;
                 }
-                if ($end && $end < $index) {
+                if ($end && $end !== 0 && $end < $index) {
                     break;
                 }
             }
