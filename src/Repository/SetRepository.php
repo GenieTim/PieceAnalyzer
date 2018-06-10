@@ -46,7 +46,7 @@ class SetRepository extends ServiceEntityRepository
             if (!in_array($key, $this->allowedCriteria)) {
                 continue;
             }
-            // skip unknown 
+            // skip unknown
             if ($value === 0) {
                 continue;
             }
