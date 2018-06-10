@@ -36,15 +36,15 @@ class AppDataImportCsvCommand extends Command
 
         $end = $input->getOption('count');
 
-        $count = $end ? $end : $this->getLines($this->loader->normalizeCsvPath('sets'));
-        $io->writeln("Starting to import $count sets.");
+        $end = $end ? $end : $this->getLines($this->loader->normalizeCsvPath('sets'));
+        $io->writeln("Starting to import $end sets.");
 
-        $numberAtOnce = 500;
+        $numberAtOnce = 50;
         $start = 1;
         $sets = 1;
         $localStart = $start;
         $localEnd = $start;
-        $io->progressStart($count);
+        $io->progressStart($end);
         while ($localEnd <= $end && $sets) {
             $localStart = $localEnd;
             $localEnd += $numberAtOnce;
@@ -52,9 +52,7 @@ class AppDataImportCsvCommand extends Command
                 $localEnd = $end + 1;
             }
             $sets = $this->loader->loadSets($localStart, $localEnd);
-            //$setCount = is_array($sets) ? count($sets) : $sets;
-            //$io->writeln("$setCount more sets loaded");
-            $io->progressAdvance();
+            $io->progressAdvance($numberAtOnce);
         }
         $io->progressFinish();
         $io->success("Successfully imported some sets");
