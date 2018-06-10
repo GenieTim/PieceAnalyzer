@@ -9,7 +9,8 @@ use App\Entity\Set;
  *
  * @author timbernhard
  */
-interface LegoLoaderServiceInterface {
+interface LegoLoaderServiceInterface
+{
     
     public function loadSets($from, $to);
     
@@ -22,5 +23,4 @@ interface LegoLoaderServiceInterface {
     public function getColors();
     
     public function getCategories();
-    
 }

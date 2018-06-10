@@ -13,16 +13,24 @@ class PieceRepository extends ServiceEntityRepository
         parent::__construct($registry, Piece::class);
     }
 
-    /*
-    public function findBySomething($value)
+    protected function findDistinct($what)
     {
         return $this->createQueryBuilder('p')
-            ->where('p.something = :value')->setParameter('value', $value)
-            ->orderBy('p.id', 'ASC')
-            ->setMaxResults(10)
-            ->getQuery()
-            ->getResult()
-        ;
+            ->select('distinct(' . $what . ')')->getQuery()->getResult();
     }
-    */
+
+    public function findDistinctColors()
+    {
+        return $this->findDistinct('p.color');
+    }
+
+    public function findDistinctCategories()
+    {
+        return $this->findDistinct('p.category');
+    }
+
+    public function findDistinctTypes()
+    {
+        return $this->findDistinct('p.type');
+    }
 }

@@ -10,12 +10,14 @@ use Symfony\Component\Routing\Annotation\Route;
  *
  * @author timbernhard
  */
-class IndexController extends Controller {
+class IndexController extends Controller
+{
     
     /**
      * @Route("/", name="index")
      */
-    public function indexAction() {
+    public function indexAction()
+    {
         return $this->render('static/index.html.twig');
     }
 }

@@ -11,22 +11,26 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Entity\Set;
 
-class AppDataRemoveDuplicatesCommand extends Command {
+class AppDataRemoveDuplicatesCommand extends Command
+{
 
     protected static $defaultName = 'app:data:remove-duplicates';
     protected $em;
     protected $uniqueSets = array();
 
-    public function __construct(EntityManagerInterface $em) {
+    public function __construct(EntityManagerInterface $em)
+    {
         parent::__construct();
         $this->em = $em;
     }
 
-    protected function configure() {
+    protected function configure()
+    {
         $this->setDescription('Purge duplicate sets from database');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output) {
+    protected function execute(InputInterface $input, OutputInterface $output)
+    {
         $io = new SymfonyStyle($input, $output);
 
         $qb = $this->em->createQueryBuilder()->select('s')->from(Set::class, 's')->groupBy('s.name, s.no')->having('COUNT(s) > 1');
@@ -40,13 +44,14 @@ class AppDataRemoveDuplicatesCommand extends Command {
         $io->success("Purged $purgeNo duplicates from the database.");
     }
 
-    protected function loopDuplicates($duplicates, $io) {
+    protected function loopDuplicates($duplicates, $io)
+    {
         $purgeNo = 0;
         $batchSize = 50;
         $i = 0;
         foreach ($duplicates as $set) {
             if (is_array($set)) {
-                $purgeNo += $this->loopDuplicates($set, NULL);
+                $purgeNo += $this->loopDuplicates($set, null);
             } else {
                 $unique = true;
                 if (array_key_exists($set->getNo(), $this->uniqueSets)) {
@@ -72,5 +77,4 @@ class AppDataRemoveDuplicatesCommand extends Command {
         }
         return $purgeNo;
     }
-
 }

@@ -10,8 +10,9 @@ namespace App\Service;
  *
  * @author timbernhard
  */
-interface PriceLoaderServiceInterface {
-    public function loadPrices($all = FALSE);
+interface PriceLoaderServiceInterface
+{
+    public function loadPrices($all = false);
     
     public function loadPriceForSet($set_no);
 }

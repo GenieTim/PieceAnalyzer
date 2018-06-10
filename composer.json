@@ -39,7 +39,8 @@
         "symfony/browser-kit": "^4.0",
         "symfony/phpunit-bridge": "^4.0",
         "symfony/profiler-pack": "*",
-        "symfony/web-server-bundle": "^4.0"
+        "symfony/web-server-bundle": "^4.0",
+        "squizlabs/php_codesniffer": "^3.2"
     },
     "config": {
         "preferred-install": {
@@ -74,7 +75,9 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
-        ]
+        ],
+        "code-sniffer": "./vendor/bin/phpcs --standard=PSR2 src",
+        "code-sniffer-fix": "./vendor/bin/phpcbf --standard=PSR2 src"
     },
     "conflict": {
         "symfony/symfony": "*"

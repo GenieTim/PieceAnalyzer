@@ -6,15 +6,18 @@ use Knp\Menu\FactoryInterface;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerAwareTrait;
 
-class Builder {
+class Builder
+{
 
     private $factory;
 
-    public function __construct(FactoryInterface $factory) {
+    public function __construct(FactoryInterface $factory)
+    {
         $this->factory = $factory;
     }
 
-    public function createMainMenu(array $options) {
+    public function createMainMenu(array $options)
+    {
         $menu = $this->factory->createItem('root');
         $menu->setChildrenAttribute('class', 'nav navbar-nav navbar-right');
 
@@ -28,5 +31,4 @@ class Builder {
 
         return $menu;
     }
-
 }

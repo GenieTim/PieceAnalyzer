@@ -10,13 +10,15 @@ use App\Entity\Item;
 use App\Entity\Piece;
 use App\Entity\Set;
 
-class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
+class BricklinkLegoLoaderService implements LegoLoaderServiceInterface
+{
 
     private $client;
     private $em;
-    private $known_numbers = NULL;
+    private $known_numbers = null;
 
-    public function __construct($credentials, EntityManagerInterface $em) {
+    public function __construct($credentials, EntityManagerInterface $em)
+    {
         $config = [
             "consumerKey" => $credentials['consumer']['key'],
             "consumerSecret" => $credentials['consumer']['secret'],
@@ -27,7 +29,8 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         $this->em = $em;
     }
 
-    private function loadExtern($endpoint, $method = 'GET', $body = "") {
+    private function loadExtern($endpoint, $method = 'GET', $body = "")
+    {
         $response = json_decode($this->client->execute($method, $endpoint, $body));
         $meta = array();
         if (property_exists($response, 'meta')) {
@@ -39,17 +42,19 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         return $response->data;
     }
 
-    public function loadSets($from, $to) {
+    public function loadSets($from, $to)
+    {
         $sets = array();
         $range = range($from, $to);
         foreach ($range as $item) {
-            $sets[] = $this->loadSet($item, FALSE);
+            $sets[] = $this->loadSet($item, false);
         }
         $this->em->flush();
         return array_filter($sets);
     }
 
-    private function setKnownItems() {
+    private function setKnownItems()
+    {
         $this->known_numbers = array();
         $piece_repo = $this->em->getRepository(Item::class);
         $items = $piece_repo->findAll();
@@ -59,8 +64,9 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         return $this->known_numbers;
     }
 
-    public function loadItemLocally($set_no) {
-        if ($this->known_numbers === NULL) {
+    public function loadItemLocally($set_no)
+    {
+        if ($this->known_numbers === null) {
             $this->setKnownItems();
         }
         if (array_key_exists($set_no, $this->known_numbers)) {
@@ -71,10 +77,11 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
                 return $sets;
             }
         }
-        return FALSE;
+        return false;
     }
 
-    public function loadSet($set_no, $flush = TRUE) {
+    public function loadSet($set_no, $flush = true)
+    {
         $set = $this->loadItemLocally($set_no);
         if (!$set) {
             $set = $this->loadExtern("items/SET/" . $set_no);
@@ -87,14 +94,16 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         return $set;
     }
 
-    public function loadInventory($inventory_id) {
+    public function loadInventory($inventory_id)
+    {
         $inventory = $this->loadExtern('inventory', 'GET', array('inventory_id' => $inventory_id));
         if ($inventory->item->type == "SET") {
             return $this->loadSet($inventory->item->no);
         }
     }
 
-    public function getSetFromAssoc($set) {
+    public function getSetFromAssoc($set)
+    {
         $new_set = new Set();
         $new_set->setSource(Set::SOURCE_BRICKLINK);
         $new_set->setNo($set->no);
@@ -107,13 +116,14 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
     }
 
     /**
-     * 
+     *
      * @param integer|string $set_no
      * @param boolean $force_load
      * @param boolean $flush
      * @return ArrayCollection
      */
-    public function getPiecesOfSet(Set &$set, $flush = false) {
+    public function getPiecesOfSet(Set &$set, $flush = false)
+    {
         $set_no = $set->getNo();
         if ($set && !$force_load) {
             return $set->getPieces();
@@ -130,7 +140,8 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         return new ArrayCollection($pieces);
     }
 
-    public static function getPieceFromAssoc($piece) {
+    public static function getPieceFromAssoc($piece)
+    {
         $new_piece = new Piece();
         $item = $piece->item;
         $new_piece->setName($item->name);
@@ -142,16 +153,17 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface {
         return $new_piece;
     }
 
-    public function getColors() {
+    public function getColors()
+    {
         return $this->loadExtern('colors');
     }
 
-    public function getCategories() {
+    public function getCategories()
+    {
         return $this->loadExtern('categories');
     }
 
-    public function loadPrices($all = false) {
-        
+    public function loadPrices($all = false)
+    {
     }
-
 }

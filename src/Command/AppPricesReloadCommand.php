@@ -15,7 +15,8 @@ use App\Entity\Item;
 use App\Entity\Set;
 use App\Service\BrickPickerPriceLoaderService;
 
-class AppPricesReloadCommand extends Command {
+class AppPricesReloadCommand extends Command
+{
 
     protected static $defaultName = 'app:prices:reload';
     protected $loader;
@@ -23,21 +24,24 @@ class AppPricesReloadCommand extends Command {
     protected $io;
     protected $logger;
 
-    public function __construct(BrickPickerPriceLoaderService $loader, EntityManagerInterface $em, LoggerInterface $logger) {
+    public function __construct(BrickPickerPriceLoaderService $loader, EntityManagerInterface $em, LoggerInterface $logger)
+    {
         parent::__construct();
         $this->em = $em;
         $this->loader = $loader;
         $this->logger = $logger;
     }
 
-    protected function configure() {
+    protected function configure()
+    {
         $this
                 ->setDescription('Reload the prices of the Items.')
                 ->addOption('all', null, InputOption::VALUE_NONE, 'Reload prices for all items.')
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output) {
+    protected function execute(InputInterface $input, OutputInterface $output)
+    {
         $this->io = new SymfonyStyle($input, $output);
 
         $qb = $this->em->createQueryBuilder()->select('s')->from(Set::class, 's');
@@ -56,7 +60,8 @@ class AppPricesReloadCommand extends Command {
         $this->io->success('Prices have been reloaded.');
     }
 
-    protected function loadPriceForSets($rows) {
+    protected function loadPriceForSets($rows)
+    {
         $batchSize = 50;
         $i = 0;
         foreach ($rows as $row) {
@@ -76,5 +81,4 @@ class AppPricesReloadCommand extends Command {
         }
         $this->em->flush();
     }
-
 }

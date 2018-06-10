@@ -18,6 +18,7 @@
 
 ###> custom ignores ###
 nbproject
+.vscode
 
 ###< custom ignores ###
 

@@ -10,7 +10,8 @@ use App\Service\CsvLegoLoaderService;
 use App\Service\BricklinkLegoLoaderService;
 use App\Service\BrickPickerPriceLoaderService;
 
-class LoadController extends Controller {
+class LoadController extends Controller
+{
 
     /**
      * Load a range of set no's
@@ -20,7 +21,8 @@ class LoadController extends Controller {
      * @param CsvLegoLoaderService $loader
      * @return Response
      */
-    public function loadRangeAction(Request $request, BricklinkLegoLoaderService $loader) {
+    public function loadRangeAction(Request $request, BricklinkLegoLoaderService $loader)
+    {
         $form = $this->createForm(SelectLoadFormType::class);
 
         $form->handleRequest($request);
@@ -43,7 +45,8 @@ class LoadController extends Controller {
      * @param CsvLegoLoaderService $loader
      * @return Response
      */
-    public function refreshAction(Request $request, CsvLegoLoaderService $loader, $index) {
+    public function refreshAction(Request $request, CsvLegoLoaderService $loader, $index)
+    {
         $NUMBER = 500;
         $start = intval($index);
         // switch the following two lines if you want to load sets seperatly
@@ -66,15 +69,15 @@ class LoadController extends Controller {
 
     /**
      * Load prices of sets with BrickPickerPriceLoaderService
-     * 
+     *
      * @Route("/price/brickpicker", name="load_prices_brickpicker")
      * @param Request $request
      * @param \App\Service\BrickPickerPriceLoaderService $loader
      * @return Response
      */
-    public function loadPrices(Request $request, BrickPickerPriceLoaderService $loader) {
-        $loader->loadPrices(FALSE);
+    public function loadPrices(Request $request, BrickPickerPriceLoaderService $loader)
+    {
+        $loader->loadPrices(false);
         return $this->redirectToRoute('list_all');
     }
-
 }

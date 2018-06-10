@@ -1,4 +1,17 @@
-
 {{ form_start(form) }}
-{{ form_widget(form) }}
+<div class="container">
+    <div class="row">
+        <div class="col">
+            {{ form_row(form.color) }}
+        </div>
+        <div class="col">
+            {{ form_row(form.category) }}
+        </div>
+        <div class="col-md-auto">
+            <label>Filter
+                {{ form_row(form.search) }}
+            </label>
+        </div>
+    </div>
+</div>
 {{ form_end(form) }}

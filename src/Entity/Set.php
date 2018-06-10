@@ -9,7 +9,8 @@ use Doctrine\Common\Collections\ArrayCollection;
  * @ORM\Entity(repositoryClass="App\Repository\SetRepository")
  * @ORM\Table(name="lego_set")
  */
-class Set extends Item {
+class Set extends Item
+{
 
     const SOURCE_BRICKLINK = 1;
     const SOURCE_REBRICKABLE = 2;
@@ -56,7 +57,8 @@ class Set extends Item {
     /**
      * Get the value of price
      */
-    public function getPrice() {
+    public function getPrice()
+    {
         return $this->price;
     }
 
@@ -65,7 +67,8 @@ class Set extends Item {
      *
      * @return  self
      */
-    public function setPrice($price) {
+    public function setPrice($price)
+    {
         $this->price = floatval($price);
 
         return $this;
@@ -74,7 +77,8 @@ class Set extends Item {
     /**
      * Get the value of pieces
      */
-    public function getPieces() {
+    public function getPieces()
+    {
         return $this->pieces;
     }
 
@@ -83,30 +87,35 @@ class Set extends Item {
      *
      * @return  self
      */
-    public function setPieces(ArrayCollection $pieces) {
+    public function setPieces(ArrayCollection $pieces)
+    {
         $this->pieces = $pieces;
 
         return $this;
     }
 
-    public function addPiece(Piece $p) {
+    public function addPiece(Piece $p)
+    {
         $this->pieces->add($p);
 
         return $this;
     }
 
-    public function getSource() {
+    public function getSource()
+    {
         return $this->source;
     }
 
-    public function setSource($source) {
+    public function setSource($source)
+    {
         $this->source = intval($source);
     }
 
     /**
      * Get the value of obsolete
      */
-    public function getObsolete() {
+    public function getObsolete()
+    {
         return $this->obsolete;
     }
 
@@ -115,47 +124,52 @@ class Set extends Item {
      *
      * @return  self
      */
-    public function setObsolete($obsolete) {
+    public function setObsolete($obsolete)
+    {
         $this->obsolete = $obsolete;
 
         return $this;
     }
 
     /**
-     * 
+     *
      * @return string
      */
-    public function getImageUrl() {
+    public function getImageUrl()
+    {
         return $this->image_url;
     }
 
     /**
-     * 
+     *
      * @param string $url
      * @return $this
      */
-    public function setImageUrl($url) {
+    public function setImageUrl($url)
+    {
         $this->image_url = $url;
 
         return $this;
     }
 
-    public function getYear() {
+    public function getYear()
+    {
         return $this->year;
     }
 
-    public function setYear(\DateTime $year) {
+    public function setYear(\DateTime $year)
+    {
         $this->year = $year;
 
         return $this;
     }
 
-    public function getPieceCount() {
+    public function getPieceCount()
+    {
         $count = 0;
         foreach ($this->getPieces() as $piece) {
             $count += $piece->getCount();
         }
         return $count;
     }
-
 }

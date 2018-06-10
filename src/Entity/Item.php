@@ -11,7 +11,8 @@ use Doctrine\ORM\Mapping as ORM;
  * @ORM\DiscriminatorColumn(name="discriminator", type="string")
  * @ORM\DiscriminatorMap({"undefined" = "Item", "set" = "Set", "piece" = "Piece"})
  */
-class Item {
+class Item
+{
 
     /**
      * @ORM\Id
@@ -34,7 +35,8 @@ class Item {
     /**
      * Get bricklink identification number
      */
-    public function getNo() {
+    public function getNo()
+    {
         return $this->no;
     }
 
@@ -43,7 +45,8 @@ class Item {
      *
      * @return  self
      */
-    public function setNo($no) {
+    public function setNo($no)
+    {
         $this->no = $no;
 
         return $this;
@@ -52,7 +55,8 @@ class Item {
     /**
      * Get the value of id
      */
-    public function getId() {
+    public function getId()
+    {
         return $this->id;
     }
 
@@ -61,7 +65,8 @@ class Item {
      *
      * @return  self
      */
-    public function setId($id) {
+    public function setId($id)
+    {
         $this->id = $id;
 
         return $this;
@@ -70,7 +75,8 @@ class Item {
     /**
      * Get the value of name
      */
-    public function getName() {
+    public function getName()
+    {
         return $this->name;
     }
 
@@ -79,10 +85,10 @@ class Item {
      *
      * @return  self
      */
-    public function setName($name) {
+    public function setName($name)
+    {
         $this->name = $name;
 
         return $this;
     }
-
 }

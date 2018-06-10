@@ -10,24 +10,28 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use App\Service\CsvLegoLoaderService;
 
-class AppDataImportCsvCommand extends Command {
+class AppDataImportCsvCommand extends Command
+{
 
     protected static $defaultName = 'app:data:import-csv';
     protected $loader;
 
-    public function __construct(CsvLegoLoaderService $loader) {
+    public function __construct(CsvLegoLoaderService $loader)
+    {
         $this->loader = $loader;
         parent::__construct();
     }
 
-    protected function configure() {
+    protected function configure()
+    {
         $this
                 ->setDescription('Import the CSV files from the data directory')
                 ->addOption('count', 'nu', InputOption::VALUE_OPTIONAL, 'Number of sets to import', 0)
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output) {
+    protected function execute(InputInterface $input, OutputInterface $output)
+    {
         $io = new SymfonyStyle($input, $output);
 
         $end = $input->getOption('count');
@@ -56,7 +60,8 @@ class AppDataImportCsvCommand extends Command {
         $io->success("Successfully imported some sets");
     }
 
-    protected function getLines($file) {
+    protected function getLines($file)
+    {
         $f = fopen($file, 'rb');
         $lines = 0;
 
@@ -68,5 +73,4 @@ class AppDataImportCsvCommand extends Command {
 
         return $lines;
     }
-
 }

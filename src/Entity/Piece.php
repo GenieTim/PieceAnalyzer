@@ -42,7 +42,7 @@ class Piece extends Item
 
     /**
      * Get the value of sets
-     */ 
+     */
     public function getSet()
     {
         return $this->set;
@@ -52,7 +52,7 @@ class Piece extends Item
      * Set the value of sets
      *
      * @return  self
-     */ 
+     */
     public function setSet(Set $set)
     {
         $this->set = $set;
@@ -62,7 +62,7 @@ class Piece extends Item
 
     /**
      * Get the value of category
-     */ 
+     */
     public function getCategory()
     {
         return $this->category;
@@ -72,7 +72,7 @@ class Piece extends Item
      * Set the value of category
      *
      * @return  self
-     */ 
+     */
     public function setCategory($category)
     {
         $this->category = $category;
@@ -82,7 +82,7 @@ class Piece extends Item
 
     /**
      * Get the value of type
-     */ 
+     */
     public function getType()
     {
         return $this->type;
@@ -92,7 +92,7 @@ class Piece extends Item
      * Set the value of type
      *
      * @return  self
-     */ 
+     */
     public function setType($type)
     {
         $this->type = $type;
@@ -102,7 +102,7 @@ class Piece extends Item
 
     /**
      * Get the value of color
-     */ 
+     */
     public function getColor()
     {
         return $this->color;
@@ -112,7 +112,7 @@ class Piece extends Item
      * Set the value of color
      *
      * @return  self
-     */ 
+     */
     public function setColor($color)
     {
         $this->color = $color;
@@ -120,11 +120,13 @@ class Piece extends Item
         return $this;
     }
     
-    public function getCount() {
+    public function getCount()
+    {
         return $this->count;
     }
     
-    public function setCount($count) {
+    public function setCount($count)
+    {
         $this->count = $count;
         
         return $this;

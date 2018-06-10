@@ -17,21 +17,24 @@ use App\Entity\Set;
  *
  * @author timbernhard
  */
-class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface {
+class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
+{
 
     private $em;
     private $logger;
 
-    public function __construct(EntityManagerInterface $em, LoggerInterface $logger) {
+    public function __construct(EntityManagerInterface $em, LoggerInterface $logger)
+    {
         $this->logger = $logger;
         $this->em = $em;
     }
 
-    public function loadPriceForSet($set_no) {
+    public function loadPriceForSet($set_no)
+    {
         $src = "https://www.brickpicker.com/bpms/set.cfm?set=$set_no";
         $crawler = new Crawler(file_get_contents($src));
         $priceList = $crawler->filter(".product-detail .retail-price ul li");
-        $american = NULL;
+        $american = null;
         if (count($priceList)) {
             $american = $priceList->first()->text();
         }
@@ -45,35 +48,38 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface {
 
     /**
      * extract a float value (price) from a string
-     * 
+     *
      * @param string $string
      * @return float|NULL
      */
-    protected function findPrice($string) {
+    protected function findPrice($string)
+    {
         // TODO: this function only checks for price in america
         $matches = array();
         if (\preg_match('/\d+\.?\d*/', $string, $matches)) {
             return $matches[0];
         }
-        return NULL;
+        return null;
     }
 
     /**
-     * Load the price listed, not as retail price 
-     * 
+     * Load the price listed, not as retail price
+     *
      * @param Crawler $crawler
      * @return float|NULL
      */
-    protected function loadCurrentPrice(Crawler $crawler) {
+    protected function loadCurrentPrice(Crawler $crawler)
+    {
         $priceList = $crawler->filter('.main .container .panel-body table tbody tr td strong');
         if (count($priceList)) {
             return $this->findPrice($priceList->first()->text());
         } else {
-            return NULL;
+            return null;
         }
     }
 
-    public function loadPrices($all = FALSE) {
+    public function loadPrices($all = false)
+    {
         $query = 'SELECT s FROM ' . Set::class . ' s';
         if (!$all) {
             $query .= ' WHERE s.price IS NULL';
@@ -99,5 +105,4 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface {
         $this->em->flush();
         return $this;
     }
-
 }
