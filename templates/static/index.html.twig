@@ -1,5 +1,28 @@
 {% extends "base.html.twig" %}
 
 {% block content %}
+    <div class="jumbotron jumbotron-fluid">
+        <div class="container">
+            <h1 class="display-4">Hello World!</h1>
+            <p class="lead">
+                This application is your possibility to filter Lego sets with your own filters.
+            </p>
+            <hr class="my-4"/>
+            <p>The data is from
+                <a href="https://rebrickable.com">Rebrickable</a>.</p>
+            <p class="lead">
+                <a class="btn btn-primary btn-lg" href="{{ path('list_all') }}">Filter data</a>
+            </p>
+        </div>
+    </div>
 
+    <div class="container">
+        <h1>How, what, when?</h1>
+        <p>
+            Check the 
+                <a href="https://github.com/BernhardWebstudio/PieceAnalyzer" title="PieceAnalyzer on GitHub">GitHub page</a> 
+            for more info. Open an issue if you want to know, 
+            and a Pull Request if you do know. Please. Please just do it. 
+        </p>
+    </div>
 {% endblock %}
