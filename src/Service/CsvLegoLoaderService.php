@@ -2,15 +2,13 @@
 
 namespace App\Service;
 
-use Bacanu\BlWrap\Client;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Common\Collections\ArrayCollection;
-use Symfony\Component\Serializer\SerializerInterface;
-use Psr\Log\LoggerInterface;
-use RuntimeException;
 use App\Entity\Item;
 use App\Entity\Piece;
 use App\Entity\Set;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Serializer\SerializerInterface;
 
 /**
  * Service to load Lego data from (csv) into our Set & Piece entities
@@ -73,6 +71,10 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
             return $this->cached_data[$file];
         }
         $this->cached_data[$file] = $this->serializer->decode(file_get_contents($file_path), 'csv');
+        $this->logger->info("Read CSV File", array(
+            'path' => $file_path,
+            'count' => \count($this->cached_data[$file]),
+        ));
         return $this->cached_data[$file];
     }
 
@@ -138,7 +140,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
             } else {
                 $this->logger->warning('Property ' . $property . ' does not exist in CSV', $data);
             }
-                    return false;
+            return false;
         });
     }
 
@@ -243,7 +245,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         }, $inventories);
         $inventory_sets = $this->findDataInCsv('inventory_sets', $this::INVENTORY_SET_SET, array($set_no));
         $inventory_ids = array_merge($inventory_ids, array_map(function ($inventory) {
-                    return $inventory[$this::INVENTORY_SET_INVENTORY];
+            return $inventory[$this::INVENTORY_SET_INVENTORY];
         }, $inventory_sets));
         $partCollection = new ArrayCollection();
 
@@ -299,7 +301,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
             $unsolved_sets = $set_repo->findAll();
         } else {
             $unsolved_sets = $set_repo->findBy(array(
-                'price' => null
+                'price' => null,
             ));
         }
         foreach ($unsolved_sets as $set) {
