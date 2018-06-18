@@ -23,7 +23,7 @@
                     </div>
                 </nav>
             </div>
-            <div class="content" style="margin-top: 60px;">
+            <div class="content">
                 {% for type, messages in app.session.flashbag.all() %}
                     {% for message in messages %}
                         <div class="callout {{type}}">{{message}}</div>
