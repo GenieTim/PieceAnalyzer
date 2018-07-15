@@ -3,7 +3,7 @@
 namespace App\Command;
 
 use App\Service\CsvLegoLoaderService;
-use Doctrine\ORM\EntityManager;
+use Doctrine\Common\Persistence\ObjectManager;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -17,7 +17,7 @@ class AppDataImportCsvCommand extends Command
     protected $loader;
     protected $em;
 
-    public function __construct(CsvLegoLoaderService $loader, EntityManager $em)
+    public function __construct(CsvLegoLoaderService $loader, ObjectManager $em)
     {
         $this->loader = $loader;
         $this->em = $em;
