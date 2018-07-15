@@ -64,9 +64,9 @@ class AppDataImportCsvCommand extends Command
     protected function resetDatabase()
     {
         $query = '
-            DELETE FROM item;
             DELETE FROM piece;
             DELETE FROM lego_set;
+            DELETE FROM item;
            ';
         return $this->em->getConnection()->prepare($query)->execute();
     }
