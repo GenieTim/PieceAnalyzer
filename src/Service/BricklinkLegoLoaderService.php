@@ -2,14 +2,19 @@
 
 namespace App\Service;
 
-use Bacanu\BlWrap\Client;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Common\Collections\ArrayCollection;
-use RuntimeException;
 use App\Entity\Item;
 use App\Entity\Piece;
 use App\Entity\Set;
+use Bacanu\BlWrap\Client;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\EntityManagerInterface;
+use RuntimeException;
 
+/**
+ * Lego Loader Service to load data from BrickLink
+ *
+ * @deprecated v3
+ */
 class BricklinkLegoLoaderService implements LegoLoaderServiceInterface
 {
 

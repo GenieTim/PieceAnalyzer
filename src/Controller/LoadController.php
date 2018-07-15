@@ -2,13 +2,16 @@
 
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-use Symfony\Component\HttpFoundation\Request;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use App\Form\SelectLoadFormType;
-use App\Service\CsvLegoLoaderService;
 use App\Service\BricklinkLegoLoaderService;
 use App\Service\BrickPickerPriceLoaderService;
+use App\Service\CsvLegoLoaderService;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\Console\Output\NullOutput;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\KernelInterface;
 
 class LoadController extends Controller
 {
@@ -17,6 +20,7 @@ class LoadController extends Controller
      * Load a range of set no's
      *
      * @Route("/range", name="load_range")
+     * @deprecated v3
      * @param Request $request
      * @param CsvLegoLoaderService $loader
      * @return Response
@@ -33,33 +37,34 @@ class LoadController extends Controller
         }
 
         return $this->render('form/load_form.html.twig', array(
-                    'form' => $form->createView()
+            'form' => $form->createView(),
         ));
     }
 
     /**
-     * Load sets from csv files, NUMBER at a time, than redirect to next if still available
+     * Load sets from csv files
      *
-     * @Route("/files/{index}", name="load_files")
+     * @Route("/files", name="load_files")
      * @param Request $request
      * @param CsvLegoLoaderService $loader
      * @return Response
      */
-    public function refreshAction(Request $request, CsvLegoLoaderService $loader, $index)
+    public function refreshAction(Request $request, KernelInterface $kernel)
     {
-        $NUMBER = 500;
-        $start = intval($index);
-        // switch the following two lines if you want to load sets seperatly
-        $end = $start + $NUMBER;
-//        $end = 0;
+        $application = new Application($kernel);
+
         try {
-            $sets = $loader->loadSets($start, $end);
-            if (count($sets) < $NUMBER - 1 || !$end) {
-                $this->addFlash('success', 'Refreshed and loaded ' . ($start + count($sets)) . 'sets successfully.');
-            } else {
-                return $this->redirectToRoute('load_files', array('index' => $end));
-            }
-            $loader->loadPrices();
+            $application->setAutoExit(false);
+
+            $input = new ArrayInput(array(
+                'command' => 'app:data:import-csv',
+            ));
+
+            // You can use NullOutput() if you don't need the output
+            $output = new NullOutput();
+            $application->run($input, $output);
+            $this->addFlash('success', 'Successfully imported Sets.');
+            return $this->redirectToRoute('load_rpices');
         } catch (\Exception $e) {
             $this->addFlash('alert', 'Failed to load Sets. Error message: ' . $e->getMessage());
         }
@@ -70,7 +75,7 @@ class LoadController extends Controller
     /**
      * Load prices of sets with BrickPickerPriceLoaderService
      *
-     * @Route("/price/brickpicker", name="load_prices_brickpicker")
+     * @Route("/price/brickpicker", name="load_prices")
      * @param Request $request
      * @param \App\Service\BrickPickerPriceLoaderService $loader
      * @return Response

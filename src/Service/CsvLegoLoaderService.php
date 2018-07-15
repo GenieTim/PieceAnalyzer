@@ -59,7 +59,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
     }
 
     /**
-     * dump a whole CSV file at once
+     * Dump a whole CSV file at once to cache
      *
      * @param type $file
      * @return type
@@ -159,6 +159,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         }, $from, $to);
 
         $this->em->flush();
+        $this->em->clear();
         return $to ? array_filter($sets) : array_sum($sets);
     }
 
@@ -229,6 +230,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
     }
 
     /**
+     * Pieces will be duplicate, but this is necessary to simplify SQL query while keeping the quantity property.
      *
      * @param integer|string $set_no
      * @param boolean $force_load
@@ -244,9 +246,10 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
             return $inventory[$this::INVENTORY_ID];
         }, $inventories);
         $inventory_sets = $this->findDataInCsv('inventory_sets', $this::INVENTORY_SET_SET, array($set_no));
-        $inventory_ids = array_merge($inventory_ids, array_map(function ($inventory) {
-            return $inventory[$this::INVENTORY_SET_INVENTORY];
-        }, $inventory_sets));
+        // the following relation may not be relevant as seen in https://github.com/hubnedav/PrintABrick/blob/master/src/AppBundle/Repository/Rebrickable/SetRepository.php
+        // $inventory_ids = array_merge($inventory_ids, array_map(function ($inventory) {
+        //     return $inventory[$this::INVENTORY_SET_INVENTORY];
+        // }, $inventory_sets));
         $partCollection = new ArrayCollection();
 
         // each inventory has the same parts listed over and over

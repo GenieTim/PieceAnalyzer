@@ -13,7 +13,9 @@ class ListController extends Controller
 {
 
     /**
+     * Legacy route
      *
+     * @deprecated v3
      * @Route("/all", name="list_all")
      */
     public function listAllAction()
@@ -22,6 +24,7 @@ class ListController extends Controller
     }
 
     /**
+     * Filter all sets
      *
      * @Route("/filter", name="filter_items")
      * @param Request $request
@@ -40,7 +43,7 @@ class ListController extends Controller
         $pagination = $paginator->paginate(
             $set_repo->getMostValuableByQuery($criteria)->getResult(), /* query NOT result */
             $request->query->getInt('page', 1) /* page number */,
-            50 /* limit per page */
+            50/* limit per page */
             // array('wrap-queries' => true)
         );
 
@@ -51,12 +54,16 @@ class ListController extends Controller
     }
 
     /**
+     * Redirect to a vendor to see the set/item
      *
      * @Route("/item/{id}", name="list_item", requirements={"id"="\d+"})
      * @param Item $item
      */
     public function listItemAction(Item $item)
     {
+        if ($item instanceof Set && $item->getSource() === Set::SOURCE_REBRICKABLE) {
+            return $this->redirect('https://rebrickable.com/sets/' . $item->getNo());
+        }
         return $this->redirect('http://bricklink.com/v2/catalog/catalogitem.page?S=' . $item->getNo());
     }
 }

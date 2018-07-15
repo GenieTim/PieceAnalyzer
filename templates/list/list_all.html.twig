@@ -4,34 +4,47 @@
 
 {% block content %}
     <div class="container">
-    {% if form is defined %}
-        {% include 'form/filter_form.html.twig' with {'form': form} only %}
-    {% endif %}
+        {% if form is defined %}
+            {% include 'form/filter_form.html.twig' with {
+                'form' : form
+            }
+            only %}
+        {% endif %}
     </div>
 
     <div class="container">
-    <table class="table">
-        <thead class="thead-dark">
-            <tr>
-                <th {% if pagination.isSorted('name') %} class="sorted"{% endif %}>{{ knp_pagination_sortable(pagination, 'Set Name', 'name') }}</th>
-                <th {% if pagination.isSorted('price') %} class="sorted"{% endif %}>{{ knp_pagination_sortable(pagination, 'Set Price', 'price') }}</th>
-                <th {% if pagination.isSorted('pieceCount') %} class="sorted"{% endif %}>{{ knp_pagination_sortable(pagination, '#Pieces', 'pieceCount') }}</th>
-                <th {% if pagination.isSorted('') %} class="sorted"{% endif %}>{{ knp_pagination_sortable(pagination, 'price/piece', '') }}</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for set in pagination %}
+        <table class="table">
+            <thead class="thead-dark">
                 <tr>
-                    <td><a href="{{ path('list_item', {'id': set.id}) }}">{{ set.name }}</a></td>
-                    <td>{{ set.price | number_format(2, '.', '`') }} $</td>
-                    <td>{{ set.pieceCount }}</td>
-                    <td>{% if set.pieces | length %}{{ (set.price / (set.pieceCount)) | number_format(5, '.', '`') }} ${% endif %}</td>
+                    <th {% if pagination.isSorted('name') %} class="sorted" {% endif %}>{{ knp_pagination_sortable(pagination, 'Set Name', 'name') }}</th>
+                    <th {% if pagination.isSorted('price') %} class="sorted" {% endif %}>{{ knp_pagination_sortable(pagination, 'Set Price', 'price') }}</th>
+                    <th {% if pagination.isSorted('pieceCount') %} class="sorted" {% endif %}>{{ knp_pagination_sortable(pagination, '#Pieces', 'pieceCount') }}</th>
+                    <th {% if pagination.isSorted('') %} class="sorted" {% endif %}>{{ knp_pagination_sortable(pagination, 'price/piece', '') }}</th>
                 </tr>
-            {% else %}
-                <tr><td>No Sets loaded. <a href="{{ path('load_range') }}">Suggest some</a>.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for set in pagination %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('list_item', {'id': set.id}) }}">{{ set.name }}</a>
+                        </td>
+                        <td>{{ set.price | number_format(2, '.', '`') }}
+                            $</td>
+                        <td>{{ set.pieceCount }}</td>
+                        <td>
+                            {% if set.pieces | length %}{{ (set.price / (set.pieceCount)) | number_format(5, '.', '`') }}
+                                ${% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td>No Sets loaded.
+                            <a href="{{ path('load_files') }}">Reload all</a>.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
     <div class="navigation container">
