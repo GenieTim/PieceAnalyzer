@@ -64,7 +64,7 @@ class LoadController extends Controller
             $output = new NullOutput();
             $application->run($input, $output);
             $this->addFlash('success', 'Successfully imported Sets.');
-            return $this->redirectToRoute('load_rpices');
+            return $this->redirectToRoute('load_prices');
         } catch (\Exception $e) {
             $this->addFlash('alert', 'Failed to load Sets. Error message: ' . $e->getMessage());
         }
