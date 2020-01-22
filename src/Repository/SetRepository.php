@@ -3,8 +3,8 @@
 namespace App\Repository;
 
 use App\Entity\Set;
+use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Symfony\Bridge\Doctrine\RegistryInterface;
 
 class SetRepository extends ServiceEntityRepository
 {
@@ -13,7 +13,7 @@ class SetRepository extends ServiceEntityRepository
         'color', 'category', 'type'
     );
 
-    public function __construct(RegistryInterface $registry)
+    public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Set::class);
     }
