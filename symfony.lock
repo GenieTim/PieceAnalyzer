@@ -35,9 +35,6 @@
             "ref": "44d3aa7752dd46f77ba11af2297a25e1dedfb4d0"
         }
     },
-    "doctrine/doctrine-cache-bundle": {
-        "version": "1.3.2"
-    },
     "doctrine/doctrine-migrations-bundle": {
         "version": "1.2",
         "recipe": {
@@ -82,9 +79,6 @@
     },
     "egulias/email-validator": {
         "version": "2.1.3"
-    },
-    "fig/link-util": {
-        "version": "1.0.0"
     },
     "guzzlehttp/guzzle": {
         "version": "6.3.0"
@@ -250,6 +244,9 @@
     },
     "symfony/dotenv": {
         "version": "v4.0.4"
+    },
+    "symfony/error-handler": {
+        "version": "v4.4.3"
     },
     "symfony/event-dispatcher": {
         "version": "v4.0.4"
