@@ -3,17 +3,17 @@
 namespace App\Controller;
 
 use App\Form\SelectLoadFormType;
-use App\Service\BricklinkLegoLoaderService;
-use App\Service\BrickPickerPriceLoaderService;
 use App\Service\CsvLegoLoaderService;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-use Symfony\Component\Console\Output\NullOutput;
+use App\Service\BricklinkLegoLoaderService;
 use Symfony\Component\HttpFoundation\Request;
+use App\Service\BrickPickerPriceLoaderService;
+use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
-class LoadController extends Controller
+class LoadController extends AbstractController
 {
 
     /**

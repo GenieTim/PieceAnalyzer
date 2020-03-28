@@ -149,6 +149,9 @@
     "psr/container": {
         "version": "1.0.0"
     },
+    "psr/event-dispatcher": {
+        "version": "1.0.0"
+    },
     "psr/http-message": {
         "version": "1.0.1"
     },
@@ -221,9 +224,6 @@
     "symfony/css-selector": {
         "version": "v4.0.4"
     },
-    "symfony/debug": {
-        "version": "v4.0.4"
-    },
     "symfony/debug-bundle": {
         "version": "3.3",
         "recipe": {
@@ -286,6 +286,12 @@
             "version": "3.3",
             "ref": "09357a9c75f41be3bdbf7726453ad8399e8c4ee4"
         }
+    },
+    "symfony/http-client": {
+        "version": "v5.0.6"
+    },
+    "symfony/http-client-contracts": {
+        "version": "v2.0.1"
     },
     "symfony/http-foundation": {
         "version": "v4.0.4"
@@ -377,9 +383,6 @@
             "ref": "cda8b550123383d25827705d05a42acf6819fe4e"
         }
     },
-    "symfony/security": {
-        "version": "v4.0.4"
-    },
     "symfony/security-bundle": {
         "version": "3.3",
         "recipe": {
@@ -388,6 +391,18 @@
             "version": "3.3",
             "ref": "f8a63faa0d9521526499c0a8f403c9964ecb0527"
         }
+    },
+    "symfony/security-core": {
+        "version": "v5.0.6"
+    },
+    "symfony/security-csrf": {
+        "version": "v5.0.6"
+    },
+    "symfony/security-guard": {
+        "version": "v5.0.6"
+    },
+    "symfony/security-http": {
+        "version": "v5.0.6"
     },
     "symfony/serializer": {
         "version": "v4.0.4"
@@ -458,23 +473,24 @@
             "ref": "6bdfa1a95f6b2e677ab985cd1af2eae35d62e0f6"
         }
     },
-    "symfony/web-server-bundle": {
-        "version": "3.3",
+    "symfony/webpack-encore-bundle": {
+        "version": "1.6",
         "recipe": {
             "repo": "github.com/symfony/recipes",
             "branch": "master",
-            "version": "3.3",
-            "ref": "c72d107d077f1654428edaed69415d0228c1aefe"
-        }
-    },
-    "symfony/webpack-encore-pack": {
-        "version": "1.0",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "master",
-            "version": "1.0",
-            "ref": "a2f276eff6e95ca94be135d2d3e5c1247c6f8807"
-        }
+            "version": "1.6",
+            "ref": "69e1d805ad95964088bd510c05995e87dc391564"
+        },
+        "files": [
+            "assets/css/app.css",
+            "assets/js/app.js",
+            "config/packages/assets.yaml",
+            "config/packages/prod/webpack_encore.yaml",
+            "config/packages/test/webpack_encore.yaml",
+            "config/packages/webpack_encore.yaml",
+            "package.json",
+            "webpack.config.js"
+        ]
     },
     "symfony/yaml": {
         "version": "v4.0.4"

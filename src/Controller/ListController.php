@@ -2,14 +2,14 @@
 
 namespace App\Controller;
 
-use App\Entity\Item;
 use App\Entity\Set;
+use App\Entity\Item;
 use App\Form\FilterFormType;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
-class ListController extends Controller
+class ListController extends AbstractController
 {
 
     /**
