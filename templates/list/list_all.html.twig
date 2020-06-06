@@ -26,7 +26,7 @@
                 {% for set in pagination %}
                     <tr>
                         <td>
-                            <a href="{{ path('list_item', {'id': set.id}) }}">{{ set.name }}</a>
+                            <a href="{{ absolute_url(path('list_item', {'id': set.id})) }}">{{ set.name }}</a>
                         </td>
                         <td>{{ set.price | number_format(2, '.', '`') }}
                             $</td>

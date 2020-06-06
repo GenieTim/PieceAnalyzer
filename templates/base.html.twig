@@ -9,14 +9,14 @@
 			-  Piece Analyzer</title>
 		{% block stylesheets %}
 			{{ encore_entry_link_tags('app') }}
-			<link rel="stylesheet" href="{{ asset('build/css/global.css') }}">
+			<link rel="stylesheet" href="{{ absolute_url(asset('build/css/global.css')) }}">
 		{% endblock %}
 	</head>
 	<body>
 		{% block body %}
 			<div class="">
 				<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-					<a class="navbar-brand" href="{{ path('index') }}">Piece Analyzer</a>
+					<a class="navbar-brand" href="{{ absolute_url(path('index')) }}">Piece Analyzer</a>
 					<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
 						<span class="navbar-toggler-icon"></span>
 					</button>
