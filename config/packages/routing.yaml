@@ -1,4 +1,3 @@
 framework:
     router:
         strict_requirements: ~
-        request_context.base_url: "%env(resolve:BASE_URL)%"
