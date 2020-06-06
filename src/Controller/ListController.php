@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Set;
 use App\Entity\Item;
 use App\Form\FilterFormType;
+use Knp\Component\Pager\Paginator;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -29,7 +30,7 @@ class ListController extends AbstractController
      * @Route("/filter", name="filter_items")
      * @param Request $request
      */
-    public function filterAction(Request $request)
+    public function filterAction(Request $request, Paginator $paginator)
     {
         $em = $this->getDoctrine()->getManager();
         $set_repo = $em->getRepository(Set::class);
@@ -39,7 +40,6 @@ class ListController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $criteria = $form->getData();
         }
-        $paginator = $this->get('knp_paginator');
         $pagination = $paginator->paginate(
             $set_repo->getMostValuableByQuery($criteria)->getResult(), /* query NOT result */
             $request->query->getInt('page', 1) /* page number */,
