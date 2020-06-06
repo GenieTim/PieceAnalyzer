@@ -6,6 +6,7 @@ use App\Entity\Set;
 use App\Entity\Item;
 use App\Form\FilterFormType;
 use Knp\Component\Pager\Paginator;
+use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -30,7 +31,7 @@ class ListController extends AbstractController
      * @Route("/filter", name="filter_items")
      * @param Request $request
      */
-    public function filterAction(Request $request, Paginator $paginator)
+    public function filterAction(Request $request, PaginatorInterface $paginator)
     {
         $em = $this->getDoctrine()->getManager();
         $set_repo = $em->getRepository(Set::class);
