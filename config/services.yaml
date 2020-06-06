@@ -5,7 +5,7 @@ parameters:
     data_path: "%env(resolve:DATA_PATH)%"
     router.request_context.base_url: "%env(resolve:BASE_URL)%"
     assets.request_context.base_path: "%env(resolve:BASE_URL)%"
-    assets.base_path: "%env(resolve:BASE_URL)%"
+    
     bricklink:
         consumer:
             key: "%env(CONSUMER_KEY)%"
