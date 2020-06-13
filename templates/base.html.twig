@@ -9,7 +9,7 @@
 			-  Piece Analyzer</title>
 		{% block stylesheets %}
 			{{ encore_entry_link_tags('app') }}
-			<link rel="stylesheet" href="{{ absolute_url(asset('build/css/global.css')) }}">
+			<link rel="stylesheet" href="{{ absolute_url(asset('build/css/global.css')[1:]) }}">
 		{% endblock %}
 	</head>
 	<body>
