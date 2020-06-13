@@ -9,7 +9,7 @@
 			-  Piece Analyzer</title>
 		{% block stylesheets %}
 			{{ encore_entry_link_tags('app') }}
-			<link rel="stylesheet" href="{{ absolute_url(asset('build/css/global.css')[1:]) }}">
+			<link rel="stylesheet" href="{{ absolute_url(asset('build/css/global.css')[1:]) }}"> {# please note the [1:]: a ugly hack, see https://github.com/dompdf/dompdf/issues/1567#issuecomment-489330871 #}
 		{% endblock %}
 	</head>
 	<body>
