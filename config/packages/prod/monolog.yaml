@@ -3,9 +3,17 @@ monolog:
         main:
             type: fingers_crossed
             action_level: error
-            handler: nested
+            handler: grouped
             excluded_http_codes: [404, 405]
             buffer_size: 50 # How many messages should be saved? Prevent memory leaks
+        grouped: 
+            type: group
+            members:
+                - deduplicated
+                - nested
+        deduplicated:
+            type:    deduplication
+            handler: swift
         nested:
             type: stream
             path: "%kernel.logs_dir%/%kernel.environment%.log"
@@ -14,3 +22,23 @@ monolog:
             type: console
             process_psr_3_messages: false
             channels: ["!event", "!doctrine"]
+        swift:
+            type:       swift_mailer
+            from_email: 'noreply@bernhard-webstudio.ch'
+            to_email:   'pipefy-error@bernhard-webstudio.ch'
+            # or list of recipients
+            # to_email:   ['dev1@example.com', 'dev2@example.com', ...]
+            subject:    'An Error Occurred! %%message%%'
+            level:      debug
+            formatter:  monolog.formatter.html
+            content_type: text/html
+
+        # Uncomment to log deprecations
+        #deprecation:
+        #    type: stream
+        #    path: "%kernel.logs_dir%/%kernel.environment%.deprecations.log"
+        #deprecation_filter:
+        #    type: filter
+        #    handler: deprecation
+        #    max_level: info
+        #    channels: ["php"]

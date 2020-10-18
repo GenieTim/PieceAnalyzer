@@ -2,12 +2,6 @@ controllers:
     resource: ../../src/Controller/
     type: annotation
 
-list_controller:
-    resource: ../../src/Controller/ListController.php
+kernel:
+    resource: ../../src/Kernel.php
     type: annotation
-    prefix: /list
-
-load_controller:
-    resource: ../../src/Controller/LoadController.php
-    type: annotation
-    prefix: /load
