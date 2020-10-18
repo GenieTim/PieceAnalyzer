@@ -1,6 +1,5 @@
 id,name
 1,Baseplates
-2,Bricks Printed
 3,Bricks Sloped
 4,"Duplo, Quatro and Primo"
 5,Bricks Special
@@ -8,7 +7,6 @@ id,name
 7,Containers
 8,Technic Bricks
 9,Plates Special
-10,Tiles Printed
 11,Bricks
 12,Technic Connectors
 13,Minifigs
@@ -56,3 +54,13 @@ id,name
 55,Technic Beams Special
 56,Tools
 57,"Non-Buildable Figures (Duplo, Fabuland, etc)"
+58,Stickers
+59,Minifig Heads
+60,Minifig Upper Body
+61,Minifig Lower Body
+62,Minidoll Heads
+63,Minidoll Upper Body
+64,Minidoll Lower Body
+65,Minifig Headwear
+66,Modulex
+67,Tiles Round and Curved

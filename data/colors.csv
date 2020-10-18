@@ -1,5 +1,5 @@
 id,name,rgb,is_trans
--1,Unknown,0033B2,f
+-1,[Unknown],0033B2,f
 0,Black,05131D,f
 1,Blue,0055BF,f
 2,Green,237841,f
@@ -57,8 +57,8 @@ id,name,rgb,is_trans
 72,Dark Bluish Gray,6C6E68,f
 73,Medium Blue,5A93DB,f
 74,Medium Green,73DCA1,f
-75,Speckle Black-Copper,000000,f
-76,Speckle DBGray-Silver,635F61,f
+75,Speckle Black-Copper,05131D,f
+76,Speckle DBGray-Silver,6C6E68,f
 77,Light Pink,FECCCF,f
 78,Light Flesh,F6D7B3,f
 79,Milky White,FFFFFF,f
@@ -80,8 +80,8 @@ id,name,rgb,is_trans
 120,Light Lime,D9E4A7,f
 125,Light Orange,F9BA61,f
 129,Glitter Trans-Purple,A5A5CB,t
-132,Speckle Black-Silver,000000,f
-133,Speckle Black-Gold,000000,f
+132,Speckle Black-Silver,05131D,f
+133,Speckle Black-Gold,05131D,f
 134,Copper,AE7A59,f
 135,Pearl Light Gray,9CA3A8,f
 137,Metal Blue,7988A1,f
@@ -129,8 +129,59 @@ id,name,rgb,is_trans
 1001,Medium Violet,9391E4,f
 1002,Glitter Trans-Neon Green,C0F500,t
 1003,Glitter Trans-Light Blue,68BCC5,t
-1004,Trans Flame Yellowish Orange,FCB76D,t
-1005,Trans Fire Yellow,FBE890,t
-1006,Trans Light Royal Blue,B4D4F7,t
+1004,Trans-Flame Yellowish Orange,FCB76D,t
+1005,Trans-Fire Yellow,FBE890,t
+1006,Trans-Light Royal Blue,B4D4F7,t
 1007,Reddish Lilac,8E5597,f
-9999,[No Color],05131D,f
+1008,Vintage Blue,039CBD,f
+1009,Vintage Green,1E601E,f
+1010,Vintage Red,CA1F08,f
+1011,Vintage Yellow,F3C305,f
+1012,Fabuland Orange,EF9121,f
+1013,Modulex White,F4F4F4,f
+1014,Modulex Light Bluish Gray,AfB5C7,f
+1015,Modulex Light Gray,9C9C9C,f
+1016,Modulex Charcoal Gray,595D60,f
+1017,Modulex Tile Gray,6B5A5A,f
+1018,Modulex Black,4D4C52,f
+1019,Modulex Tile Brown,330000,f
+1020,Modulex Terracotta,5C5030,f
+1021,Modulex Brown,907450,f
+1022,Modulex Buff,DEC69C,f
+1023,Modulex Red,B52C20,f
+1024,Modulex Pink Red,F45C40,f
+1025,Modulex Orange,F47B30,f
+1026,Modulex Light Orange,F7AD63,f
+1027,Modulex Light Yellow,FFE371,f
+1028,Modulex Ochre Yellow,FED557,f
+1029,Modulex Lemon,BDC618,f
+1030,Modulex Pastel Green,7DB538,f
+1031,Modulex Olive Green,7C9051,f
+1032,Modulex Aqua Green,27867E,f
+1033,Modulex Teal Blue,467083,f
+1034,Modulex Tile Blue,0057A6,f
+1035,Modulex Medium Blue,61AFFF,f
+1036,Modulex Pastel Blue,68AECE,f
+1037,Modulex Violet,BD7D85,f
+1038,Modulex Pink,F785B1,f
+1039,Modulex Clear,FFFFFF,f
+1040,Modulex Foil Dark Gray,595D60,f
+1041,Modulex Foil Light Gray,9C9C9C,f
+1042,Modulex Foil Dark Green,006400,f
+1043,Modulex Foil Light Green,7DB538,f
+1044,Modulex Foil Dark Blue,0057A6,f
+1045,Modulex Foil Light Blue,68AECE,f
+1046,Modulex Foil Violet,4B0082,f
+1047,Modulex Foil Red,8B0000,f
+1048,Modulex Foil Yellow,FED557,f
+1049,Modulex Foil Orange,F7AD63,f
+1050,Coral,FF698F,f
+1051,Pastel Blue,5AC4DA,f
+1052,Glitter Trans-Orange,F08F1C,t
+1053,Trans-Blue Opal,68BCC5,t
+1054,Trans-Medium Reddish Violet Opal,CE1D9B,t
+1055,Trans-Clear Opal,FCFCFC,t
+1056,Trans-Brown Opal,583927,t
+1057,Trans-Light Bright Green,C9E788,t
+1058,Trans-Light Green,94E5AB,t
+9999,[No Color/Any Color],05131D,f
