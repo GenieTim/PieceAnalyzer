@@ -1,5 +1,7 @@
 # Piece Analyzer
 
+![Security Check](https://github.com/GenieTim/PieceAnalyzer/workflows/Security%20Check/badge.svg)
+
 Note that this repository is currently not very actively maintained as the use for it 
 got somehow lost when there was not time to build Lego anymore.
 Additionally, other programming languages (say, [R](https://www.r-project.org/)) make it easier and faster just to answer 
