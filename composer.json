@@ -12,7 +12,7 @@
     "type": "project",
     "license": "GPL-3.0-or-later",
     "require": {
-        "php": "^7.1.3",
+        "php": "^7.1.3|^8.0.1",
         "ext-iconv": "*",
         "bacanu/blwrap": "^v1.0.0",
         "knplabs/knp-menu-bundle": "^v3.0.0",
