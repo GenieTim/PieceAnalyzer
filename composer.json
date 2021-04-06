@@ -18,8 +18,7 @@
         "knplabs/knp-menu-bundle": "^v3.0.0",
         "knplabs/knp-paginator-bundle": "^v5.1.1",
         "nelmio/security-bundle": "^v2.9.0",
-        "sensio/framework-extra-bundle": "^v5.5.3",
-        "sensiolabs/security-checker": "^v6.0.3",
+        "sensio/framework-extra-bundle": "^v6.1.1",
         "symfony/apache-pack": "^v1.0.1",
         "symfony/asset": "^v5.0.7",
         "symfony/console": "^v5.0.7",
@@ -33,7 +32,7 @@
         "symfony/framework-bundle": "^v5.0.7",
         "symfony/maker-bundle": "^v1.14.6",
         "symfony/monolog-bundle": "^v3.5.0",
-        "symfony/orm-pack": "^v1.0.8",
+        "symfony/orm-pack": "^v2.1.0",
         "symfony/process": "^v5.0.7",
         "symfony/security-bundle": "^v5.0.7",
         "symfony/serializer-pack": "^v1.0.3",
@@ -78,7 +77,6 @@
         "auto-scripts": {
             "cache:clear": "symfony-cmd",
             "assets:install --symlink --relative %PUBLIC_DIR%": "symfony-cmd",
-            "security-checker security:check": "script",
             "assets:install %PUBLIC_DIR%": "symfony-cmd"
         },
         "post-install-cmd": [
