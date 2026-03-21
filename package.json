@@ -1,10 +1,10 @@
 {
     "devDependencies": {
-        "@symfony/webpack-encore": "^4.4.0",
-        "bootstrap": "^5.3.2",
-        "jquery": "^3.7.1",
+        "@symfony/webpack-encore": "^6.0.0",
+        "bootstrap": "^5.3.8",
+        "jquery": "^4.0.0",
         "node-sass": "^9.0.0",
-        "sass-loader": "^13.3.2",
+        "sass-loader": "^16.0.7",
         "webpack-notifier": "^1.15.0"
     },
     "license": "GPL-3.0-or-later",
