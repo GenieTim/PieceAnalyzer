@@ -4,7 +4,7 @@
         "bootstrap": "^5.3.8",
         "jquery": "^4.0.0",
         "node-sass": "^9.0.0",
-        "sass-loader": "^16.0.7",
+        "sass-loader": "^17.0.0",
         "webpack-notifier": "^1.15.0"
     },
     "license": "GPL-3.0-or-later",
