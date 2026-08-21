@@ -64,13 +64,13 @@ composer install
 
 ### 2. Environment Configuration
 
-Copy `.env` to `.env.local` and configure your database connection, data directory, and API keys:
+Copy `.env.example` to `.env` (or `.env.local`) and configure your database connection, data directory, and API keys:
 
 ```bash
-cp .env .env.local
+cp .env.example .env
 ```
 
-Edit `.env.local`:
+Edit `.env`:
 ```dotenv
 DATABASE_URL="mysql://db_user:db_password@127.0.0.1:3306/piece_analyzer?serverVersion=8.0"
 DATA_PATH="/path/to/piece-analyzer/data"

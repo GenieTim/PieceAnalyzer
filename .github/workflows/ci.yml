@@ -47,7 +47,9 @@ jobs:
         run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Prepare Test Environment
-        run: mkdir -p var
+        run: |
+          mkdir -p var
+          cp .env.example .env
 
       - name: Run PHPUnit Tests
         run: composer test
