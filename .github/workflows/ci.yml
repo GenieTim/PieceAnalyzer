@@ -43,13 +43,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-composer-${{ matrix.php-version }}-
 
-      - name: Install Dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Prepare Test Environment
+      - name: Prepare Environment
         run: |
           mkdir -p var
           cp .env.example .env
+
+      - name: Install Dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Run PHPUnit Tests
         run: composer test
