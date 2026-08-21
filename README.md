@@ -1,6 +1,6 @@
 # Piece Analyzer
 
-![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-blue.svg)
+![PHP 8.4+](https://img.shields.io/badge/PHP-8.4%2B-blue.svg)
 ![Symfony 7.4 / 8.0](https://img.shields.io/badge/Symfony-7.4%20%2F%208.0%20ready-black.svg)
 ![CI](https://github.com/GenieTim/PieceAnalyzer/actions/workflows/ci.yml/badge.svg)
 ![PHPUnit](https://img.shields.io/badge/Tests-42%20Passing-brightgreen.svg)
@@ -20,7 +20,7 @@ Piece Analyzer is a Symfony application designed to help LEGO builders and AFOLs
   - **Brickset Price Loader**: Multi-currency official MSRP / RRP (EUR, USD, GBP, CAD) via Brickset API v3 and automated public web scraping fallback.
   - **BrickLink API v1**: Authenticated OAuth 1.0 client for secondary market listings, 6-month sales averages, and subsets.
   - **BrickPicker Price Loader**: Retail and secondary market pricing crawler.
-- **Modern PHP 8.2+ Architecture**: Strict typing, PHP 8 attributes (Routing, Doctrine ORM), PHPStan Level 8 clean, Rector modernization, and PHPUnit 11 test suite.
+- **Modern PHP 8.4+ Architecture**: Strict typing, PHP 8 attributes (Routing, Doctrine ORM), PHPStan Level 8 clean, Rector modernization, and PHPUnit 11 test suite.
 
 ---
 
@@ -49,7 +49,7 @@ To make Piece Analyzer as effective as possible, the application integrates mult
 
 ### Prerequisites
 
-- PHP >= 8.2 (compatible with PHP 8.2, 8.3, 8.4, and 8.5)
+- PHP >= 8.4 (compatible with PHP 8.4 and PHP 8.5)
 - Composer 2.x
 - MySQL, MariaDB, PostgreSQL, or SQLite database
 - (Optional) Yarn / npm for asset compilation

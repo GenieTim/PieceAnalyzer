@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.2', '8.3', '8.4']
+        php-version: ['8.4', '8.5']
 
     steps:
       - name: Checkout Code
@@ -45,6 +45,9 @@ jobs:
 
       - name: Install Dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare Test Environment
+        run: mkdir -p var
 
       - name: Run PHPUnit Tests
         run: composer test
