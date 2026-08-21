@@ -138,9 +138,7 @@ class RebrickableDownloaderServiceTest extends TestCase
         $gzipped = gzencode($rawCsv);
         $this->assertIsString($gzipped);
 
-        $httpClient = new MockHttpClient(function (string $method, string $url) use ($gzipped): MockResponse {
-            return new MockResponse($gzipped, ['http_code' => 200]);
-        });
+        $httpClient = new MockHttpClient(fn(string $method, string $url): MockResponse => new MockResponse($gzipped, ['http_code' => 200]));
 
         $progressEvents = [];
         $callback = function (string $file, string $status, int $current, int $total) use (&$progressEvents): void {

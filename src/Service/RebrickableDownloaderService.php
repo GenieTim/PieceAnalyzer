@@ -30,15 +30,13 @@ class RebrickableDownloaderService
     ];
 
     private readonly string $dataPath;
-    private readonly LoggerInterface $logger;
 
     public function __construct(
         string $dataPath,
         private readonly ?HttpClientInterface $httpClient = null,
-        ?LoggerInterface $logger = null
+        private readonly LoggerInterface $logger = new NullLogger()
     ) {
         $this->dataPath = rtrim($dataPath, '/\\');
-        $this->logger = $logger ?? new NullLogger();
     }
 
     public function getDataPath(): string
@@ -104,11 +102,9 @@ class RebrickableDownloaderService
         $gzFilename = str_ends_with($filename, '.gz') ? $filename : $filename . '.gz';
         $csvFilename = str_ends_with($filename, '.gz') ? substr($filename, 0, -3) : $filename;
 
-        if (!is_dir($this->dataPath)) {
-            if (!mkdir($this->dataPath, 0777, true) && !is_dir($this->dataPath)) {
-                $this->logger->error('Failed to create data directory', ['path' => $this->dataPath]);
-                return false;
-            }
+        if (!is_dir($this->dataPath) && (!mkdir($this->dataPath, 0777, true) && !is_dir($this->dataPath))) {
+            $this->logger->error('Failed to create data directory', ['path' => $this->dataPath]);
+            return false;
         }
 
         $targetCsvPath = $this->dataPath . '/' . $csvFilename;
@@ -181,7 +177,7 @@ class RebrickableDownloaderService
      */
     private function saveUrlToPath(string $url, string $destinationPath): bool
     {
-        if ($this->httpClient !== null) {
+        if ($this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
             $response = $this->httpClient->request('GET', $url, [
                 'timeout' => 120,
             ]);

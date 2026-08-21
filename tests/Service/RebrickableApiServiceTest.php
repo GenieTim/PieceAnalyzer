@@ -85,7 +85,7 @@ class RebrickableApiServiceTest extends TestCase
         $partsResponse->method('getStatusCode')->willReturn(200);
         $partsResponse->method('getContent')->willReturn(json_encode($partsData, JSON_THROW_ON_ERROR));
 
-        $httpClient->method('request')->willReturnCallback(function (string $method, string $url) use ($setResponse, $partsResponse) {
+        $httpClient->method('request')->willReturnCallback(function (string $method, string $url) use ($setResponse, $partsResponse): \PHPUnit\Framework\MockObject\MockObject {
             if (str_contains($url, '/parts/')) {
                 return $partsResponse;
             }
@@ -186,7 +186,7 @@ class RebrickableApiServiceTest extends TestCase
         $partsResponse->method('getStatusCode')->willReturn(200);
         $partsResponse->method('getContent')->willReturn(json_encode($partsData, JSON_THROW_ON_ERROR));
 
-        $httpClient->method('request')->willReturnCallback(function (string $method, string $url, array $options = []) use ($listResponse, $itemResponse, $partsResponse) {
+        $httpClient->method('request')->willReturnCallback(function (string $method, string $url, array $options = []) use ($listResponse, $itemResponse, $partsResponse): \PHPUnit\Framework\MockObject\MockObject {
             if (isset($options['query']['page'])) {
                 return $listResponse;
             }
@@ -223,7 +223,7 @@ class RebrickableApiServiceTest extends TestCase
             'part_img_url' => 'https://cdn.rebrickable.com/media/parts/elements/300115.jpg',
         ], JSON_THROW_ON_ERROR));
 
-        $httpClient->method('request')->willReturnCallback(function (string $method, string $url) use ($partResponse, $colorResponse) {
+        $httpClient->method('request')->willReturnCallback(function (string $method, string $url) use ($partResponse, $colorResponse): \PHPUnit\Framework\MockObject\MockObject {
             if (str_contains($url, '/colors/15/')) {
                 return $colorResponse;
             }
@@ -266,7 +266,7 @@ class RebrickableApiServiceTest extends TestCase
             'next' => null,
         ], JSON_THROW_ON_ERROR));
 
-        $httpClient->method('request')->willReturnCallback(function (string $method, string $url) use ($colorsResponse, $themesResponse) {
+        $httpClient->method('request')->willReturnCallback(function (string $method, string $url) use ($colorsResponse, $themesResponse): \PHPUnit\Framework\MockObject\MockObject {
             if (str_contains($url, '/colors/')) {
                 return $colorsResponse;
             }

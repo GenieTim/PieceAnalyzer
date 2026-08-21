@@ -24,18 +24,11 @@ use Throwable;
 class RebrickableApiService implements LegoLoaderServiceInterface
 {
     public const BASE_URL = 'https://rebrickable.com/api/v3/lego/';
-
-    private readonly LoggerInterface $logger;
     /** @var array<string, array<int, Item>>|null */
     private ?array $known_numbers = null;
 
-    public function __construct(
-        private readonly EntityManagerInterface $em,
-        ?LoggerInterface $logger = null,
-        private readonly ?HttpClientInterface $httpClient = null,
-        private string $apiKey = ''
-    ) {
-        $this->logger = $logger ?? new NullLogger();
+    public function __construct(private readonly EntityManagerInterface $em, private readonly LoggerInterface $logger = new NullLogger(), private readonly ?HttpClientInterface $httpClient = null, private string $apiKey = '')
+    {
     }
 
     public function getApiKey(): string
@@ -441,7 +434,7 @@ class RebrickableApiService implements LegoLoaderServiceInterface
      */
     private function requestApi(string $endpoint, array $query = []): ?array
     {
-        if ($this->httpClient === null) {
+        if (!$this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
             $this->logger->warning('HttpClientInterface not available for Rebrickable API');
             return null;
         }

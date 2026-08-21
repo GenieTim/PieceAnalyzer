@@ -21,16 +21,8 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
     public const API_BASE_URL = 'https://brickset.com/api/v3.asmx/getSets';
     public const WEB_BASE_URL = 'https://brickset.com/sets/';
 
-    private readonly LoggerInterface $logger;
-
-    public function __construct(
-        private readonly EntityManagerInterface $em,
-        ?LoggerInterface $logger = null,
-        private readonly ?HttpClientInterface $httpClient = null,
-        private string $apiKey = '',
-        private string $defaultCurrency = 'EUR'
-    ) {
-        $this->logger = $logger ?? new NullLogger();
+    public function __construct(private readonly EntityManagerInterface $em, private readonly LoggerInterface $logger = new NullLogger(), private readonly ?HttpClientInterface $httpClient = null, private string $apiKey = '', private string $defaultCurrency = 'EUR')
+    {
     }
 
     public function getApiKey(): string
@@ -173,7 +165,7 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
      */
     private function loadPricesFromApi(string $setNo): array
     {
-        if ($this->httpClient === null) {
+        if (!$this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
             return [];
         }
 
@@ -248,7 +240,7 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
 
         try {
             $html = '';
-            if ($this->httpClient !== null) {
+            if ($this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
                 $response = $this->httpClient->request('GET', $url, [
                     'headers' => [
                         'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -311,10 +303,10 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
             if (stripos($dtNode->textContent, 'RRP') !== false) {
                 // Find next sibling dd
                 $next = $dtNode->nextSibling;
-                while ($next !== null && $next->nodeName !== 'dd') {
+                while ($next instanceof \DOMNode && $next->nodeName !== 'dd') {
                     $next = $next->nextSibling;
                 }
-                if ($next !== null) {
+                if ($next instanceof \DOMNode) {
                     $rrpText = $next->textContent;
                     break;
                 }
