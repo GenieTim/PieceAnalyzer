@@ -4,88 +4,58 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * @ORM\Entity(repositoryClass="App\Repository\ItemRepository")
- * @ORM\Table(name="item", indexes={@ORM\Index(name="main_item_idx", columns={"no"})})
- * @ORM\InheritanceType("JOINED")
- * @ORM\DiscriminatorColumn(name="discriminator", type="string")
- * @ORM\DiscriminatorMap({"undefined" = "Item", "set" = "Set", "piece" = "Piece"})
- */
+#[ORM\Table(name: 'item')]
+#[ORM\Index(name: 'main_item_idx', columns: ['no'])]
+#[ORM\Entity(repositoryClass: \App\Repository\ItemRepository::class)]
+#[ORM\InheritanceType('JOINED')]
+#[ORM\DiscriminatorColumn(name: 'discriminator', type: 'string')]
+#[ORM\DiscriminatorMap(['undefined' => 'Item', 'set' => 'Set', 'piece' => 'Piece'])]
 class Item
 {
-
-    /**
-     * @ORM\Id
-     * @ORM\GeneratedValue
-     * @ORM\Column(type="integer")
-     */
-    private $id;
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]
+    private ?int $id = null;
 
     /**
      * Bricklink identification number
-     * @ORM\Column(type="string")
      */
-    private $no;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::STRING)]
+    private ?string $no = null;
 
-    /**
-     * @ORM\Column(type="string")
-     */
-    private $name;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::STRING)]
+    private ?string $name = null;
 
-    /**
-     * Get bricklink identification number
-     */
-    public function getNo()
+    public function getNo(): ?string
     {
         return $this->no;
     }
 
-    /**
-     * Set bricklink identification number
-     *
-     * @return  self
-     */
-    public function setNo($no)
+    public function setNo(?string $no): static
     {
         $this->no = $no;
 
         return $this;
     }
 
-    /**
-     * Get the value of id
-     */
-    public function getId()
+    public function getId(): ?int
     {
         return $this->id;
     }
 
-    /**
-     * Set the value of id
-     *
-     * @return  self
-     */
-    public function setId($id)
+    public function setId(?int $id): static
     {
         $this->id = $id;
 
         return $this;
     }
 
-    /**
-     * Get the value of name
-     */
-    public function getName()
+    public function getName(): ?string
     {
         return $this->name;
     }
 
-    /**
-     * Set the value of name
-     *
-     * @return  self
-     */
-    public function setName($name)
+    public function setName(?string $name): static
     {
         $this->name = $name;
 

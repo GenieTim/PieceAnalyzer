@@ -3,22 +3,25 @@
 namespace App\Repository;
 
 use App\Entity\Set;
-use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\Query;
+use Doctrine\ORM\QueryBuilder;
+use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends ServiceEntityRepository<Set>
+ */
 class SetRepository extends ServiceEntityRepository
 {
-
-    private $allowedCriteria = array(
-        'color', 'category', 'type'
-    );
+    /** @var string[] */
+    private array $allowedCriteria = ['color', 'category', 'type'];
 
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Set::class);
     }
 
-    private function getMostValuableQueryBuilder($limit = 10)
+    private function getMostValuableQueryBuilder(int $limit = 10): QueryBuilder
     {
         $qb = $this->createQueryBuilder('s');
         $qb->leftJoin('s.pieces', 'p')->addSelect('p');
@@ -27,27 +30,32 @@ class SetRepository extends ServiceEntityRepository
         $qb->groupBy('s.id');
         $qb->orderBy('s.price / SUM(p.count)', 'ASC');
         $qb->having('SUM(p.count) != 0');
-        if ($limit) {
+        if ($limit > 0) {
             $qb->setMaxResults($limit);
         }
         return $qb;
     }
 
-    public function findMostValuableBy(array $criteria = array(), $limit = 10)
+    /**
+     * @param array<string, mixed> $criteria
+     * @return array<int, Set>
+     */
+    public function findMostValuableBy(array $criteria = [], int $limit = 10): array
     {
         return $this->getMostValuableByQuery($criteria, $limit)->getResult();
     }
 
-    public function getMostValuableByQuery(array $criteria = array(), $limit = 0)
+    /**
+     * @param array<string, mixed> $criteria
+     */
+    public function getMostValuableByQuery(array $criteria = [], int $limit = 0): Query
     {
         $qb = $this->getMostValuableQueryBuilder($limit);
         foreach ($criteria as $key => $value) {
-            // assert or just continue?
-            if (!in_array($key, $this->allowedCriteria)) {
+            if (!in_array($key, $this->allowedCriteria, true)) {
                 continue;
             }
-            // skip unknown
-            if ($value === 0) {
+            if ($value === 0 || $value === '0' || $value === null || $value === '') {
                 continue;
             }
             $qb->andWhere("p.$key = :$key");

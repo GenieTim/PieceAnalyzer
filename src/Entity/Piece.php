@@ -4,128 +4,82 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * @ORM\Entity(repositoryClass="App\Repository\PieceRepository")
- * @ORM\Table(name="piece", indexes={
- *      @ORM\Index(name="piece_color_idx", columns={"color"}),
- *      @ORM\Index(name="piece_count_idx", columns={"count"}),
- *      @ORM\Index(name="piece_sort_idx", columns={"category", "type"})
- * })
- */
+#[ORM\Table(name: 'piece')]
+#[ORM\Index(name: 'piece_color_idx', columns: ['color'])]
+#[ORM\Index(name: 'piece_count_idx', columns: ['count'])]
+#[ORM\Index(name: 'piece_sort_idx', columns: ['category', 'type'])]
+#[ORM\Entity(repositoryClass: \App\Repository\PieceRepository::class)]
 class Piece extends Item
 {
+    #[ORM\ManyToOne(targetEntity: Set::class, inversedBy: 'pieces')]
+    private ?Set $set = null;
 
-    /**
-     * @ORM\ManyToOne(targetEntity="Set", inversedBy="pieces")
-     */
-    private $set;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]
+    private ?int $category = null;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
-    private $category;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::STRING, nullable: true)]
+    private ?string $type = null;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
-    private $type;
-
-    /**
-     * @ORM\Column(type="integer")
-     */
-    private $color;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]
+    private ?int $color = null;
     
-    /**
-     * @ORM\Column(type="integer")
-     */
-    private $count;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]
+    private ?int $count = null;
 
-    /**
-     * Get the value of sets
-     */
-    public function getSet()
+    public function getSet(): ?Set
     {
         return $this->set;
     }
 
-    /**
-     * Set the value of sets
-     *
-     * @return  self
-     */
-    public function setSet(Set $set)
+    public function setSet(?Set $set): static
     {
         $this->set = $set;
 
         return $this;
     }
 
-    /**
-     * Get the value of category
-     */
-    public function getCategory()
+    public function getCategory(): ?int
     {
         return $this->category;
     }
 
-    /**
-     * Set the value of category
-     *
-     * @return  self
-     */
-    public function setCategory($category)
+    public function setCategory(?int $category): static
     {
         $this->category = $category;
 
         return $this;
     }
 
-    /**
-     * Get the value of type
-     */
-    public function getType()
+    public function getType(): ?string
     {
         return $this->type;
     }
 
-    /**
-     * Set the value of type
-     *
-     * @return  self
-     */
-    public function setType($type)
+    public function setType(?string $type): static
     {
         $this->type = $type;
 
         return $this;
     }
 
-    /**
-     * Get the value of color
-     */
-    public function getColor()
+    public function getColor(): ?int
     {
         return $this->color;
     }
 
-    /**
-     * Set the value of color
-     *
-     * @return  self
-     */
-    public function setColor($color)
+    public function setColor(?int $color): static
     {
         $this->color = $color;
 
         return $this;
     }
     
-    public function getCount()
+    public function getCount(): ?int
     {
         return $this->count;
     }
     
-    public function setCount($count)
+    public function setCount(?int $count): static
     {
         $this->count = $count;
         

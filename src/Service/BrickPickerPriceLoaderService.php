@@ -6,11 +6,10 @@
 
 namespace App\Service;
 
-use App\Service\PriceLoaderServiceInterface;
-use Symfony\Component\DomCrawler\Crawler;
-use Psr\Log\LoggerInterface;
-use Doctrine\ORM\EntityManagerInterface;
 use App\Entity\Set;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DomCrawler\Crawler;
 
 /**
  * Description of BrickPickerPriceLoaderService
@@ -19,66 +18,78 @@ use App\Entity\Set;
  */
 class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
 {
-
-    private $em;
-    private $logger;
-
-    public function __construct(EntityManagerInterface $em, LoggerInterface $logger)
-    {
-        $this->logger = $logger;
-        $this->em = $em;
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly LoggerInterface $logger
+    ) {
     }
 
-    public function loadPriceForSet($set_no)
+    public function loadPriceForSet(mixed $set_no): ?float
     {
+        $set_no = (string) $set_no;
         $src = "https://www.brickpicker.com/bpms/set.cfm?set=$set_no";
-        $crawler = new Crawler(file_get_contents($src));
-        $priceList = $crawler->filter(".product-detail .retail-price ul li");
-        $american = null;
-        if (count($priceList)) {
-            $american = $priceList->first()->text();
-        }
-        if (($price = $this->findPrice($american))) {
-            return $price;
-        } else {
-            $this->logger->info('no price found in ' . $american . ' from ' . $src . '. Checking current price...');
+
+        try {
+            $context = stream_context_create([
+                'http' => [
+                    'timeout' => 5,
+                    'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                ],
+            ]);
+            $html = @file_get_contents($src, false, $context);
+            if ($html === false) {
+                return null;
+            }
+
+            $crawler = new Crawler($html);
+            $priceList = $crawler->filter(".product-detail .retail-price ul li");
+            $american = null;
+            if (count($priceList) > 0) {
+                $american = $priceList->first()->text();
+            }
+
+            $price = $this->findPrice($american);
+            if ($price !== null) {
+                return $price;
+            }
+
+            $this->logger->info('no price found in ' . ($american ?? 'empty') . ' from ' . $src . '. Checking current price...');
             return $this->loadCurrentPrice($crawler);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Failed to load price from BrickPicker for set ' . $set_no, ['error' => $e]);
+            return null;
         }
     }
 
     /**
-     * extract a float value (price) from a string
-     *
-     * @param string $string
-     * @return float|NULL
+     * Extract a float value (price) from a string
      */
-    protected function findPrice($string)
+    protected function findPrice(?string $string): ?float
     {
-        // TODO: this function only checks for price in america
-        $matches = array();
-        if (\preg_match('/\d+\.?\d*/', $string, $matches)) {
-            return $matches[0];
+        if ($string === null) {
+            return null;
+        }
+
+        $matches = [];
+        if (\preg_match('/\d+(\.\d+)?/', $string, $matches)) {
+            return (float) $matches[0];
         }
         return null;
     }
 
     /**
      * Load the price listed, not as retail price
-     *
-     * @param Crawler $crawler
-     * @return float|NULL
      */
-    protected function loadCurrentPrice(Crawler $crawler)
+    protected function loadCurrentPrice(Crawler $crawler): ?float
     {
         $priceList = $crawler->filter('.main .container .panel-body table tbody tr td strong');
-        if (count($priceList)) {
+        if (count($priceList) > 0) {
             return $this->findPrice($priceList->first()->text());
-        } else {
-            return null;
         }
+        return null;
     }
 
-    public function loadPrices($all = false)
+    public function loadPrices(bool $all = false): static
     {
         $query = 'SELECT s FROM ' . Set::class . ' s';
         if (!$all) {
@@ -87,18 +98,20 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
         $q = $this->em->createQuery($query);
         $batchSize = 50;
         $i = 0;
-        $unsolved_sets = $q->iterate();
+        $unsolved_sets = $q->toIterable();
         foreach ($unsolved_sets as $row) {
-            $set = $row[0];
-            try {
-                $set->setPrice($this->loadPriceForSet($set->getNo()));
-                $this->em->persist($set);
-            } catch (\Exception $e) {
-                $this->logger->warn('error while loading price', array('error' => $e));
+            $set = is_array($row) ? $row[0] : $row;
+            if ($set instanceof Set) {
+                try {
+                    $set->setPrice($this->loadPriceForSet($set->getNo()));
+                    $this->em->persist($set);
+                } catch (\Throwable $e) {
+                    $this->logger->warning('error while loading price', ['error' => $e]);
+                }
             }
             if (($i % $batchSize) === 0) {
-                $this->em->flush(); // Executes all updates.
-                $this->em->clear(); // Detaches all objects from Doctrine!
+                $this->em->flush();
+                $this->em->clear();
             }
             ++$i;
         }

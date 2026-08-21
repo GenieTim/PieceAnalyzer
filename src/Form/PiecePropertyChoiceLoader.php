@@ -2,7 +2,6 @@
 
 namespace App\Form;
 
-use App\Repository\ItemRepository;
 use App\Repository\PieceRepository;
 use Symfony\Component\Form\ChoiceList\ArrayChoiceList;
 use Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface;
@@ -12,20 +11,19 @@ use Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface;
  */
 abstract class PiecePropertyChoiceLoader implements ChoiceLoaderInterface
 {
-
-    protected $pieceRepository;
-
-    public function __construct(PieceRepository $pieceRepo)
+    public function __construct(protected PieceRepository $pieceRepository)
     {
-        $this->pieceRepository = $pieceRepo;
     }
 
-    abstract protected function getChoices($value = null);
+    /**
+     * @return array<string|int, mixed>
+     */
+    abstract protected function getChoices(?callable $value = null): array;
 
     /**
      * {@inheritdoc}
      */
-    public function loadChoiceList($value = null)
+    public function loadChoiceList(?callable $value = null): \Symfony\Component\Form\ChoiceList\ChoiceListInterface
     {
         return new ArrayChoiceList(
             $this->getChoices($value)
@@ -34,12 +32,12 @@ abstract class PiecePropertyChoiceLoader implements ChoiceLoaderInterface
 
     /**
      * {@inheritdoc}
+     * @return array<string|int, mixed>
      */
-    public function loadChoicesForValues(array $values, $value = null)
+    public function loadChoicesForValues(array $values, ?callable $value = null): array
     {
-        // Optimize
-        if (empty($values)) {
-            return array();
+        if ($values === []) {
+            return [];
         }
 
         return $this->loadChoiceList($value)->getChoicesForValues($values);
@@ -47,12 +45,13 @@ abstract class PiecePropertyChoiceLoader implements ChoiceLoaderInterface
 
     /**
      * {@inheritdoc}
+     * @param array<string|int, mixed> $choices
+     * @return array<string|int, string>
      */
-    public function loadValuesForChoices(array $choices, $value = null)
+    public function loadValuesForChoices(array $choices, ?callable $value = null): array
     {
-        // Optimize
-        if (empty($values)) {
-            return array();
+        if ($choices === []) {
+            return [];
         }
 
         return $this->loadChoiceList($value)->getValuesForChoices($choices);

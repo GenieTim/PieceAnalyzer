@@ -2,80 +2,78 @@
 
 namespace App\Command;
 
+use App\Entity\Set;
+use App\Service\BrickPickerPriceLoaderService;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\QueryBuilder;
-use Psr\Log\LoggerInterface;
-use App\Entity\Item;
-use App\Entity\Set;
-use App\Service\BrickPickerPriceLoaderService;
 
+#[AsCommand(name: 'app:prices:reload', description: 'Reload the prices of the Items.')]
 class AppPricesReloadCommand extends Command
 {
-
-    protected static $defaultName = 'app:prices:reload';
-    protected $loader;
-    protected $em;
-    protected $io;
-    protected $logger;
-
-    public function __construct(BrickPickerPriceLoaderService $loader, EntityManagerInterface $em, LoggerInterface $logger)
-    {
+    public function __construct(
+        protected BrickPickerPriceLoaderService $loader,
+        protected EntityManagerInterface $em,
+        protected LoggerInterface $logger
+    ) {
         parent::__construct();
-        $this->em = $em;
-        $this->loader = $loader;
-        $this->logger = $logger;
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
-                ->setDescription('Reload the prices of the Items.')
-                ->addOption('all', null, InputOption::VALUE_NONE, 'Reload prices for all items.')
+            ->addOption('all', null, InputOption::VALUE_NONE, 'Reload prices for all items.')
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->io = new SymfonyStyle($input, $output);
+        $io = new SymfonyStyle($input, $output);
 
         $qb = $this->em->createQueryBuilder()->select('s')->from(Set::class, 's');
         if (!$input->getOption('all')) {
             $qb->andWhere('s.price IS NULL');
         }
         $countQuery = clone $qb;
-        $count = $countQuery->select('count(s.id)')->getQuery()->getSingleScalarResult();
-        $this->io->progressStart($count);
+        $count = (int) $countQuery->select('count(s.id)')->getQuery()->getSingleScalarResult();
+        $io->progressStart($count);
         $q = $qb->getQuery();
 
-        $unsolved_sets = $q->iterate();
-        $this->loadPriceForSets($unsolved_sets);
-        $this->io->progressFinish();
+        $unsolved_sets = $q->toIterable();
+        $this->loadPriceForSets($unsolved_sets, $io);
+        $io->progressFinish();
 
-        $this->io->success('Prices have been reloaded.');
+        $io->success('Prices have been reloaded.');
+
+        return Command::SUCCESS;
     }
 
-    protected function loadPriceForSets($rows)
+    /**
+     * @param iterable<mixed> $rows
+     */
+    protected function loadPriceForSets(iterable $rows, SymfonyStyle $io): void
     {
         $batchSize = 50;
         $i = 0;
         foreach ($rows as $row) {
-            $set = $row[0];
-            $this->io->progressAdvance();
-            try {
-                $set->setPrice($this->loader->loadPriceForSet($set->getNo()));
-                $this->em->persist($set);
-            } catch (\Exception $e) {
-                $this->logger->warn('error while loading price', array('error' => $e));
+            $set = is_array($row) ? $row[0] : $row;
+            $io->progressAdvance();
+            if ($set instanceof Set) {
+                try {
+                    $set->setPrice($this->loader->loadPriceForSet($set->getNo()));
+                    $this->em->persist($set);
+                } catch (\Throwable $e) {
+                    $this->logger->warning('error while loading price', ['error' => $e]);
+                }
             }
             if (($i % $batchSize) === 0) {
-                $this->em->flush(); // Executes all updates.
-                $this->em->clear(); // Detaches all objects from Doctrine!
+                $this->em->flush();
+                $this->em->clear();
             }
             ++$i;
         }

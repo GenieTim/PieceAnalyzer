@@ -2,173 +2,144 @@
 
 namespace App\Entity;
 
-use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
 
-/**
- * @ORM\Entity(repositoryClass="App\Repository\SetRepository")
- * @ORM\Table(name="lego_set")
- */
+#[ORM\Table(name: 'lego_set')]
+#[ORM\Entity(repositoryClass: \App\Repository\SetRepository::class)]
 class Set extends Item
 {
+    public const SOURCE_BRICKLINK = 1;
+    public const SOURCE_REBRICKABLE = 2;
 
-    const SOURCE_BRICKLINK = 1;
-    const SOURCE_REBRICKABLE = 2;
-
-    /**
-     * @ORM\Id
-     * @ORM\GeneratedValue
-     * @ORM\Column(type="integer")
-     */
-    private $id;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::FLOAT, nullable: true)]
+    private ?float $price = null;
 
     /**
-     * @ORM\Column(type="float", nullable=true)
+     * @var Collection<int, Piece>
      */
-    private $price;
+    #[ORM\OneToMany(targetEntity: Piece::class, mappedBy: 'set', cascade: ['all'], orphanRemoval: true)]
+    private Collection $pieces;
 
-    /**
-     * @ORM\OneToMany(targetEntity="Piece", mappedBy="set", cascade={"all"})
-     */
-    private $pieces;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]
+    private int $source = 0;
 
-    /**
-     *
-     * @ORM\Column(type="integer")
-     * @var integer
-     */
-    private $source = 0;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: true)]
+    private ?bool $obsolete = null;
 
-    /**
-     * @ORM\Column(type="boolean", nullable=true)
-     */
-    private $obsolete;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $year = null;
 
-    /**
-     * @ORM\Column(type="date")
-     */
-    private $year;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::STRING, nullable: true)]
+    private ?string $image_url = null;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
-    private $image_url;
+    public function __construct()
+    {
+        $this->pieces = new ArrayCollection();
+    }
 
-    /**
-     * Get the value of price
-     */
-    public function getPrice()
+    public function getPrice(): ?float
     {
         return $this->price;
     }
 
-    /**
-     * Set the value of price
-     *
-     * @return  self
-     */
-    public function setPrice($price)
+    public function setPrice(?float $price): static
     {
-        $this->price = floatval($price);
+        $this->price = $price ?? null;
 
         return $this;
     }
 
     /**
-     * Get the value of pieces
+     * @return Collection<int, Piece>
      */
-    public function getPieces()
+    public function getPieces(): Collection
     {
         return $this->pieces;
     }
 
     /**
-     * Set the value of pieces
-     *
-     * @return  self
+     * @param Collection<int, Piece> $pieces
      */
-    public function setPieces(ArrayCollection $pieces)
+    public function setPieces(Collection $pieces): static
     {
         $this->pieces = $pieces;
 
         return $this;
     }
 
-    public function addPiece(Piece $p)
+    public function addPiece(Piece $p): static
     {
-        $this->pieces->add($p);
+        if (!$this->pieces->contains($p)) {
+            $this->pieces->add($p);
+            $p->setSet($this);
+        }
 
         return $this;
     }
 
-    public function getSource()
+    public function removePiece(Piece $p): static
+    {
+        if ($this->pieces->removeElement($p) && $p->getSet() === $this) {
+            // unset parent
+
+        }
+
+        return $this;
+    }
+
+    public function getSource(): int
     {
         return $this->source;
     }
 
-    public function setSource($source)
+    public function setSource(int $source): void
     {
-        $this->source = intval($source);
+        $this->source = $source;
     }
 
-    /**
-     * Get the value of obsolete
-     */
-    public function getObsolete()
+    public function getObsolete(): ?bool
     {
         return $this->obsolete;
     }
 
-    /**
-     * Set the value of obsolete
-     *
-     * @return  self
-     */
-    public function setObsolete($obsolete)
+    public function setObsolete(?bool $obsolete): static
     {
         $this->obsolete = $obsolete;
 
         return $this;
     }
 
-    /**
-     *
-     * @return string
-     */
-    public function getImageUrl()
+    public function getImageUrl(): ?string
     {
         return $this->image_url;
     }
 
-    /**
-     *
-     * @param string $url
-     * @return $this
-     */
-    public function setImageUrl($url)
+    public function setImageUrl(?string $url): static
     {
         $this->image_url = $url;
 
         return $this;
     }
 
-    public function getYear()
+    public function getYear(): ?\DateTimeInterface
     {
         return $this->year;
     }
 
-    public function setYear(\DateTime $year)
+    public function setYear(?\DateTimeInterface $year): static
     {
         $this->year = $year;
 
         return $this;
     }
 
-    public function getPieceCount()
+    public function getPieceCount(): int
     {
         $count = 0;
-        foreach ($this->getPieces() as $piece) {
-            $count += $piece->getCount();
+        foreach ($this->pieces as $piece) {
+            $count += (int) $piece->getCount();
         }
         return $count;
     }

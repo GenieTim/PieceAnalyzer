@@ -18,49 +18,42 @@ class ListController extends AbstractController
      * Legacy route
      *
      * @deprecated v3
-     * @Route("/all", name="list_all")
      */
-    public function listAllAction()
+    #[\Symfony\Component\Routing\Attribute\Route(path: '/all', name: 'list_all')]
+    public function listAll(): \Symfony\Component\HttpFoundation\RedirectResponse
     {
         return $this->redirectToRoute('filter_items');
     }
 
     /**
      * Filter all sets
-     *
-     * @Route("/filter", name="filter_items")
-     * @param Request $request
      */
-    public function filterAction(Request $request, PaginatorInterface $paginator)
+    #[\Symfony\Component\Routing\Attribute\Route(path: '/filter', name: 'filter_items')]
+    public function filter(Request $request, PaginatorInterface $paginator, \App\Repository\SetRepository $setRepo): \Symfony\Component\HttpFoundation\Response
     {
-        $em = $this->getDoctrine()->getManager();
-        $set_repo = $em->getRepository(Set::class);
         $form = $this->createForm(FilterFormType::class);
         $form->handleRequest($request);
-        $criteria = array();
+        $criteria = [];
         if ($form->isSubmitted() && $form->isValid()) {
-            $criteria = $form->getData();
+            $criteria = (array) $form->getData();
         }
         $pagination = $paginator->paginate(
-            $set_repo->getMostValuableByQuery($criteria)->getResult(), /* query NOT result */
-            $request->query->getInt('page', 1) /* page number */,
-            50/* limit per page */
-            // array('wrap-queries' => true)
+            $setRepo->getMostValuableByQuery($criteria),
+            $request->query->getInt('page', 1),
+            50
         );
 
-        return $this->render('list/list_all.html.twig', array(
+        return $this->render('list/list_all.html.twig', [
             'pagination' => $pagination,
             'form' => $form->createView(),
-        ));
+        ]);
     }
 
     /**
      * Redirect to a vendor to see the set/item
-     *
-     * @Route("/item/{id}", name="list_item", requirements={"id"="\d+"})
-     * @param Item $item
      */
-    public function listItemAction(Item $item)
+    #[\Symfony\Component\Routing\Attribute\Route(path: '/item/{id}', name: 'list_item', requirements: ['id' => '\d+'])]
+    public function listItem(Item $item): \Symfony\Component\HttpFoundation\RedirectResponse
     {
         if ($item instanceof Set && $item->getSource() === Set::SOURCE_REBRICKABLE) {
             return $this->redirect('https://rebrickable.com/sets/' . $item->getNo());

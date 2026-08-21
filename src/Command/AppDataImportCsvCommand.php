@@ -4,41 +4,37 @@ namespace App\Command;
 
 use App\Service\CsvLegoLoaderService;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
+#[AsCommand(name: 'app:data:import-csv', description: 'Import the CSV files from the data directory')]
 class AppDataImportCsvCommand extends Command
 {
-
-    public static $defaultName = 'app:data:import-csv';
-    protected $loader;
-    protected $em;
-
-    public function __construct(CsvLegoLoaderService $loader, EntityManagerInterface $em)
-    {
-        $this->loader = $loader;
-        $this->em = $em;
+    public function __construct(
+        protected CsvLegoLoaderService $loader,
+        protected EntityManagerInterface $em
+    ) {
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
-            ->setDescription('Import the CSV files from the data directory')
-            ->addOption('count', 'nu', InputOption::VALUE_OPTIONAL, 'Number of sets to import', 0)
+            ->addOption('count', 'c', InputOption::VALUE_OPTIONAL, 'Number of sets to import', 0)
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
 
-        $end = $input->getOption('count');
+        $end = (int) $input->getOption('count');
 
-        $end = $end ? $end : $this->getLines($this->loader->normalizeCsvPath('sets'));
+        $end = $end ?: $this->getLines($this->loader->normalizeCsvPath('sets'));
         $this->resetDatabase();
         $io->writeln("Starting to import $end sets.");
 
@@ -59,25 +55,35 @@ class AppDataImportCsvCommand extends Command
         }
         $io->progressFinish();
         $io->success("Successfully imported some sets");
+
+        return Command::SUCCESS;
     }
 
-    protected function resetDatabase()
+    protected function resetDatabase(): void
     {
-        $query = '
-            DELETE FROM piece;
-            DELETE FROM lego_set;
-            DELETE FROM item;
-           ';
-        return $this->em->getConnection()->prepare($query)->execute();
+        $connection = $this->em->getConnection();
+        $connection->executeStatement('DELETE FROM piece;');
+        $connection->executeStatement('DELETE FROM lego_set;');
+        $connection->executeStatement('DELETE FROM item;');
     }
 
-    protected function getLines($file)
+    protected function getLines(string $file): int
     {
+        if (!file_exists($file)) {
+            return 0;
+        }
+
         $f = fopen($file, 'rb');
-        $lines = 0;
+        if (!$f) {
+            return 0;
+        }
 
+        $lines = 0;
         while (!feof($f)) {
-            $lines += substr_count(fread($f, 8192), "\n");
+            $chunk = fread($f, 8192);
+            if ($chunk !== false) {
+                $lines += substr_count($chunk, "\n");
+            }
         }
 
         fclose($f);

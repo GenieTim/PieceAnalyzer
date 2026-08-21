@@ -13,10 +13,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 class IndexController extends AbstractController
 {
 
-    /**
-     * @Route("/", name="index")
-     */
-    public function indexAction()
+    #[\Symfony\Component\Routing\Attribute\Route(path: '/', name: 'index')]
+    public function index(): \Symfony\Component\HttpFoundation\Response
     {
         return $this->render('static/index.html.twig');
     }

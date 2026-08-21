@@ -1,7 +1,6 @@
 {
     "name": "bernhard-webstudio/piece-analyzer",
     "description": "Symfony Application to analyze Lego sets and compare their value to certain type of pieces",
-    "version": "v0.0.1",
     "authors": [
         {
             "name": "Tim Bernhard",
@@ -12,53 +11,51 @@
     "type": "project",
     "license": "GPL-3.0-or-later",
     "require": {
-        "php": "^7.1.3|^8.0.1",
+        "php": ">=8.2",
         "ext-iconv": "*",
-        "bacanu/blwrap": "^v1.0.0",
-        "composer/package-versions-deprecated": "1.11.99.4",
-        "doctrine/annotations": "^1.0",
-        "doctrine/doctrine-bundle": "^2.4",
-        "doctrine/doctrine-migrations-bundle": "^3.1",
-        "doctrine/orm": "^2.9",
-        "knplabs/knp-menu-bundle": "^v3.0.0",
-        "knplabs/knp-paginator-bundle": "^v5.1.1",
-        "nelmio/security-bundle": "^v2.9.0",
-        "phpdocumentor/reflection-docblock": "^5.2",
-        "sensio/framework-extra-bundle": "^v6.1.1",
-        "symfony/apache-pack": "^v1.0.1",
-        "symfony/asset": "^v5.0.7",
-        "symfony/console": "^v5.0.7",
-        "symfony/css-selector": "^v5.0.7",
-        "symfony/debug-bundle": "^v5.0.7",
-        "symfony/dom-crawler": "^v5.0.7",
-        "symfony/dotenv": "^v5.0.7",
-        "symfony/expression-language": "^v5.0.7",
-        "symfony/flex": "^v1.6.2",
-        "symfony/form": "^v5.0.7",
-        "symfony/framework-bundle": "^v5.0.7",
-        "symfony/maker-bundle": "^v1.14.6",
-        "symfony/monolog-bundle": "^v3.5.0",
-        "symfony/process": "^v5.0.7",
-        "symfony/property-access": "^v5.0.7",
-        "symfony/property-info": "^v5.0.7",
-        "symfony/proxy-manager-bridge": "^v5.0.7",
-        "symfony/security-bundle": "^v5.0.7",
-        "symfony/serializer": "^v5.0.7",
-        "symfony/stopwatch": "^v5.0.7",
-        "symfony/swiftmailer-bundle": "^v3.4.0",
-        "symfony/templating": "^v5.0.7",
-        "symfony/translation": "^v5.0.7",
-        "symfony/twig-bundle": "^v5.0.7",
-        "symfony/validator": "^v5.0.7",
-        "symfony/web-link": "^v5.0.7",
-        "symfony/web-profiler-bundle": "^v5.0.7",
-        "symfony/webpack-encore-bundle": "^v1.7.3",
-        "symfony/yaml": "^v5.0.7"
+        "doctrine/doctrine-bundle": "^2.13",
+        "doctrine/doctrine-migrations-bundle": "^3.3",
+        "doctrine/orm": "^2.19|^3.0",
+        "knplabs/knp-menu-bundle": "^3.4",
+        "knplabs/knp-paginator-bundle": "^6.2",
+        "nelmio/security-bundle": "^3.1",
+        "phpdocumentor/reflection-docblock": "^5.3",
+        "symfony/asset": "^7.4|^8.0",
+        "symfony/console": "^7.4|^8.0",
+        "symfony/css-selector": "^7.4|^8.0",
+        "symfony/debug-bundle": "^7.4|^8.0",
+        "symfony/dom-crawler": "^7.4|^8.0",
+        "symfony/dotenv": "^7.4|^8.0",
+        "symfony/expression-language": "^7.4|^8.0",
+        "symfony/flex": "^2.4",
+        "symfony/form": "^7.4|^8.0",
+        "symfony/framework-bundle": "^7.4|^8.0",
+        "symfony/http-client": "^7.4|^8.0",
+        "symfony/maker-bundle": "^1.50",
+        "symfony/monolog-bundle": "^3.10",
+        "symfony/process": "^7.4|^8.0",
+        "symfony/property-access": "^7.4|^8.0",
+        "symfony/property-info": "^7.4|^8.0",
+        "symfony/security-bundle": "^7.4|^8.0",
+        "symfony/serializer": "^7.4|^8.0",
+        "symfony/stopwatch": "^7.4|^8.0",
+        "symfony/translation": "^7.4|^8.0",
+        "symfony/twig-bundle": "^7.4|^8.0",
+        "symfony/validator": "^7.4|^8.0",
+        "symfony/web-link": "^7.4|^8.0",
+        "symfony/web-profiler-bundle": "^7.4|^8.0",
+        "symfony/webpack-encore-bundle": "^2.1",
+        "symfony/yaml": "^7.4|^8.0"
     },
     "require-dev": {
-        "symfony/browser-kit": "^v5.0.7",
-        "symfony/phpunit-bridge": "^v5.0.7",
-        "squizlabs/php_codesniffer": "^3.5.4"
+        "phpstan/phpstan": "^1.11|^2.0",
+        "phpstan/phpstan-doctrine": "^1.4",
+        "phpstan/phpstan-symfony": "^1.4",
+        "phpunit/phpunit": "^10.5|^11.0",
+        "rector/rector": "^1.2|^2.0",
+        "squizlabs/php_codesniffer": "^3.10",
+        "symfony/browser-kit": "^7.4|^8.0",
+        "symfony/phpunit-bridge": "^7.4|^8.0"
     },
     "config": {
         "preferred-install": {
@@ -66,7 +63,6 @@
         },
         "sort-packages": true,
         "allow-plugins": {
-            "composer/package-versions-deprecated": true,
             "symfony/flex": true
         }
     },
@@ -80,12 +76,6 @@
             "App\\Tests\\": "tests/"
         }
     },
-    "replace": {
-        "symfony/polyfill-iconv": "*",
-        "symfony/polyfill-php71": "*",
-        "symfony/polyfill-php70": "*",
-        "symfony/polyfill-php56": "*"
-    },
     "scripts": {
         "auto-scripts": {
             "cache:clear": "symfony-cmd",
@@ -98,16 +88,18 @@
         "post-update-cmd": [
             "@auto-scripts"
         ],
-        "code-sniffer": "./vendor/bin/phpcs --standard=PSR2 src",
-        "code-sniffer-fix": "./vendor/bin/phpcbf --standard=PSR2 src"
+        "rector": "./vendor/bin/rector process --dry-run",
+        "rector-fix": "./vendor/bin/rector process",
+        "phpstan": "./vendor/bin/phpstan analyse --memory-limit=512M",
+        "test": "./vendor/bin/phpunit"
     },
     "conflict": {
         "symfony/symfony": "*"
     },
     "extra": {
         "symfony": {
-            "id": "01C66ZN4BC9GE7NFA9TDCS97KP",
-            "allow-contrib": false
+            "allow-contrib": false,
+            "require": "7.4.*"
         }
     }
 }

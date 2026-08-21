@@ -3,69 +3,58 @@
 namespace App\Controller;
 
 use App\Form\SelectLoadFormType;
-use App\Service\CsvLegoLoaderService;
 use App\Service\BricklinkLegoLoaderService;
-use Symfony\Component\HttpFoundation\Request;
 use App\Service\BrickPickerPriceLoaderService;
-use Symfony\Component\Console\Output\NullOutput;
-use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\NullOutput;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Routing\Attribute\Route;
 
 class LoadController extends AbstractController
 {
-
     /**
      * Load a range of set no's
      *
-     * @Route("/range", name="load_range")
      * @deprecated v3
-     * @param Request $request
-     * @param CsvLegoLoaderService $loader
-     * @return Response
      */
-    public function loadRangeAction(Request $request, BricklinkLegoLoaderService $loader)
+    #[Route(path: '/range', name: 'load_range')]
+    public function loadRange(Request $request, BricklinkLegoLoaderService $loader): Response
     {
         $form = $this->createForm(SelectLoadFormType::class);
 
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
+            /** @var array{from: int, to: int} $data */
             $data = $form->getData();
             $loader->loadSets($data['from'], $data['to']);
             return $this->redirectToRoute('index');
         }
 
-        return $this->render('form/load_form.html.twig', array(
-            'form' => $form->createView(),
-        ));
+        return $this->render('form/load_form.html.twig', ['form' => $form->createView()]);
     }
 
     /**
      * Load sets from csv files
-     *
-     * @Route("/files", name="load_files")
-     * @param Request $request
-     * @param CsvLegoLoaderService $loader
-     * @return Response
      */
-    public function refreshAction(Request $request, KernelInterface $kernel)
+    #[Route(path: '/files', name: 'load_files')]
+    public function refresh(KernelInterface $kernel): RedirectResponse
     {
         $application = new Application($kernel);
 
         try {
             $application->setAutoExit(false);
 
-            $input = new ArrayInput(array(
-                'command' => 'app:data:import-csv',
-            ));
-
-            // You can use NullOutput() if you don't need the output
+            $input = new ArrayInput(['command' => 'app:data:import-csv']);
             $output = new NullOutput();
             $application->run($input, $output);
             $this->addFlash('success', 'Successfully imported Sets.');
             return $this->redirectToRoute('load_prices');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->addFlash('alert', 'Failed to load Sets. Error message: ' . $e->getMessage());
         }
 
@@ -74,13 +63,9 @@ class LoadController extends AbstractController
 
     /**
      * Load prices of sets with BrickPickerPriceLoaderService
-     *
-     * @Route("/price/brickpicker", name="load_prices")
-     * @param Request $request
-     * @param \App\Service\BrickPickerPriceLoaderService $loader
-     * @return Response
      */
-    public function loadPrices(Request $request, BrickPickerPriceLoaderService $loader)
+    #[Route(path: '/price/brickpicker', name: 'load_prices')]
+    public function loadPrices(BrickPickerPriceLoaderService $loader): RedirectResponse
     {
         $loader->loadPrices(false);
         return $this->redirectToRoute('list_all');

@@ -6,6 +6,11 @@ parameters:
     router.request_context.base_url: "%env(resolve:BASE_URL)%"
     assets.request_context.base_path: "%env(resolve:BASE_URL)%"
     
+    env(REBRICKABLE_API_KEY): ""
+    env(BRICKSET_API_KEY): ""
+    rebrickable_api_key: "%env(REBRICKABLE_API_KEY)%"
+    brickset_api_key: "%env(BRICKSET_API_KEY)%"
+    
     bricklink:
         consumer:
             key: "%env(CONSUMER_KEY)%"
@@ -46,6 +51,18 @@ services:
     App\Service\CsvLegoLoaderService:
         arguments:
             $import_save_path: "%data_path%"
+
+    App\Service\RebrickableDownloaderService:
+        arguments:
+            $dataPath: "%data_path%"
+
+    App\Service\RebrickableApiService:
+        arguments:
+            $apiKey: "%rebrickable_api_key%"
+
+    App\Service\BricksetPriceLoaderService:
+        arguments:
+            $apiKey: "%brickset_api_key%"
 
     app.menu_builder:
         class: App\Menu\Builder

@@ -12,53 +12,48 @@ use Symfony\Component\Form\FormBuilderInterface;
 class FilterFormType extends AbstractType
 {
 
-    protected $pieceRepository;
-
-    protected $csvLoader;
-
-    public function __construct(PieceRepository $pieceRepo, CsvLegoLoaderService $csvLoader)
+    public function __construct(protected \App\Repository\PieceRepository $pieceRepository, protected \App\Service\CsvLegoLoaderService $csvLoader)
     {
-        $this->pieceRepository = $pieceRepo;
-        $this->csvLoader = $csvLoader;
     }
 
-    public function buildForm(FormBuilderInterface $builder, array $options)
+    public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('color', ChoiceType::class, array(
-                'choices' => $this->getCsvColorChoices(),
-                'multiple' => false,
-            ))
-            ->add('category', ChoiceType::class, array(
-                'choices' => $this->getCsvCategoryChoices(),
-                'multiple' => false,
-            ))
-            ->add('search', SubmitType::class, array(
-            ))
+            ->add('color', ChoiceType::class, ['choices' => $this->getCsvColorChoices(), 'multiple' => false])
+            ->add('category', ChoiceType::class, ['choices' => $this->getCsvCategoryChoices(), 'multiple' => false])
+            ->add('search', SubmitType::class, [])
         ;
     }
 
-    protected function getCsvColorChoices()
+    /**
+     * @return array<string, int>
+     */
+    protected function getCsvColorChoices(): array
     {
-        $choices = array();
+        $choices = [];
         $colors = $this->csvLoader->getColors();
         foreach ($colors as $choice) {
-            $choices[$choice['name']] = $choice['id'];
+            if (isset($choice['name'], $choice['id'])) {
+                $choices[$choice['name']] = (int) $choice['id'];
+            }
         }
         asort($choices);
-        $choices = ['any' => 0] + $choices;
-        return $choices;
+        return ['any' => 0] + $choices;
     }
 
-    protected function getCsvCategoryChoices()
+    /**
+     * @return array<string, int>
+     */
+    protected function getCsvCategoryChoices(): array
     {
-        $choices = array();
+        $choices = [];
         $categories = $this->csvLoader->getCategories();
         foreach ($categories as $choice) {
-            $choices[$choice['name']] = $choice['id'];
+            if (isset($choice['name'], $choice['id'])) {
+                $choices[$choice['name']] = (int) $choice['id'];
+            }
         }
         asort($choices);
-        $choices = ['any' => 0] + $choices;
-        return $choices;
+        return ['any' => 0] + $choices;
     }
 }

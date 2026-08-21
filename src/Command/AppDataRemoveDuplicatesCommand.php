@@ -2,39 +2,36 @@
 
 namespace App\Command;
 
+use App\Entity\Set;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Doctrine\ORM\EntityManagerInterface;
-use App\Entity\Set;
 
+#[AsCommand(name: 'app:data:remove-duplicates', description: 'Purge duplicate sets from database')]
 class AppDataRemoveDuplicatesCommand extends Command
 {
+    /** @var array<string, string> */
+    protected array $uniqueSets = [];
 
-    protected static $defaultName = 'app:data:remove-duplicates';
-    protected $em;
-    protected $uniqueSets = array();
-
-    public function __construct(EntityManagerInterface $em)
+    public function __construct(protected EntityManagerInterface $em)
     {
         parent::__construct();
-        $this->em = $em;
     }
 
-    protected function configure()
-    {
-        $this->setDescription('Purge duplicate sets from database');
-    }
-
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
 
-        $qb = $this->em->createQueryBuilder()->select('s')->from(Set::class, 's')->groupBy('s.name, s.no')->having('COUNT(s) > 1');
+        $qb = $this->em->createQueryBuilder()
+            ->select('s')
+            ->from(Set::class, 's')
+            ->groupBy('s.name, s.no')
+            ->having('COUNT(s) > 1');
 
+        /** @var array<int, Set|array<Set>> $rows */
         $rows = $qb->getQuery()->getResult();
         $io->progressStart(count($rows));
         $purgeNo = $this->loopDuplicates($rows, $io);
@@ -42,9 +39,14 @@ class AppDataRemoveDuplicatesCommand extends Command
         $this->em->flush();
 
         $io->success("Purged $purgeNo duplicates from the database.");
+
+        return Command::SUCCESS;
     }
 
-    protected function loopDuplicates($duplicates, $io)
+    /**
+     * @param array<int, mixed> $duplicates
+     */
+    protected function loopDuplicates(array $duplicates, ?SymfonyStyle $io): int
     {
         $purgeNo = 0;
         $batchSize = 50;
@@ -52,28 +54,26 @@ class AppDataRemoveDuplicatesCommand extends Command
         foreach ($duplicates as $set) {
             if (is_array($set)) {
                 $purgeNo += $this->loopDuplicates($set, null);
-            } else {
+            } elseif ($set instanceof Set) {
                 $unique = true;
-                if (array_key_exists($set->getNo(), $this->uniqueSets)) {
-                    if ($this->uniqueSets[$set->getNo()] == $set->getName()) {
-                        $this->em->remove($set);
-                        $unique = false;
-                        $purgeNo++;
-                    }
+                $no = (string) $set->getNo();
+                $name = (string) $set->getName();
+                if (isset($this->uniqueSets[$no]) && $this->uniqueSets[$no] === $name) {
+                    $this->em->remove($set);
+                    $unique = false;
+                    $purgeNo++;
                 }
                 if ($unique) {
-                    $this->uniqueSets[$set->getNo()] = $set->getName();
+                    $this->uniqueSets[$no] = $name;
                 }
             }
 
             if (($i % $batchSize) === 0) {
-                $this->em->flush(); // Executes all updates.
-                $this->em->clear(); // Detaches all objects from Doctrine!
+                $this->em->flush();
+                $this->em->clear();
             }
             ++$i;
-            if ($io) {
-                $io->progressAdvance();
-            }
+            $io?->progressAdvance();
         }
         return $purgeNo;
     }

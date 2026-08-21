@@ -2,7 +2,9 @@
 
 namespace App\Service;
 
+use App\Entity\Item;
 use App\Entity\Set;
+use Doctrine\Common\Collections\Collection;
 
 /**
  * LegoLoaderServiceInterface
@@ -11,16 +13,21 @@ use App\Entity\Set;
  */
 interface LegoLoaderServiceInterface
 {
-    
-    public function loadSets($from, $to);
-    
-    public function loadSet($set_no, $flush = true);
-    
-    public function getPiecesOfSet(Set &$set, $flush = false);
-    
-    public function loadPrices($all = false);
-    
-    public function getColors();
-    
-    public function getCategories();
+    /**
+     * @return array<int, mixed>|int
+     */
+    public function loadSets(int|string $from, int|string $to): array|int;
+
+    public function loadSet(mixed $set_no, bool $flush = true): ?Set;
+
+    /**
+     * @return Collection<int, \App\Entity\Piece>
+     */
+    public function getPiecesOfSet(Set &$set, bool $flush = false): Collection;
+
+    public function loadPrices(bool $all = false): static;
+
+    public function getColors(): mixed;
+
+    public function getCategories(): mixed;
 }

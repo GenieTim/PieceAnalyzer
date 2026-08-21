@@ -7,12 +7,11 @@
 namespace App\Service;
 
 /**
- *
  * @author timbernhard
  */
 interface PriceLoaderServiceInterface
 {
-    public function loadPrices($all = false);
-    
-    public function loadPriceForSet($set_no);
+    public function loadPrices(bool $all = false): static;
+
+    public function loadPriceForSet(mixed $set_no): ?float;
 }

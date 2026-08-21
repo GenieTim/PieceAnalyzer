@@ -3,9 +3,12 @@
 namespace App\Repository;
 
 use App\Entity\Piece;
-use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends ServiceEntityRepository<Piece>
+ */
 class PieceRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -13,23 +16,39 @@ class PieceRepository extends ServiceEntityRepository
         parent::__construct($registry, Piece::class);
     }
 
-    protected function findDistinct($what)
+    /**
+     * @return array<int, mixed>
+     */
+    protected function findDistinct(string $what): array
     {
-        return $this->createQueryBuilder('p')
-            ->select('distinct(' . $what . ')')->getQuery()->getResult();
+        $result = $this->createQueryBuilder('p')
+            ->select('DISTINCT ' . $what)
+            ->getQuery()
+            ->getScalarResult();
+
+        return array_values(array_map('current', $result));
     }
 
-    public function findDistinctColors()
+    /**
+     * @return array<int, mixed>
+     */
+    public function findDistinctColors(): array
     {
         return $this->findDistinct('p.color');
     }
 
-    public function findDistinctCategories()
+    /**
+     * @return array<int, mixed>
+     */
+    public function findDistinctCategories(): array
     {
         return $this->findDistinct('p.category');
     }
 
-    public function findDistinctTypes()
+    /**
+     * @return array<int, mixed>
+     */
+    public function findDistinctTypes(): array
     {
         return $this->findDistinct('p.type');
     }

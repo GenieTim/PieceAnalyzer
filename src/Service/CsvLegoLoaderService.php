@@ -6,285 +6,302 @@ use App\Entity\Item;
 use App\Entity\Piece;
 use App\Entity\Set;
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Service to load Lego data from (csv) into our Set & Piece entities
- * As CSV, data from Rebrickable is used
+ * Service to load Lego data from CSV into Set & Piece entities.
+ * Uses Rebrickable database CSV dumps.
  */
 class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderServiceInterface
 {
+    private readonly string $source_path;
+    /** @var array<string, array<int, array<string|int, string>>> */
+    private array $cached_data = [];
+    /** @var array<string, array<int, Item>>|null */
+    private ?array $known_numbers = null;
 
-    private $source_path;
-    private $serializer;
-    private $em;
-    private $cached_data = array();
-    private $known_numbers = null;
-    private $logger;
+    // fields in sets.csv: set_num, name, year, theme_id, num_parts, img_url
+    public const SET_NUM_KEY = 0;
+    public const SET_NAME_KEY = 1;
+    public const SET_YEAR_KEY = 2;
+    public const SET_THEME_KEY = 3;
 
-    // fields in sets.csv
-    const SET_NUM_KEY = 0;
-    const SET_NAME_KEY = 1;
-    const SET_YEAR_KEY = 2;
-    const SET_THEME_KEY = 3;
-    // fields in parts.csv
-    const PART_NUM_KEY = 0;
-    const PART_NAME_KEY = 1;
-    const PART_CAT_KEY = 2;
-    // fields in ininventories.csv
-    const INVENTORY_ID = 0;
-    const INVENTORY_SET_KEY = 2;
-    // fields in inventory_sets.csv
-    const INVENTORY_SET_INVENTORY = 0;
-    const INVENTORY_SET_SET = 1;
-    const INVENTORY_SET_QUANTITY = 2;
-    // fields in inventory_parts.csv
-    const INVENTORY_PART_INVENTORY = 0;
-    const INVENTORY_PART_PART = 1;
-    const INVENTORY_PART_COLOR = 2;
-    const INVENTORY_PART_QUANTITY = 3;
+    // fields in parts.csv: part_num, name, part_cat_id, part_material
+    public const PART_NUM_KEY = 0;
+    public const PART_NAME_KEY = 1;
+    public const PART_CAT_KEY = 2;
 
-    public function __construct(SerializerInterface $serializer, EntityManagerInterface $em, LoggerInterface $logger, $import_save_path)
-    {
-        $this->serializer = $serializer;
-        $this->logger = $logger;
-        $this->em = $em;
-        if (substr($import_save_path, -1) !== "/") {
-            $import_save_path .= "/";
+    // fields in inventories.csv: id, version, set_num
+    public const INVENTORY_ID = 0;
+    public const INVENTORY_VERSION = 1;
+    public const INVENTORY_SET_KEY = 2;
+
+    // fields in inventory_sets.csv: inventory_id, set_num, quantity
+    public const INVENTORY_SET_INVENTORY = 0;
+    public const INVENTORY_SET_SET = 1;
+    public const INVENTORY_SET_QUANTITY = 2;
+
+    // fields in inventory_parts.csv: inventory_id, part_num, color_id, quantity, is_spare, img_url
+    public const INVENTORY_PART_INVENTORY = 0;
+    public const INVENTORY_PART_PART = 1;
+    public const INVENTORY_PART_COLOR = 2;
+    public const INVENTORY_PART_QUANTITY = 3;
+
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly LoggerInterface $logger,
+        string $import_save_path,
+        private readonly ?HttpClientInterface $httpClient = null
+    ) {
+        if (!str_ends_with($import_save_path, '/')) {
+            $import_save_path .= '/';
         }
         $this->source_path = $import_save_path;
-        $this->logger = $logger;
     }
 
     /**
-     * Dump a whole CSV file at once to cache
+     * Read a CSV file into an array of rows (with headers as keys if headers exist)
      *
-     * @param type $file
-     * @return type
+     * @return array<int, array<string|int, string>>
      */
-    private function getCsvData($file)
+    public function getCsvData(string $file): array
     {
-        $file_path = $this->normalizeCsvPath($file);
-        if (array_key_exists($file, $this->cached_data)) {
+        $filePath = $this->normalizeCsvPath($file);
+        if (isset($this->cached_data[$file])) {
             return $this->cached_data[$file];
         }
-        $this->cached_data[$file] = $this->serializer->decode(file_get_contents($file_path), 'csv');
-        $this->logger->info("Read CSV File", array(
-            'path' => $file_path,
-            'count' => \count($this->cached_data[$file]),
-        ));
+
+        $rows = [];
+        if (file_exists($filePath) && ($handle = fopen($filePath, 'r')) !== false) {
+            $header = fgetcsv($handle, 0, ',', '"', '\\');
+            if ($header !== false) {
+                while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+                    $rows[] = count($data) === count($header) ? array_combine($header, $data) : $data;
+                }
+            }
+            fclose($handle);
+        }
+
+        $this->cached_data[$file] = $rows;
+        $this->logger->info('Read CSV File', [
+            'path' => $filePath,
+            'count' => count($rows),
+        ]);
+
         return $this->cached_data[$file];
     }
 
     /**
-     * Loop a csv file to call a function on each element
+     * Loop a CSV file and call a callback on each row
      *
-     * @param string $file name of the csv file to load
-     * @param callable $callback function to call with each csv line. function should return the desired object to be pushed
-     *                                              in the returned array
-     * @return array $results all the return values of the callback != false
+     * @param callable(array<int, string>): mixed $callback
+     * @return array<int, mixed>
      */
-    private function loopCsv($file, $callback, $start = 0, $end = false)
+    private function loopCsv(string $file, callable $callback, int $start = 0, int|bool $end = false): array
     {
-        $file = $this->normalizeCsvPath($file);
-        $this->logger->info('Looping CSV file ' . $file . ' from ' . $start . ' to ' . $end);
-        $results = array();
+        $filePath = $this->normalizeCsvPath($file);
+        $this->logger->info('Looping CSV file ' . $filePath . ' from ' . $start . ' to ' . ($end !== false ? (string) $end : 'end'));
+        $results = [];
         $index = -1;
-        if (($handle = fopen($file, "r")) !== false) {
-            while (($data = fgetcsv($handle)) !== false) {
+
+        if (!file_exists($filePath)) {
+            $this->logger->warning('CSV file does not exist: ' . $filePath);
+            return $results;
+        }
+
+        if (($handle = fopen($filePath, 'r')) !== false) {
+            while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
                 ++$index;
                 if ($index < $start) {
                     continue;
                 }
-                $result = call_user_func($callback, $data);
-                if ($result) {
+                $result = $callback($data);
+                if ($result !== null && $result !== false) {
                     $results[] = $result;
                 } elseif ($result === null) {
-                    $this->logger->info("Result NULL. Exiting loop.");
+                    $this->logger->info('Result NULL. Exiting loop.');
                     break;
                 }
-                if ($end && $end !== 0 && $end < $index) {
+                if ($end !== false && $end !== 0 && $index >= $end) {
                     break;
                 }
             }
             fclose($handle);
         } else {
-            $this->logger->warning('Handle could not be set up for file ' . $file);
+            $this->logger->warning('Handle could not be set up for file ' . $filePath);
         }
+
         $this->logger->info('Found ' . count($results) . ' results while looping ' . $file);
         return $results;
     }
 
     /**
-     * Find data in CSV file where property == values
+     * Find rows in a CSV file where $property index/key matches any in $values
      *
-     * @param string $file
-     * @param string $property
-     * @param array $values
-     * @return array
+     * @param array<int, string|int> $values
+     * @return array<int, array<int, string>>
      */
-    private function findDataInCsv($file, $property = false, array $values = array())
+    private function findDataInCsv(string $file, int|string $property, array $values = []): array
     {
-        if (!count($values) || $property === false) {
-            $this->logger->warning('Skipping ' . $file, array('property' => $property, 'values' => $values));
-            return array();
+        if ($values === [] || $property === '') {
+            return [];
         }
 
-        return $this->loopCsv($file, function ($data) use ($property, $values) {
-            if (array_key_exists($property, $data)) {
-                if (in_array($data[$property], $values)) {
-                    return $data;
-                }
-            } else {
-                $this->logger->warning('Property ' . $property . ' does not exist in CSV', $data);
+        $valueMap = array_flip(array_map('strval', $values));
+
+        /** @var array<int, array<int, string>> */
+        return $this->loopCsv($file, function (array $data) use ($property, $valueMap): ?array {
+            if (isset($data[$property]) && isset($valueMap[$data[$property]])) {
+                return $data;
             }
-            return false;
+            return null;
         });
     }
 
     /**
-     * Load all available sets in CSV file _sets_
+     * Load all available sets from CSV file
      *
-     * @param integer $from
-     * @param integer $to
-     * @return array|integer
+     * @return array<int, mixed>|int
      */
-    public function loadSets($from = 1, $to = 0)
+    public function loadSets(int|string $from = 1, int|string $to = 0): array|int
     {
-        $self = $this;
-        $sets = $this->loopCsv('sets', function ($set) use ($self, $to) {
-            return $self->loadSet($set, $to === 0);
-        }, $from, $to);
+        $fromInt = (int) $from;
+        $toInt = (int) $to;
+
+        $sets = $this->loopCsv('sets', fn(array $set): ?\App\Entity\Set => $this->loadSet($set, $toInt === 0), $fromInt, $toInt !== 0 ? $toInt : false);
 
         $this->em->flush();
         $this->em->clear();
-        return $to ? array_filter($sets) : array_sum($sets);
+
+        return $toInt !== 0 ? array_values(array_filter($sets)) : count($sets);
     }
 
     /**
-     * Initialize the cached sets data. To trade database space for memory, uncomment the code to load data from the
-     * database
-     *
-     * @return array
+     * @return array<string, array<int, Item>>
      */
-    private function setKnownItems()
+    private function setKnownItems(): array
     {
-        $this->known_numbers = array();
+        $this->known_numbers = [];
         $piece_repo = $this->em->getRepository(Item::class);
         $items = $piece_repo->findAll();
         foreach ($items as $item) {
-            $this->known_numbers[$item->getNo()][] = $item;
+            $this->known_numbers[(string) $item->getNo()][] = $item;
         }
         return $this->known_numbers;
     }
 
-    public function loadItemLocally($set_no)
+    /**
+     * @return Item|array<int, Item>|false
+     */
+    public function loadItemLocally(string $set_no): Item|array|false
     {
         if ($this->known_numbers === null) {
             $this->setKnownItems();
         }
-        if (array_key_exists($set_no, $this->known_numbers)) {
+        if ($this->known_numbers !== null && isset($this->known_numbers[$set_no])) {
             $sets = $this->known_numbers[$set_no];
-            $this->logger->info('got item locally', array('no' => $set_no, 'sets' => $sets));
+            $this->logger->info('Got item locally', ['no' => $set_no, 'count' => count($sets)]);
             if (count($sets) === 1) {
                 return $sets[0];
-            } elseif ($sets) {
-                return $sets;
             }
+            return $sets;
         }
         return false;
     }
 
-    public function loadSet($set_assoc, $flush = true)
+    public function loadSet(mixed $set_no, bool $flush = true): ?Set
     {
-        $this->logger->info('Loading set: ', array('set' => $set_assoc));
-        $set = $this->loadItemLocally($set_assoc[$this::SET_NUM_KEY]);
-        if ($set === false) {
-            $set = $this->getSetFromAssoc($set_assoc);
-            $this->em->persist($set);
-            $this->cached_data[$set->getNo()][] = $set;
-            if ($flush) {
-                $this->em->flush();
-            }
-        } elseif (is_array($set)) {
-            $this->logger->warning('Got array for locally loaded Set. Please clean up soon.');
+        if (!is_array($set_no) || !isset($set_no[self::SET_NUM_KEY])) {
+            return null;
         }
-        return $flush ? $set : 1;
+
+        $setNo = (string) $set_no[self::SET_NUM_KEY];
+        $this->logger->info('Loading set: ' . $setNo);
+
+        $local = $this->loadItemLocally($setNo);
+        if ($local instanceof Set) {
+            return $local;
+        }
+
+        $set = $this->getSetFromAssoc($set_no);
+        $this->em->persist($set);
+        if ($flush) {
+            $this->em->flush();
+        }
+
+        return $set;
     }
 
-    public function getSetFromAssoc($set)
+    /**
+     * @param array<int|string, mixed> $set
+     */
+    public function getSetFromAssoc(array $set): Set
     {
-        $this->logger->info('Loading set assoc: ', array('set' => $set));
         $new_set = new Set();
         $new_set->setSource(Set::SOURCE_REBRICKABLE);
-        $new_set->setNo($set[$this::SET_NUM_KEY]);
-        $new_set->setName($set[$this::PART_NAME_KEY]);
-        $new_set->setObsolete(@$set["is_obsolete"]);
-        $new_set->setYear(new \DateTime($set[$this::SET_YEAR_KEY]));
-        $new_set->setImageUrl(@$set["image_url"]);
+        $new_set->setNo((string) ($set[self::SET_NUM_KEY] ?? ''));
+        $new_set->setName((string) ($set[self::SET_NAME_KEY] ?? ''));
+        $new_set->setObsolete(isset($set['is_obsolete']) ? (bool) $set['is_obsolete'] : null);
+
+        $yearVal = $set[self::SET_YEAR_KEY] ?? 'now';
+        try {
+            $new_set->setYear(new \DateTime($yearVal . '-01-01'));
+        } catch (\Throwable) {
+            $new_set->setYear(new \DateTime());
+        }
+
+        $new_set->setImageUrl(isset($set['image_url']) ? (string) $set['image_url'] : null);
+
         $pieces = $this->getPiecesOfSet($new_set);
         $new_set->setPieces($pieces);
+
         return $new_set;
     }
 
     /**
-     * Pieces will be duplicate, but this is necessary to simplify SQL query while keeping the quantity property.
-     *
-     * @param integer|string $set_no
-     * @param boolean $force_load
-     * @param boolean $flush
-     * @return ArrayCollection
+     * @return Collection<int, Piece>
      */
-    public function getPiecesOfSet(Set &$set, $flush = false)
+    public function getPiecesOfSet(Set &$set, bool $flush = false): Collection
     {
-        $set_no = $set->getNo();
+        $set_no = (string) $set->getNo();
         $this->logger->info('Loading Pieces of Set ' . $set_no);
-        $inventories = $this->findDataInCsv('inventories', $this::INVENTORY_SET_KEY, array($set_no));
-        $inventory_ids = array_map(function ($inventory) {
-            return $inventory[$this::INVENTORY_ID];
-        }, $inventories);
-        $inventory_sets = $this->findDataInCsv('inventory_sets', $this::INVENTORY_SET_SET, array($set_no));
-        // the following relation may not be relevant as seen in https://github.com/hubnedav/PrintABrick/blob/master/src/AppBundle/Repository/Rebrickable/SetRepository.php
-        // $inventory_ids = array_merge($inventory_ids, array_map(function ($inventory) {
-        //     return $inventory[$this::INVENTORY_SET_INVENTORY];
-        // }, $inventory_sets));
+
+        $inventories = $this->findDataInCsv('inventories', self::INVENTORY_SET_KEY, [$set_no]);
+        $inventory_ids = array_column($inventories, self::INVENTORY_ID);
+
         $partCollection = new ArrayCollection();
 
-        // each inventory has the same parts listed over and over
-        // a decision is necessary, which inventory should be used
         foreach ($inventory_ids as $inventory_id) {
-            // inventory parts connects inventories/sets with parts, but each inventory_part could have another color as well as quantity
-            $inventory_parts = $this->findDataInCsv('inventory_parts', $this::INVENTORY_PART_INVENTORY, $inventory_ids);
-            // target for the inventory with the largest number of parts
+            $inventory_parts = $this->findDataInCsv('inventory_parts', self::INVENTORY_PART_INVENTORY, [$inventory_id]);
+
             if (count($inventory_parts) <= $partCollection->count()) {
                 continue;
             }
 
-            $part_ids = array_map(function ($inventory_part) {
-                return $inventory_part[$this::INVENTORY_PART_PART];
-            }, $inventory_parts);
+            $part_ids = array_column($inventory_parts, self::INVENTORY_PART_PART);
+            $parts = $this->findDataInCsv('parts', self::PART_NUM_KEY, $part_ids);
 
-            $parts = $this->findDataInCsv('parts', $this::PART_NUM_KEY, $part_ids);
-
-            $ordered_parts = array();
+            $ordered_parts = [];
             foreach ($parts as $part) {
-                $ordered_parts[$part[$this::PART_NUM_KEY]] = $part;
+                $ordered_parts[(string) $part[self::PART_NUM_KEY]] = $part;
             }
 
-            $pieces = array();
-            foreach ($inventory_parts as $piece) {
-                // piece is from inventory_parts, part is from parts
-                try {
-                    $part = $ordered_parts[$piece[$this::INVENTORY_PART_PART]];
-                } catch (\Exception $e) {
-                    $this->logger->alert('Failed to get ordered part form pieces array with key ' . $this::INVENTORY_PART_PART, array($piece, 'error' => $e));
-                    continue;
-                }
-                $p = $this->getPieceFromAssoc($piece, $part);
+            $pieces = [];
+            foreach ($inventory_parts as $pieceData) {
+                $partNum = (string) $pieceData[self::INVENTORY_PART_PART];
+                $part = $ordered_parts[$partNum] ?? [
+                    self::PART_NUM_KEY => $partNum,
+                    self::PART_NAME_KEY => $partNum,
+                    self::PART_CAT_KEY => 0,
+                ];
+
+                $p = static::getPieceFromAssoc($pieceData, $part);
                 $p->setSet($set);
                 $this->em->persist($p);
+                $pieces[] = $p;
 
                 if ($flush) {
                     $this->em->flush();
@@ -292,70 +309,98 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
             }
             $partCollection = new ArrayCollection($pieces);
         }
-        // return the part collection with the most parts
+
         return $partCollection;
     }
 
-    public function loadPrices($all = false)
+    public function loadPrices(bool $all = false): static
     {
         $set_repo = $this->em->getRepository(Set::class);
-        $unsolved_sets = array();
-        if ($all) {
-            $unsolved_sets = $set_repo->findAll();
-        } else {
-            $unsolved_sets = $set_repo->findBy(array(
-                'price' => null,
-            ));
-        }
+        $unsolved_sets = $all ? $set_repo->findAll() : $set_repo->findBy(['price' => null]);
+
         foreach ($unsolved_sets as $set) {
             try {
-                $set->setPrice($this->loadPriceForSet($set));
-                $this->em->persist($set);
-            } catch (\Exception $e) {
-                $this->logger->warn('error while loading price', array('error' => $e));
+                $price = $this->loadPriceForSet($set);
+                if ($price !== null) {
+                    $set->setPrice($price);
+                    $this->em->persist($set);
+                }
+            } catch (\Throwable $e) {
+                $this->logger->warning('Error while loading price for set', ['error' => $e]);
             }
         }
         $this->em->flush();
+
         return $this;
     }
 
-    public function loadPriceForSet($set_no)
+    public function loadPriceForSet(mixed $set_no): ?float
     {
-        $this->logger->info('Loading Price from Bricksets.nl for Set ' . $set_no);
+        $no = $set_no instanceof Set ? (string) $set_no->getNo() : (string) $set_no;
+        $this->logger->info('Loading Price from Bricksets for Set ' . $no);
+
         try {
-            $price = file_get_contents("https://www.briksets.nl/api/?set=" . $set_no . "&get=rrp");
-        } catch (\Exception $e) {
-            $this->logger->warning('Price could not be loaded', array('error' => $e));
-            $price = null;
+            $url = 'https://www.brickset.com/api/?set=' . $no . '&get=rrp';
+            if ($this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
+                $response = $this->httpClient->request('GET', $url, ['timeout' => 5]);
+                $content = $response->getContent(false);
+            } else {
+                $context = stream_context_create(['http' => ['timeout' => 5]]);
+                $content = @file_get_contents($url, false, $context);
+            }
+
+            if ($content === false || $content === '') {
+                return null;
+            }
+
+            $price = trim($content);
+            if (is_numeric($price)) {
+                return (float) $price;
+            }
+            return null;
+        } catch (\Throwable $e) {
+            $this->logger->warning('Price could not be loaded', ['set' => $no, 'error' => $e->getMessage()]);
+            return null;
         }
-        return $price;
     }
 
-    public static function getPieceFromAssoc($item, $piece)
+    /**
+     * @param array<int|string, mixed> $item Row from inventory_parts.csv
+     * @param array<int|string, mixed> $piece Row from parts.csv
+     */
+    public static function getPieceFromAssoc($item, $piece): Piece
     {
         $new_piece = new Piece();
-        $new_piece->setName($piece[self::PART_NAME_KEY]);
-        $new_piece->setNo($piece[self::PART_NUM_KEY]);
-        $new_piece->setCategory($piece[self::PART_CAT_KEY]);
-        $new_piece->setColor($item[self::INVENTORY_PART_COLOR]);
-        $new_piece->setCount($item[self::INVENTORY_PART_PART]);
+        $new_piece->setName((string) ($piece[self::PART_NAME_KEY] ?? ''));
+        $new_piece->setNo((string) ($piece[self::PART_NUM_KEY] ?? ''));
+        $new_piece->setCategory((int) ($piece[self::PART_CAT_KEY] ?? 0));
+        $new_piece->setColor((int) ($item[self::INVENTORY_PART_COLOR] ?? 0));
+        // Fix: Use INVENTORY_PART_QUANTITY (index 3), not INVENTORY_PART_PART (index 1)
+        $new_piece->setCount((int) ($item[self::INVENTORY_PART_QUANTITY] ?? 1));
+
         return $new_piece;
     }
 
-    public function getColors()
+    /**
+     * @return array<int, array<string|int, string>>
+     */
+    public function getColors(): array
     {
         return $this->getCsvData('colors');
     }
 
-    public function getCategories()
+    /**
+     * @return array<int, array<string|int, string>>
+     */
+    public function getCategories(): array
     {
         return $this->getCsvData('themes');
     }
 
-    public function normalizeCsvPath($file)
+    public function normalizeCsvPath(string $file): string
     {
-        if (substr($file, -4) != ".csv") {
-            $file .= ".csv";
+        if (!str_ends_with($file, '.csv')) {
+            $file .= '.csv';
         }
         return $this->source_path . $file;
     }
