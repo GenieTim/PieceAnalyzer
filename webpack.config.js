@@ -1,4 +1,4 @@
-var Encore = require('@symfony/webpack-encore');
+const Encore = require('@symfony/webpack-encore').default || require('@symfony/webpack-encore');
 
 Encore
         // the project directory where compiled assets will be stored
@@ -22,8 +22,8 @@ Encore
         // uncomment for legacy applications that require $/jQuery as a global variable
         .autoProvidejQuery()
 
-        // show OS notifications when builds finish/fail
-        .enableBuildNotifications()
+        // show OS notifications when builds finish/fail in dev only
+        .enableBuildNotifications(!Encore.isProduction())
         ;
 
 module.exports = Encore.getWebpackConfig();

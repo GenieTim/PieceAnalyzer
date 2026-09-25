@@ -1,10 +1,14 @@
 {
     "devDependencies": {
+        "@babel/core": "^8.0.6",
+        "@babel/preset-env": "^8.0.6",
         "@symfony/webpack-encore": "^7.1.0",
         "bootstrap": "^5.3.8",
         "jquery": "^4.0.0",
-        "node-sass": "^9.0.0",
+        "sass": "^1.105.0",
         "sass-loader": "^17.0.0",
+        "webpack": "^5.111.1",
+        "webpack-cli": "^7.2.3",
         "webpack-notifier": "^1.15.0"
     },
     "license": "GPL-3.0-or-later",
@@ -16,6 +20,6 @@
         "build": "encore production"
     },
     "dependencies": {
-        "popper.js": "^1.16.1"
+        "@popperjs/core": "^2.11.8"
     }
 }

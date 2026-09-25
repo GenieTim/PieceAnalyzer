@@ -114,6 +114,35 @@ php -S 127.0.0.1:8000 -t public/
 
 ---
 
+## Deployment with Docker & Coolify
+
+Piece Analyzer is fully containerized using **FrankenPHP** (running PHP 8.4) with multi-stage asset compilation.
+
+### Quick Start with Docker Compose
+
+```bash
+docker compose up -d
+```
+
+The application will be accessible at `http://localhost`.
+
+### Deploying to Coolify
+
+1. **Add New Resource**: In your Coolify dashboard, select **New Resource** -> **Application** -> **Public/Private Git Repository**.
+2. **Repository Configuration**: Point Coolify to your Piece Analyzer repository and branch.
+3. **Build Pack**: Coolify will automatically detect the `docker-compose.yml` (Docker Compose build pack).
+4. **Environment Variables**: In Coolify's **Environment Variables** tab, define:
+   - `APP_ENV=prod`
+   - `APP_SECRET=<generated-random-32-char-secret>`
+   - `DATABASE_URL` (optional: defaults to persistent SQLite `sqlite:///%kernel.project_dir%/var/data.db`, or use an external/managed MariaDB/MySQL/PostgreSQL connection string).
+   - Any optional API keys (`REBRICKABLE_API_KEY`, `BRICKSET_API_KEY`, etc.).
+5. **Persistent Volumes**: The `docker-compose.yml` includes two named persistent volumes:
+   - `app_data:/app/data`: Persists downloaded Rebrickable CSV data dumps.
+   - `app_var:/app/var`: Persists the SQLite database (if used), cache, and logs across redeployments.
+6. **Deploy**: Click **Deploy**. Coolify builds the Docker image, prepares the database schema automatically via the entrypoint (`AUTO_DB_INIT=1`), and starts FrankenPHP.
+
+---
+
 ## Quality Assurance & Testing
 
 Piece Analyzer includes CI automated testing, static analysis, and code quality workflows:

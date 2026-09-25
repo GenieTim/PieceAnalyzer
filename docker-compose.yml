@@ -1,0 +1,61 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${PORT:-80}:80"
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      APP_SECRET: ${APP_SECRET:-change_me_in_production_32char_secret}
+      # Default: SQLite (persisted in /app/var via the app_var volume).
+      # To use MariaDB/MySQL or PostgreSQL (e.g. from Coolify managed DB or the optional db service below),
+      # set DATABASE_URL in Coolify environment variables:
+      # e.g.: mysql://piece_user:piece_password@db:3306/piece_analyzer?serverVersion=11.4-MariaDB&charset=utf8mb4
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///%kernel.project_dir%/var/data.db}
+      DATA_PATH: ${DATA_PATH:-%kernel.project_dir%/data}
+      BASE_URL: ${BASE_URL:-/}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-^.*$$}
+      # Optional API keys
+      REBRICKABLE_API_KEY: ${REBRICKABLE_API_KEY:-}
+      BRICKSET_API_KEY: ${BRICKSET_API_KEY:-}
+      CONSUMER_KEY: ${CONSUMER_KEY:-null}
+      CONSUMER_SECRET: ${CONSUMER_SECRET:-null}
+      TOKEN_VALUE: ${TOKEN_VALUE:-null}
+      TOKEN_SECRET: ${TOKEN_SECRET:-null}
+      # Automatically creates database and updates schema on container start (1 = enabled, 0 = disabled)
+      AUTO_DB_INIT: ${AUTO_DB_INIT:-1}
+    volumes:
+      - app_data:/app/data
+      - app_var:/app/var
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Optional dedicated MariaDB database service.
+  # Uncomment if you prefer an in-compose database instead of SQLite or a Coolify-managed database.
+  # db:
+  #   image: mariadb:11.4
+  #   restart: unless-stopped
+  #   environment:
+  #     MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-mariadb_root_password}
+  #     MARIADB_DATABASE: ${DB_NAME:-piece_analyzer}
+  #     MARIADB_USER: ${DB_USER:-piece_user}
+  #     MARIADB_PASSWORD: ${DB_PASSWORD:-piece_password}
+  #   volumes:
+  #     - db_data:/var/lib/mysql
+  #   healthcheck:
+  #     test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
+volumes:
+  app_data:
+  app_var:
+  # db_data:

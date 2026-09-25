@@ -59,3 +59,45 @@ jobs:
 
       - name: Run Rector Dry-Run
         run: composer rector
+
+  docker:
+    name: Docker Build & Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: piece-analyzer:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker Compose Startup & Healthcheck
+        run: |
+          PORT=8080 docker compose up -d
+          echo "Waiting for container to become healthy..."
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect --format='{{json .State.Health.Status}}' $(docker compose ps -q app) 2>/dev/null || echo '"starting"')
+            echo "Health status: $STATUS"
+            if [ "$STATUS" = '"healthy"' ]; then
+              echo "App is healthy!"
+              break
+            fi
+            sleep 2
+          done
+
+          # Smoke test HTTP endpoints and static assets
+          curl -f -I http://localhost:8080/
+          curl -f -I http://localhost:8080/build/app.js
+          curl -f -I http://localhost:8080/build/css/global.css
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
