@@ -31,6 +31,7 @@
         "symfony/form": "^7.4|^8.0",
         "symfony/framework-bundle": "^7.4|^8.0",
         "symfony/http-client": "^7.4|^8.0",
+        "symfony/mailer": "7.4.*",
         "symfony/maker-bundle": "^1.50",
         "symfony/monolog-bundle": "^3.10",
         "symfony/process": "^7.4|^8.0",
