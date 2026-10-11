@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+echo "🔍 Running pre-commit quality checks..."
+
+# Check if vendor directory exists
+if [ ! -d "vendor" ]; then
+    echo "⚠️ vendor directory not found. Skipping PHP pre-commit checks."
+    exit 0
+fi
+
+echo "▶ [1/3] PHPStan Static Analysis..."
+./vendor/bin/phpstan analyse --no-progress --memory-limit=512M
+
+echo "▶ [2/3] Rector Dry-Run..."
+./vendor/bin/rector process --dry-run
+
+echo "▶ [3/3] PHPUnit Tests..."
+./vendor/bin/phpunit --no-coverage
+
+echo "✅ All pre-commit quality checks passed successfully!"
