@@ -59,6 +59,9 @@ RUN composer install --no-dev --prefer-dist --no-progress --no-scripts --optimiz
 # Copy the rest of the application
 COPY . ./
 
+# Ensure a default .env exists for build-time cache warming
+RUN test -f .env || cp .env.example .env
+
 # Copy compiled frontend assets from assets_builder stage
 COPY --from=assets_builder /app/public/build ./public/build
 

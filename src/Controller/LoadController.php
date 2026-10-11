@@ -54,7 +54,7 @@ class LoadController extends AbstractController
             $application->run($input, $output);
             $this->addFlash('success', 'Successfully imported Sets.');
             return $this->redirectToRoute('list_all');
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->addFlash('alert', 'Failed to load Sets.');
         }
 
