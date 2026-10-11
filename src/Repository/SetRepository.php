@@ -24,7 +24,7 @@ class SetRepository extends ServiceEntityRepository
     private function getMostValuableQueryBuilder(int $limit = 10): QueryBuilder
     {
         $qb = $this->createQueryBuilder('s');
-        $qb->leftJoin('s.pieces', 'p')->addSelect('p');
+        $qb->leftJoin('s.pieces', 'p');
         $qb->andWhere('s.price IS NOT NULL');
         $qb->andWhere('s.price != 0');
         $qb->groupBy('s.id');

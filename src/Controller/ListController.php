@@ -58,6 +58,6 @@ class ListController extends AbstractController
         if ($item instanceof Set && $item->getSource() === Set::SOURCE_REBRICKABLE) {
             return $this->redirect('https://rebrickable.com/sets/' . $item->getNo());
         }
-        return $this->redirect('http://bricklink.com/v2/catalog/catalogitem.page?S=' . $item->getNo());
+        return $this->redirect('https://www.bricklink.com/v2/catalog/catalogitem.page?S=' . $item->getNo());
     }
 }

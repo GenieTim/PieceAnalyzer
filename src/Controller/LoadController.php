@@ -41,7 +41,7 @@ class LoadController extends AbstractController
     /**
      * Load sets from csv files
      */
-    #[Route(path: '/files', name: 'load_files')]
+    #[Route(path: '/files', name: 'load_files', methods: ['POST'])]
     public function refresh(KernelInterface $kernel): RedirectResponse
     {
         $application = new Application($kernel);
@@ -53,9 +53,9 @@ class LoadController extends AbstractController
             $output = new NullOutput();
             $application->run($input, $output);
             $this->addFlash('success', 'Successfully imported Sets.');
-            return $this->redirectToRoute('load_prices');
+            return $this->redirectToRoute('list_all');
         } catch (\Throwable $e) {
-            $this->addFlash('alert', 'Failed to load Sets. Error message: ' . $e->getMessage());
+            $this->addFlash('alert', 'Failed to load Sets.');
         }
 
         return $this->redirectToRoute('list_all');
@@ -64,7 +64,7 @@ class LoadController extends AbstractController
     /**
      * Load prices of sets with BrickPickerPriceLoaderService
      */
-    #[Route(path: '/price/brickpicker', name: 'load_prices')]
+    #[Route(path: '/price/brickpicker', name: 'load_prices', methods: ['POST'])]
     public function loadPrices(BrickPickerPriceLoaderService $loader): RedirectResponse
     {
         $loader->loadPrices(false);

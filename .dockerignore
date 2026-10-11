@@ -3,8 +3,8 @@
 .DS_Store
 .vscode
 nbproject
-.env.local
-.env.*.local
+.env
+.env.*
 node_modules/
 public/build/
 var/
