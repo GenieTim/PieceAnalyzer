@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command;
 
 use App\Entity\Set;
@@ -17,13 +19,14 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class AppPricesReloadCommand extends Command
 {
     public function __construct(
-        protected BrickPickerPriceLoaderService $loader,
-        protected EntityManagerInterface $em,
-        protected LoggerInterface $logger
+        protected readonly BrickPickerPriceLoaderService $loader,
+        protected readonly EntityManagerInterface $em,
+        protected readonly LoggerInterface $logger
     ) {
         parent::__construct();
     }
 
+    #[\Override]
     protected function configure(): void
     {
         $this
@@ -31,6 +34,7 @@ class AppPricesReloadCommand extends Command
         ;
     }
 
+    #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
@@ -71,7 +75,7 @@ class AppPricesReloadCommand extends Command
                     $this->logger->warning('error while loading price', ['error' => $e]);
                 }
             }
-            if (($i % $batchSize) === 0) {
+            if ($i > 0 && ($i % $batchSize) === 0) {
                 $this->em->flush();
                 $this->em->clear();
             }
@@ -80,3 +84,4 @@ class AppPricesReloadCommand extends Command
         $this->em->flush();
     }
 }
+

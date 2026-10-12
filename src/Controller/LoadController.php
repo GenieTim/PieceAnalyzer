@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Form\SelectLoadFormType;
@@ -42,8 +44,13 @@ class LoadController extends AbstractController
      * Load sets from csv files
      */
     #[Route(path: '/files', name: 'load_files', methods: ['POST'])]
-    public function refresh(KernelInterface $kernel): RedirectResponse
+    public function refresh(Request $request, KernelInterface $kernel): RedirectResponse
     {
+        if (!$this->isCsrfTokenValid('load_files', (string) $request->request->get('_token'))) {
+            $this->addFlash('alert', 'Invalid security token.');
+            return $this->redirectToRoute('list_all');
+        }
+
         $application = new Application($kernel);
 
         try {
@@ -65,9 +72,16 @@ class LoadController extends AbstractController
      * Load prices of sets with BrickPickerPriceLoaderService
      */
     #[Route(path: '/price/brickpicker', name: 'load_prices', methods: ['POST'])]
-    public function loadPrices(BrickPickerPriceLoaderService $loader): RedirectResponse
+    public function loadPrices(Request $request, BrickPickerPriceLoaderService $loader): RedirectResponse
     {
+        if (!$this->isCsrfTokenValid('load_prices', (string) $request->request->get('_token'))) {
+            $this->addFlash('alert', 'Invalid security token.');
+            return $this->redirectToRoute('list_all');
+        }
+
         $loader->loadPrices(false);
+        $this->addFlash('success', 'Successfully reloaded set prices.');
         return $this->redirectToRoute('list_all');
     }
 }
+

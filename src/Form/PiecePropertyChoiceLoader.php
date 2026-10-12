@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Form;
 
 use App\Repository\PieceRepository;
 use Symfony\Component\Form\ChoiceList\ArrayChoiceList;
+use Symfony\Component\Form\ChoiceList\ChoiceListInterface;
 use Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface;
 
 /**
@@ -11,6 +14,8 @@ use Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface;
  */
 abstract class PiecePropertyChoiceLoader implements ChoiceLoaderInterface
 {
+    private ?ChoiceListInterface $choiceList = null;
+
     public function __construct(protected PieceRepository $pieceRepository)
     {
     }
@@ -23,17 +28,23 @@ abstract class PiecePropertyChoiceLoader implements ChoiceLoaderInterface
     /**
      * {@inheritdoc}
      */
-    public function loadChoiceList(?callable $value = null): \Symfony\Component\Form\ChoiceList\ChoiceListInterface
+    #[\Override]
+    public function loadChoiceList(?callable $value = null): ChoiceListInterface
     {
-        return new ArrayChoiceList(
-            $this->getChoices($value)
-        );
+        if (!$this->choiceList instanceof \Symfony\Component\Form\ChoiceList\ChoiceListInterface) {
+            $this->choiceList = new ArrayChoiceList(
+                $this->getChoices($value)
+            );
+        }
+
+        return $this->choiceList;
     }
 
     /**
      * {@inheritdoc}
      * @return array<string|int, mixed>
      */
+    #[\Override]
     public function loadChoicesForValues(array $values, ?callable $value = null): array
     {
         if ($values === []) {
@@ -48,6 +59,7 @@ abstract class PiecePropertyChoiceLoader implements ChoiceLoaderInterface
      * @param array<string|int, mixed> $choices
      * @return array<string|int, string>
      */
+    #[\Override]
     public function loadValuesForChoices(array $choices, ?callable $value = null): array
     {
         if ($choices === []) {

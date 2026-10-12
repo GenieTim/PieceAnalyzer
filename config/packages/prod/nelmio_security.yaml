@@ -1,0 +1,5 @@
+# In production, enforce HTTPS redirect and HSTS
+nelmio_security:
+    forced_ssl:
+        hsts_max_age: 31536000
+        hsts_subdomains: true

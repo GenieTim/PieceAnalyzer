@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Entity\Piece;
@@ -21,6 +23,11 @@ class PieceRepository extends ServiceEntityRepository
      */
     protected function findDistinct(string $what): array
     {
+        $allowed = ['p.color', 'p.category', 'p.type'];
+        if (!in_array($what, $allowed, true)) {
+            throw new \InvalidArgumentException(sprintf('Disallowed property "%s"', $what));
+        }
+
         $result = $this->createQueryBuilder('p')
             ->select('DISTINCT ' . $what)
             ->getQuery()

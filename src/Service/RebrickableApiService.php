@@ -48,6 +48,7 @@ class RebrickableApiService implements LegoLoaderServiceInterface
      *
      * @return array<int, Set>|int
      */
+    #[\Override]
     public function loadSets(int|string $from, int|string $to): array|int
     {
         $fromPage = is_numeric($from) ? (int) $from : 1;
@@ -83,6 +84,7 @@ class RebrickableApiService implements LegoLoaderServiceInterface
     /**
      * Load a single set and its pieces by set number from Rebrickable API.
      */
+    #[\Override]
     public function loadSet(mixed $set_no, bool $flush = true): ?Set
     {
         $setNo = (string) ($set_no instanceof Set ? $set_no->getNo() : $set_no);
@@ -139,6 +141,7 @@ class RebrickableApiService implements LegoLoaderServiceInterface
     /**
      * @return Collection<int, Piece>
      */
+    #[\Override]
     public function getPiecesOfSet(Set &$set, bool $flush = false): Collection
     {
         $setNo = (string) $set->getNo();
@@ -176,6 +179,7 @@ class RebrickableApiService implements LegoLoaderServiceInterface
         return $collection;
     }
 
+    #[\Override]
     public function loadPrices(bool $all = false): static
     {
         return $this;
@@ -186,6 +190,7 @@ class RebrickableApiService implements LegoLoaderServiceInterface
      *
      * @return array<int, array<string, mixed>>
      */
+    #[\Override]
     public function getColors(): array
     {
         $colors = [];
@@ -225,6 +230,7 @@ class RebrickableApiService implements LegoLoaderServiceInterface
      *
      * @return array<int, array<string, mixed>>
      */
+    #[\Override]
     public function getCategories(): array
     {
         return $this->getThemes();
@@ -401,31 +407,29 @@ class RebrickableApiService implements LegoLoaderServiceInterface
     public function loadItemLocally(string $set_no): Item|array|false
     {
         if ($this->known_numbers === null) {
-            $this->setKnownItems();
+            $this->known_numbers = [];
         }
-        if ($this->known_numbers !== null && isset($this->known_numbers[$set_no])) {
+        if (isset($this->known_numbers[$set_no])) {
             $sets = $this->known_numbers[$set_no];
             $this->logger->info('Got item locally', ['no' => $set_no, 'count' => count($sets)]);
             if (count($sets) === 1) {
                 return $sets[0];
             }
-            return $sets;
+            return $sets !== [] ? $sets : false;
         }
-        return false;
-    }
 
-    /**
-     * @return array<string, array<int, Item>>
-     */
-    private function setKnownItems(): array
-    {
-        $this->known_numbers = [];
-        $pieceRepo = $this->em->getRepository(Item::class);
-        $items = $pieceRepo->findAll();
-        foreach ($items as $item) {
-            $this->known_numbers[(string) $item->getNo()][] = $item;
+        /** @var array<int, Item> $items */
+        $items = $this->em->getRepository(Item::class)->findBy(['no' => $set_no]);
+        $this->known_numbers[$set_no] = $items;
+        if ($items !== []) {
+            $this->logger->info('Got item locally', ['no' => $set_no, 'count' => count($items)]);
+            if (count($items) === 1) {
+                return $items[0];
+            }
+            return $items;
         }
-        return $this->known_numbers;
+
+        return false;
     }
 
     /**

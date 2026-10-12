@@ -15,6 +15,7 @@ class IndexControllerTest extends WebTestCase
         $this->assertSelectorExists('nav.navbar');
     }
 
+    #[\Override]
     protected function tearDown(): void
     {
         parent::tearDown();

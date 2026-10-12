@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
@@ -8,6 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'piece_color_idx', columns: ['color'])]
 #[ORM\Index(name: 'piece_count_idx', columns: ['count'])]
 #[ORM\Index(name: 'piece_sort_idx', columns: ['category', 'type'])]
+#[ORM\Index(name: 'piece_set_idx', columns: ['set_id'])]
 #[ORM\Entity(repositoryClass: \App\Repository\PieceRepository::class)]
 class Piece extends Item
 {

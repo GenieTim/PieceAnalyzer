@@ -90,6 +90,8 @@
             "@auto-scripts"
         ],
         "setup-hooks": "git config core.hooksPath .githooks || true",
+        "cs-check": "./vendor/bin/phpcs",
+        "cs-fix": "./vendor/bin/phpcbf",
         "rector": "./vendor/bin/rector process --dry-run",
         "rector-fix": "./vendor/bin/rector process",
         "phpstan": "./vendor/bin/phpstan analyse --memory-limit=512M",

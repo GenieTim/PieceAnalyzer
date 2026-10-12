@@ -99,10 +99,16 @@ class RebrickableDownloaderService
      */
     public function downloadFile(string $filename, bool $force = false): bool
     {
-        $gzFilename = str_ends_with($filename, '.gz') ? $filename : $filename . '.gz';
-        $csvFilename = str_ends_with($filename, '.gz') ? substr($filename, 0, -3) : $filename;
+        $baseName = basename($filename);
+        $gzFilename = str_ends_with($baseName, '.gz') ? $baseName : $baseName . '.gz';
+        $csvFilename = str_ends_with($baseName, '.gz') ? substr($baseName, 0, -3) : $baseName;
 
-        if (!is_dir($this->dataPath) && (!mkdir($this->dataPath, 0777, true) && !is_dir($this->dataPath))) {
+        if (!in_array($gzFilename, self::DUMP_FILES, true)) {
+            $this->logger->warning('Rejected download for unrecognized dump file', ['file' => $filename]);
+            return false;
+        }
+
+        if (!is_dir($this->dataPath) && (!mkdir($this->dataPath, 0755, true) && !is_dir($this->dataPath))) {
             $this->logger->error('Failed to create data directory', ['path' => $this->dataPath]);
             return false;
         }

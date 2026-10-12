@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\Item;
@@ -40,6 +42,7 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface
         $this->tokenValue = (string) ($credentials['token']['value'] ?? '');
         $this->tokenSecret = (string) ($credentials['token']['secret'] ?? '');
     }
+
 
     /**
      * @param array<string, mixed> $body
@@ -114,10 +117,17 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface
         return 'OAuth ' . implode(', ', $headerPairs);
     }
 
+    #[\Override]
     public function loadSets(int|string $from, int|string $to): array|int
     {
+        $fromInt = max(1, (int) $from);
+        $toInt = max($fromInt, (int) $to);
+        if (($toInt - $fromInt) > 500) {
+            throw new \InvalidArgumentException('Range span exceeds maximum allowable limit of 500.');
+        }
+
         $sets = [];
-        $range = range((int) $from, (int) $to);
+        $range = range($fromInt, $toInt);
         foreach ($range as $item) {
             $sets[] = $this->loadSet((string) $item, false);
         }
@@ -126,37 +136,31 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface
     }
 
     /**
-     * @return array<string, array<int, Item>>
-     */
-    private function setKnownItems(): array
-    {
-        $this->known_numbers = [];
-        $piece_repo = $this->em->getRepository(Item::class);
-        $items = $piece_repo->findAll();
-        foreach ($items as $item) {
-            $this->known_numbers[(string) $item->getNo()][] = $item;
-        }
-        return $this->known_numbers;
-    }
-
-    /**
      * @return Item|array<int, Item>|false
      */
     public function loadItemLocally(string $set_no): Item|array|false
     {
         if ($this->known_numbers === null) {
-            $this->setKnownItems();
+            $this->known_numbers = [];
         }
-        if ($this->known_numbers !== null && array_key_exists($set_no, $this->known_numbers)) {
+        if (array_key_exists($set_no, $this->known_numbers)) {
             $sets = $this->known_numbers[$set_no];
             if (count($sets) === 1) {
                 return $sets[0];
             }
-            return $sets;
+            return $sets !== [] ? $sets : false;
         }
-        return false;
+
+        /** @var array<int, Item> $items */
+        $items = $this->em->getRepository(Item::class)->findBy(['no' => $set_no]);
+        $this->known_numbers[$set_no] = $items;
+        if (count($items) === 1) {
+            return $items[0];
+        }
+        return $items !== [] ? $items : false;
     }
 
+    #[\Override]
     public function loadSet(mixed $set_no, bool $flush = true): ?Set
     {
         $setNo = (string) $set_no;
@@ -165,7 +169,7 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface
             return $local;
         }
 
-        $data = $this->loadExtern("items/SET/" . $setNo);
+        $data = $this->loadExtern("items/SET/" . rawurlencode($setNo));
         if (!$data) {
             return null;
         }
@@ -211,6 +215,7 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface
     /**
      * @return Collection<int, Piece>
      */
+    #[\Override]
     public function getPiecesOfSet(Set &$set, bool $flush = false, bool $force_load = false): Collection
     {
         $set_no = $set->getNo();
@@ -218,7 +223,7 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface
             return $set->getPieces();
         }
 
-        $subset = $this->loadExtern('items/SET/' . $set_no . '/subsets');
+        $subset = $this->loadExtern('items/SET/' . rawurlencode((string) $set_no) . '/subsets');
         $pieces = [];
         if (is_object($subset) && isset($subset->entries) && is_iterable($subset->entries)) {
             foreach ($subset->entries as $piece) {
@@ -257,16 +262,19 @@ class BricklinkLegoLoaderService implements LegoLoaderServiceInterface
         return $new_piece;
     }
 
+    #[\Override]
     public function getColors(): mixed
     {
         return $this->loadExtern('colors');
     }
 
+    #[\Override]
     public function getCategories(): mixed
     {
         return $this->loadExtern('categories');
     }
 
+    #[\Override]
     public function loadPrices(bool $all = false): static
     {
         return $this;

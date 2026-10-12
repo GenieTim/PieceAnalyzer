@@ -1,26 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
-use App\Entity\Set;
 use App\Entity\Item;
+use App\Entity\Set;
 use App\Form\FilterFormType;
-use Knp\Component\Pager\Paginator;
+use App\Repository\SetRepository;
 use Knp\Component\Pager\PaginatorInterface;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
 
 class ListController extends AbstractController
 {
-
     /**
      * Legacy route
      *
      * @deprecated v3
      */
-    #[\Symfony\Component\Routing\Attribute\Route(path: '/all', name: 'list_all')]
-    public function listAll(): \Symfony\Component\HttpFoundation\RedirectResponse
+    #[Route(path: '/all', name: 'list_all')]
+    public function listAll(): RedirectResponse
     {
         return $this->redirectToRoute('filter_items');
     }
@@ -28,8 +31,8 @@ class ListController extends AbstractController
     /**
      * Filter all sets
      */
-    #[\Symfony\Component\Routing\Attribute\Route(path: '/filter', name: 'filter_items')]
-    public function filter(Request $request, PaginatorInterface $paginator, \App\Repository\SetRepository $setRepo): \Symfony\Component\HttpFoundation\Response
+    #[Route(path: '/filter', name: 'filter_items')]
+    public function filter(Request $request, PaginatorInterface $paginator, SetRepository $setRepo): Response
     {
         $form = $this->createForm(FilterFormType::class);
         $form->handleRequest($request);
@@ -53,12 +56,14 @@ class ListController extends AbstractController
     /**
      * Redirect to a vendor to see the set/item
      */
-    #[\Symfony\Component\Routing\Attribute\Route(path: '/item/{id}', name: 'list_item', requirements: ['id' => '\d+'])]
-    public function listItem(Item $item): \Symfony\Component\HttpFoundation\RedirectResponse
+    #[Route(path: '/item/{id}', name: 'list_item', requirements: ['id' => '\d+'])]
+    public function listItem(Item $item): RedirectResponse
     {
+        $setNo = rawurlencode((string) $item->getNo());
         if ($item instanceof Set && $item->getSource() === Set::SOURCE_REBRICKABLE) {
-            return $this->redirect('https://rebrickable.com/sets/' . $item->getNo());
+            return $this->redirect('https://rebrickable.com/sets/' . $setNo);
         }
-        return $this->redirect('https://www.bricklink.com/v2/catalog/catalogitem.page?S=' . $item->getNo());
+        return $this->redirect('https://www.bricklink.com/v2/catalog/catalogitem.page?S=' . $setNo);
     }
 }
+

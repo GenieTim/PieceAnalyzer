@@ -293,7 +293,7 @@ class RebrickableApiServiceTest extends TestCase
         $existingSet->setNo('75192-1');
         $existingSet->setName('Cached Falcon');
 
-        $repo->method('findAll')->willReturn([$existingSet]);
+        $repo->method('findBy')->with(['no' => '75192-1'])->willReturn([$existingSet]);
         $em->method('getRepository')->willReturn($repo);
 
         $httpClient = $this->createMock(HttpClientInterface::class);

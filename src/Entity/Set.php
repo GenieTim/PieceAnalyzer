@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
@@ -7,6 +9,9 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Table(name: 'lego_set')]
+#[ORM\Index(name: 'idx_set_price', columns: ['price'])]
+#[ORM\Index(name: 'idx_set_year', columns: ['year'])]
+#[ORM\Index(name: 'idx_set_source', columns: ['source'])]
 #[ORM\Entity(repositoryClass: \App\Repository\SetRepository::class)]
 class Set extends Item
 {
@@ -82,8 +87,7 @@ class Set extends Item
     public function removePiece(Piece $p): static
     {
         if ($this->pieces->removeElement($p) && $p->getSet() === $this) {
-            // unset parent
-
+            $p->setSet(null);
         }
 
         return $this;
@@ -94,9 +98,11 @@ class Set extends Item
         return $this->source;
     }
 
-    public function setSource(int $source): void
+    public function setSource(int $source): static
     {
         $this->source = $source;
+
+        return $this;
     }
 
     public function getObsolete(): ?bool

@@ -12,6 +12,7 @@ class FilterFormTypeTest extends TypeTestCase
 {
     private FilterFormType $filterFormType;
 
+    #[\Override]
     protected function setUp(): void
     {
         $pieceRepo = $this->createMock(PieceRepository::class);
@@ -32,6 +33,7 @@ class FilterFormTypeTest extends TypeTestCase
         parent::setUp();
     }
 
+    #[\Override]
     protected function getExtensions(): array
     {
         return [

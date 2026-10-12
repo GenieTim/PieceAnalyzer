@@ -15,6 +15,7 @@ class RebrickableDownloaderServiceTest extends TestCase
 {
     private string $tempDataDir;
 
+    #[\Override]
     protected function setUp(): void
     {
         $this->tempDataDir = sys_get_temp_dir() . '/rebrickable_test_' . uniqid('', true);
@@ -23,6 +24,7 @@ class RebrickableDownloaderServiceTest extends TestCase
         }
     }
 
+    #[\Override]
     protected function tearDown(): void
     {
         $this->removeDirectory($this->tempDataDir);

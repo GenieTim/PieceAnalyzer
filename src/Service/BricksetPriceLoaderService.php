@@ -52,6 +52,7 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
     /**
      * Fetch price for a set in the default currency (EUR by default).
      */
+    #[\Override]
     public function loadPriceForSet(mixed $set_no): ?float
     {
         $prices = $this->loadPricesForSet($set_no);
@@ -117,6 +118,7 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
     /**
      * Batch reload prices for sets in the database.
      */
+    #[\Override]
     public function loadPrices(bool $all = false): static
     {
         $query = 'SELECT s FROM ' . Set::class . ' s';

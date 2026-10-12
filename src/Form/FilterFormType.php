@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Form;
 
 use App\Repository\PieceRepository;
@@ -11,11 +13,17 @@ use Symfony\Component\Form\FormBuilderInterface;
 
 class FilterFormType extends AbstractType
 {
+    /** @var array<string, int>|null */
+    private ?array $colorChoices = null;
+
+    /** @var array<string, int>|null */
+    private ?array $categoryChoices = null;
 
     public function __construct(protected \App\Repository\PieceRepository $pieceRepository, protected \App\Service\CsvLegoLoaderService $csvLoader)
     {
     }
 
+    #[\Override]
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -30,6 +38,10 @@ class FilterFormType extends AbstractType
      */
     protected function getCsvColorChoices(): array
     {
+        if ($this->colorChoices !== null) {
+            return $this->colorChoices;
+        }
+
         $choices = [];
         $colors = $this->csvLoader->getColors();
         foreach ($colors as $choice) {
@@ -38,7 +50,9 @@ class FilterFormType extends AbstractType
             }
         }
         asort($choices);
-        return ['any' => 0] + $choices;
+        $this->colorChoices = ['any' => 0] + $choices;
+
+        return $this->colorChoices;
     }
 
     /**
@@ -46,6 +60,10 @@ class FilterFormType extends AbstractType
      */
     protected function getCsvCategoryChoices(): array
     {
+        if ($this->categoryChoices !== null) {
+            return $this->categoryChoices;
+        }
+
         $choices = [];
         $categories = $this->csvLoader->getCategories();
         foreach ($categories as $choice) {
@@ -54,6 +72,9 @@ class FilterFormType extends AbstractType
             }
         }
         asort($choices);
-        return ['any' => 0] + $choices;
+        $this->categoryChoices = ['any' => 0] + $choices;
+
+        return $this->categoryChoices;
     }
 }
+

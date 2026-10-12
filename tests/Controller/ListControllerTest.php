@@ -22,6 +22,7 @@ class ListControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
+    #[\Override]
     protected function tearDown(): void
     {
         parent::tearDown();

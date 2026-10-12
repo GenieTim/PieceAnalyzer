@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\Item;
@@ -119,11 +121,12 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
                     continue;
                 }
                 $result = $callback($data);
-                if ($result !== null && $result !== false) {
-                    $results[] = $result;
-                } elseif ($result === null) {
-                    $this->logger->info('Result NULL. Exiting loop.');
+                if ($result === false) {
+                    $this->logger->info('Result false. Exiting loop.');
                     break;
+                }
+                if ($result !== null) {
+                    $results[] = $result;
                 }
                 if ($end !== false && $end !== 0 && $index >= $end) {
                     break;
@@ -166,6 +169,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
      *
      * @return array<int, mixed>|int
      */
+    #[\Override]
     public function loadSets(int|string $from = 1, int|string $to = 0): array|int
     {
         $fromInt = (int) $from;
@@ -180,40 +184,51 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
     }
 
     /**
-     * @return array<string, array<int, Item>>
-     */
-    private function setKnownItems(): array
-    {
-        $this->known_numbers = [];
-        $piece_repo = $this->em->getRepository(Item::class);
-        $items = $piece_repo->findAll();
-        foreach ($items as $item) {
-            $this->known_numbers[(string) $item->getNo()][] = $item;
-        }
-        return $this->known_numbers;
-    }
-
-    /**
      * @return Item|array<int, Item>|false
      */
     public function loadItemLocally(string $set_no): Item|array|false
     {
         if ($this->known_numbers === null) {
-            $this->setKnownItems();
+            $this->known_numbers = [];
         }
-        if ($this->known_numbers !== null && isset($this->known_numbers[$set_no])) {
+        if (isset($this->known_numbers[$set_no])) {
             $sets = $this->known_numbers[$set_no];
             $this->logger->info('Got item locally', ['no' => $set_no, 'count' => count($sets)]);
             if (count($sets) === 1) {
                 return $sets[0];
             }
-            return $sets;
+            return $sets !== [] ? $sets : false;
         }
+
+        /** @var array<int, Item> $items */
+        $items = $this->em->getRepository(Item::class)->findBy(['no' => $set_no]);
+        $this->known_numbers[$set_no] = $items;
+        if ($items !== []) {
+            $this->logger->info('Got item locally', ['no' => $set_no, 'count' => count($items)]);
+            if (count($items) === 1) {
+                return $items[0];
+            }
+            return $items;
+        }
+
         return false;
     }
 
+    #[\Override]
     public function loadSet(mixed $set_no, bool $flush = true): ?Set
     {
+        if (is_string($set_no)) {
+            $local = $this->loadItemLocally($set_no);
+            if ($local instanceof Set) {
+                return $local;
+            }
+            $matchedRows = $this->findDataInCsv('sets', self::SET_NUM_KEY, [$set_no]);
+            if ($matchedRows === []) {
+                return null;
+            }
+            $set_no = $matchedRows[0];
+        }
+
         if (!is_array($set_no) || !isset($set_no[self::SET_NUM_KEY])) {
             return null;
         }
@@ -264,6 +279,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
     /**
      * @return Collection<int, Piece>
      */
+    #[\Override]
     public function getPiecesOfSet(Set &$set, bool $flush = false): Collection
     {
         $set_no = (string) $set->getNo();
@@ -313,6 +329,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         return $partCollection;
     }
 
+    #[\Override]
     public function loadPrices(bool $all = false): static
     {
         $set_repo = $this->em->getRepository(Set::class);
@@ -334,13 +351,14 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         return $this;
     }
 
+    #[\Override]
     public function loadPriceForSet(mixed $set_no): ?float
     {
         $no = $set_no instanceof Set ? (string) $set_no->getNo() : (string) $set_no;
         $this->logger->info('Loading Price from Bricksets for Set ' . $no);
 
         try {
-            $url = 'https://www.brickset.com/api/?set=' . $no . '&get=rrp';
+            $url = 'https://www.brickset.com/api/?set=' . urlencode($no) . '&get=rrp';
             if ($this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
                 $response = $this->httpClient->request('GET', $url, ['timeout' => 5]);
                 $content = $response->getContent(false);
@@ -384,6 +402,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
     /**
      * @return array<int, array<string|int, string>>
      */
+    #[\Override]
     public function getColors(): array
     {
         return $this->getCsvData('colors');
@@ -392,6 +411,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
     /**
      * @return array<int, array<string|int, string>>
      */
+    #[\Override]
     public function getCategories(): array
     {
         return $this->getCsvData('themes');
@@ -399,9 +419,10 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
 
     public function normalizeCsvPath(string $file): string
     {
-        if (!str_ends_with($file, '.csv')) {
-            $file .= '.csv';
+        $clean = basename($file);
+        if (!str_ends_with($clean, '.csv')) {
+            $clean .= '.csv';
         }
-        return $this->source_path . $file;
+        return $this->source_path . $clean;
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * (c) Tim Bernhard
  */
@@ -10,6 +12,7 @@ use App\Entity\Set;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Description of BrickPickerPriceLoaderService
@@ -20,24 +23,37 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
 {
     public function __construct(
         private readonly EntityManagerInterface $em,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ?HttpClientInterface $httpClient = null
     ) {
     }
 
+    #[\Override]
     public function loadPriceForSet(mixed $set_no): ?float
     {
         $set_no = (string) $set_no;
-        $src = "https://www.brickpicker.com/bpms/set.cfm?set=$set_no";
+        $src = "https://www.brickpicker.com/bpms/set.cfm?set=" . urlencode($set_no);
 
         try {
-            $context = stream_context_create([
-                'http' => [
+            if ($this->httpClient instanceof HttpClientInterface) {
+                $response = $this->httpClient->request('GET', $src, [
+                    'headers' => [
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    ],
                     'timeout' => 5,
-                    'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                ],
-            ]);
-            $html = @file_get_contents($src, false, $context);
-            if ($html === false) {
+                ]);
+                $html = $response->getContent(false);
+            } else {
+                $context = stream_context_create([
+                    'http' => [
+                        'timeout' => 5,
+                        'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    ],
+                ]);
+                $html = @file_get_contents($src, false, $context);
+            }
+
+            if ($html === false || $html === '') {
                 return null;
             }
 
@@ -89,6 +105,7 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
         return null;
     }
 
+    #[\Override]
     public function loadPrices(bool $all = false): static
     {
         $query = 'SELECT s FROM ' . Set::class . ' s';
@@ -109,7 +126,7 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
                     $this->logger->warning('error while loading price', ['error' => $e]);
                 }
             }
-            if (($i % $batchSize) === 0) {
+            if ($i > 0 && ($i % $batchSize) === 0) {
                 $this->em->flush();
                 $this->em->clear();
             }
