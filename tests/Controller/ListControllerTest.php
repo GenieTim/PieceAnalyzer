@@ -14,6 +14,14 @@ class ListControllerTest extends WebTestCase
         $this->assertResponseRedirects('/filter');
     }
 
+    public function testFilterPageReturnsSuccessfulResponse(): void
+    {
+        $client = static::createClient();
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/filter');
+
+        $this->assertResponseIsSuccessful();
+    }
+
     protected function tearDown(): void
     {
         parent::tearDown();
