@@ -44,7 +44,7 @@ class CommandTest extends TestCase
         $qb = $this->createMock(QueryBuilder::class);
         $query = $this->getMockBuilder(Query::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['getResult'])
+            ->onlyMethods(['getArrayResult'])
             ->getMock();
 
         $set1 = new Set();
@@ -60,9 +60,15 @@ class CommandTest extends TestCase
         $qb->method('groupBy')->willReturnSelf();
         $qb->method('having')->willReturnSelf();
         $qb->method('getQuery')->willReturn($query);
-        $query->method('getResult')->willReturn([$set1, $set2]);
+        $query->method('getArrayResult')->willReturn([
+            ['name' => 'Duplicate Set', 'no' => '1001-1'],
+        ]);
+
+        $setRepo = $this->createMock(\App\Repository\SetRepository::class);
+        $setRepo->method('findBy')->willReturn([$set1, $set2]);
 
         $em->method('createQueryBuilder')->willReturn($qb);
+        $em->method('getRepository')->with(Set::class)->willReturn($setRepo);
 
         $command = new AppDataRemoveDuplicatesCommand($em);
         $tester = new CommandTester($command);

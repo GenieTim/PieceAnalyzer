@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command;
 
 use App\Entity\Set;
@@ -16,7 +18,7 @@ class AppDataRemoveDuplicatesCommand extends Command
     /** @var array<string, string> */
     protected array $uniqueSets = [];
 
-    public function __construct(protected EntityManagerInterface $em)
+    public function __construct(protected readonly EntityManagerInterface $em)
     {
         parent::__construct();
     }
@@ -25,18 +27,29 @@ class AppDataRemoveDuplicatesCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        $qb = $this->em->createQueryBuilder()
-            ->select('s')
+        // Find (name, no) pairs that have more than 1 occurrence
+        $duplicatePairs = $this->em->createQueryBuilder()
+            ->select('s.name, s.no')
             ->from(Set::class, 's')
             ->groupBy('s.name, s.no')
-            ->having('COUNT(s) > 1');
+            ->having('COUNT(s.id) > 1')
+            ->getQuery()
+            ->getArrayResult();
 
-        /** @var array<int, Set|array<Set>> $rows */
-        $rows = $qb->getQuery()->getResult();
+        $rows = [];
+        foreach ($duplicatePairs as $pair) {
+            $matchingSets = $this->em->getRepository(Set::class)->findBy([
+                'name' => $pair['name'],
+                'no' => $pair['no'],
+            ]);
+            $rows[] = $matchingSets;
+        }
+
         $io->progressStart(count($rows));
         $purgeNo = $this->loopDuplicates($rows, $io);
         $io->progressFinish();
         $this->em->flush();
+        $this->em->clear();
 
         $io->success("Purged $purgeNo duplicates from the database.");
 
@@ -68,9 +81,8 @@ class AppDataRemoveDuplicatesCommand extends Command
                 }
             }
 
-            if (($i % $batchSize) === 0) {
+            if ($i > 0 && ($i % $batchSize) === 0) {
                 $this->em->flush();
-                $this->em->clear();
             }
             ++$i;
             $io?->progressAdvance();
@@ -78,3 +90,4 @@ class AppDataRemoveDuplicatesCommand extends Command
         return $purgeNo;
     }
 }
+
