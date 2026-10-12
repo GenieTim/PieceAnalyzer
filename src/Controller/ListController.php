@@ -40,7 +40,8 @@ class ListController extends AbstractController
         $pagination = $paginator->paginate(
             $setRepo->getMostValuableByQuery($criteria),
             $request->query->getInt('page', 1),
-            50
+            50,
+            ['wrap-queries' => true]
         );
 
         return $this->render('list/list_all.html.twig', [
