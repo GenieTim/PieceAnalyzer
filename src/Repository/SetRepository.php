@@ -27,7 +27,7 @@ class SetRepository extends ServiceEntityRepository
         $qb->leftJoin('s.pieces', 'p');
         $qb->andWhere('s.price IS NOT NULL');
         $qb->andWhere('s.price != 0');
-        $qb->groupBy('s.id');
+        $qb->groupBy('s.id, s.no, s.name, s.price, s.source, s.obsolete, s.year, s.image_url');
         $qb->orderBy('s.price / SUM(p.count)', 'ASC');
         $qb->having('SUM(p.count) != 0');
         if ($limit > 0) {
