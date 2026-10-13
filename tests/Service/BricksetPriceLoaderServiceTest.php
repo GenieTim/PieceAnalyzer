@@ -187,4 +187,111 @@ class BricksetPriceLoaderServiceTest extends TestCase
 
         $this->assertNull($price);
     }
+
+    public function testWebScraping429RetrySuccess(): void
+    {
+        $em = $this->createMock(EntityManagerInterface::class);
+        $httpClient = $this->createMock(HttpClientInterface::class);
+
+        $response429 = $this->createMock(ResponseInterface::class);
+        $response429->method('getStatusCode')->willReturn(429);
+        $response429->method('getHeaders')->willReturn(['retry-after' => ['3']]);
+
+        $html = '<!DOCTYPE html><html><body><div class="featureblock"><dl><dt>RRP</dt><dd>$19.99 / 19.99€</dd></dl></div></body></html>';
+        $response200 = $this->createMock(ResponseInterface::class);
+        $response200->method('getStatusCode')->willReturn(200);
+        $response200->method('getContent')->willReturn($html);
+
+        $calls = 0;
+        $httpClient->method('request')->willReturnCallback(function () use (&$calls, $response429, $response200): \PHPUnit\Framework\MockObject\MockObject {
+            ++$calls;
+            return $calls === 1 ? $response429 : $response200;
+        });
+
+        $slept = [];
+        $service = new BricksetPriceLoaderService($em, new NullLogger(), $httpClient, '', 'EUR');
+        $service->setSleeper(function ($seconds) use (&$slept): void {
+            $slept[] = $seconds;
+        });
+
+        $prices = $service->loadPricesForSet('10047-1');
+
+        $this->assertSame(2, $calls);
+        $this->assertSame([3], $slept);
+        $this->assertSame(['USD' => 19.99, 'EUR' => 19.99], $prices);
+        $this->assertFalse($service->isRateLimited());
+    }
+
+    public function testWebScraping429PersistentEntersCooldown(): void
+    {
+        $em = $this->createMock(EntityManagerInterface::class);
+        $httpClient = $this->createMock(HttpClientInterface::class);
+
+        $response429 = $this->createMock(ResponseInterface::class);
+        $response429->method('getStatusCode')->willReturn(429);
+        $response429->method('getHeaders')->willReturn([]);
+
+        $httpClient->method('request')->willReturn($response429);
+
+        $slept = [];
+        $service = new BricksetPriceLoaderService($em, new NullLogger(), $httpClient, '', 'EUR');
+        $service->setMaxRetries(2);
+        $service->setBaseDelaySeconds(1);
+        $service->setDefaultCooldownSeconds(60);
+        $service->setSleeper(function ($seconds) use (&$slept): void {
+            $slept[] = $seconds;
+        });
+
+        $prices = $service->loadPricesForSet('10047-1');
+
+        $this->assertSame([], $prices);
+        $this->assertSame([1, 2], $slept);
+        $this->assertTrue($service->isRateLimited());
+    }
+
+    public function testApi429RetrySuccess(): void
+    {
+        $em = $this->createMock(EntityManagerInterface::class);
+        $httpClient = $this->createMock(HttpClientInterface::class);
+
+        $response429 = $this->createMock(ResponseInterface::class);
+        $response429->method('getStatusCode')->willReturn(429);
+        $response429->method('getHeaders')->willReturn(['retry-after' => ['2']]);
+
+        $apiData = [
+            'status' => 'success',
+            'matches' => 1,
+            'sets' => [
+                [
+                    'setID' => 1234,
+                    'LEGOCom' => [
+                        'DE' => ['retailPrice' => 99.99],
+                    ],
+                ],
+            ],
+        ];
+        $response200 = $this->createMock(ResponseInterface::class);
+        $response200->method('getStatusCode')->willReturn(200);
+        $response200->method('getContent')->willReturn(json_encode($apiData, JSON_THROW_ON_ERROR));
+
+        $calls = 0;
+        $httpClient->method('request')->willReturnCallback(function () use (&$calls, $response429, $response200): \PHPUnit\Framework\MockObject\MockObject {
+            ++$calls;
+            return $calls === 1 ? $response429 : $response200;
+        });
+
+        $slept = [];
+        $service = new BricksetPriceLoaderService($em, new NullLogger(), $httpClient, 'api-key', 'EUR');
+        $service->setSleeper(function ($seconds) use (&$slept): void {
+            $slept[] = $seconds;
+        });
+
+        $prices = $service->loadPricesForSet('1234-1');
+
+        $this->assertSame(2, $calls);
+        $this->assertSame([2], $slept);
+        $this->assertSame(['EUR' => 99.99], $prices);
+        $this->assertFalse($service->isRateLimited());
+    }
 }
+

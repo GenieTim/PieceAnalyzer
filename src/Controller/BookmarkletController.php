@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 class BookmarkletController extends AbstractController
 {
     #[Route(path: '/bookmarklet', name: 'bookmarklet')]
-    public function index() : Response
+    public function index(): Response
     {
         $user = $this->getUser();
         if (!$user instanceof User) {
@@ -155,8 +155,13 @@ JS;
     }
 
     #[Route(path: '/bookmarklet/regenerate-token', name: 'bookmarklet_regenerate_token', methods: ['POST'])]
-    public function regenerateToken(EntityManagerInterface $em): RedirectResponse
+    public function regenerateToken(Request $request, EntityManagerInterface $em): RedirectResponse
     {
+        if (!$this->isCsrfTokenValid('regenerate_token', (string) $request->request->get('_token'))) {
+            $this->addFlash('alert', 'Invalid security token.');
+            return $this->redirectToRoute('bookmarklet');
+        }
+
         $user = $this->getUser();
         if ($user instanceof User) {
             $user->regenerateApiToken();

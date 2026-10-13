@@ -44,6 +44,7 @@ class AppPricesReloadCommand extends Command
             ->addOption('all', null, InputOption::VALUE_NONE, 'Reload prices for all items.')
             ->addOption('timeout', 't', InputOption::VALUE_REQUIRED, 'Maximum execution time in seconds (0 = unlimited)', '3600')
             ->addOption('limit', null, InputOption::VALUE_REQUIRED, 'Limit the number of sets to update prices for', '0')
+            ->addOption('delay', 'd', InputOption::VALUE_REQUIRED, 'Delay between sets in milliseconds (0 = no delay)', '0')
             ->addOption('async', null, InputOption::VALUE_NONE, 'Dispatch reload jobs to asynchronous messenger queue worker.')
         ;
     }
@@ -54,6 +55,7 @@ class AppPricesReloadCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $timeout = max(0, (int) $input->getOption('timeout'));
         $limit = max(0, (int) $input->getOption('limit'));
+        $delayMs = max(0, (int) $input->getOption('delay'));
         $reloadAll = (bool) $input->getOption('all');
 
         $statusService = $this->statusService ?? new TaskStatusService(
@@ -150,42 +152,87 @@ class AppPricesReloadCommand extends Command
 
             $set = is_array($row) ? $row[0] : $row;
             if ($set instanceof Set) {
-                $price = null;
                 $setNo = (string) $set->getNo();
+                $foundPrices = false;
 
-                try {
-                    $price = $this->loader->loadPriceForSet($setNo);
-                } catch (\Throwable $e) {
-                    $this->logger->warning('Error loading price with primary loader for set ' . $setNo, ['error' => $e->getMessage()]);
+                if ($this->loader instanceof \App\Service\BricksetPriceLoaderService) {
+                    try {
+                        $multiPrices = $this->loader->loadPricesForSet($setNo);
+                        if ($multiPrices !== []) {
+                            foreach ($multiPrices as $currCode => $val) {
+                                $setPrice = new SetPrice(
+                                    set: $set,
+                                    amount: (int) round($val * 100),
+                                    currency: $currCode,
+                                    retailer: Retailer::LEGO_STORE,
+                                    provider: PriceSourceProvider::BRICKSET
+                                );
+                                $setPrice->setUrl('https://brickset.com/sets/' . urlencode($setNo));
+                                $set->addPrice($setPrice);
+                                $this->em->persist($setPrice);
+                            }
+                            $this->em->persist($set);
+                            $foundPrices = true;
+                            ++$updated;
+                        }
+                    } catch (\Throwable $e) {
+                        $this->logger->warning('Error loading multi-currency prices from Brickset for set ' . $setNo, ['error' => $e->getMessage()]);
+                    }
+                } else {
+                    try {
+                        $price = $this->loader->loadPriceForSet($setNo);
+                        if ($price !== null && $price > 0) {
+                            $setPrice = new SetPrice(
+                                set: $set,
+                                amount: (int) round($price * 100),
+                                currency: $set->getPriceCurrency() ?? 'USD',
+                                retailer: Retailer::OTHER,
+                                provider: PriceSourceProvider::BRICKSET
+                            );
+                            $set->addPrice($setPrice);
+                            $this->em->persist($setPrice);
+                            $this->em->persist($set);
+                            $foundPrices = true;
+                            ++$updated;
+                        }
+                    } catch (\Throwable $e) {
+                        $this->logger->warning('Error loading price with primary loader for set ' . $setNo, ['error' => $e->getMessage()]);
+                    }
                 }
 
-                if ($price === null && $this->fallbackLoader instanceof \App\Service\BrickPickerPriceLoaderService) {
+                if (!$foundPrices && $this->fallbackLoader instanceof \App\Service\BrickPickerPriceLoaderService) {
                     try {
                         $price = $this->fallbackLoader->loadPriceForSet($setNo);
+                        if ($price !== null && $price > 0) {
+                            $setPrice = new SetPrice(
+                                set: $set,
+                                amount: (int) round($price * 100),
+                                currency: 'USD',
+                                retailer: Retailer::OTHER,
+                                provider: PriceSourceProvider::BRICKPICKER
+                            );
+                            $setPrice->setUrl('https://www.brickpicker.com/bpms/set.cfm?set=' . urlencode($setNo));
+                            $set->addPrice($setPrice);
+                            $this->em->persist($setPrice);
+                            $this->em->persist($set);
+                            $foundPrices = true;
+                            ++$updated;
+                        }
                     } catch (\Throwable $e) {
                         $this->logger->warning('Error loading price with fallback loader for set ' . $setNo, ['error' => $e->getMessage()]);
                     }
                 }
 
-                if ($price !== null && $price > 0) {
-                    $set->setPrice($price);
-                    $setPrice = new SetPrice(
-                        set: $set,
-                        amount: (int) round($price * 100),
-                        currency: $set->getPriceCurrency() ?? 'USD',
-                        retailer: Retailer::OTHER,
-                        provider: PriceSourceProvider::BRICKPICKER
-                    );
-                    $set->addPrice($setPrice);
-                    $this->em->persist($setPrice);
-                    $this->em->persist($set);
-                    ++$updated;
-                } else {
+                if (!$foundPrices) {
                     ++$failed;
                 }
             }
 
             ++$processed;
+
+            if ($delayMs > 0) {
+                usleep($delayMs * 1000);
+            }
 
             if (($processed % $batchSize) === 0) {
                 $this->em->flush();

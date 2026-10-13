@@ -82,11 +82,62 @@ Transition the piece-analyzer price system from synchronous single-source scrapi
 - [x] Create rogue purge command `app:prices:purge-user` (`AppPricesPurgeUserCommand`) to wipe data and recalculate cached best prices if a contributor goes rogue.
 - [x] Add user account navbar controls (Sign In / Logout / User profile pill).
 
-### Phase 8: Verification & Coolify Deployment
-- [x] Live store verification with Playwright (verified Akamai/Kasada edge blocks confirming bookmarklet requirement).
-- [x] Full PHPUnit test suite passing (65 tests, 290 assertions).
-- [x] Full PHPStan level 5 static analysis passing (0 errors).
-- [x] Deploy to Coolify and verify worker service configuration.
+### Phase 9: Currency, Price History & Security Hardening (Completed)
+- [x] Harden security firewall: Add `login_throttling` (5 attempts) to `main` firewall.
+- [x] Protect administrative scraping and import endpoints (`/files`, `/price/brickpicker`) with `ROLE_ADMIN`.
+- [x] Enforce CSRF protection on token regeneration (`BookmarkletController::regenerateToken`).
+- [x] Prevent open redirects in `PreferenceController` by strictly validating host against `Request::getHost()`.
+- [x] Restrict CORS in `PriceReportController` to known trusted retailer domains.
+- [x] Persist user preferences (`preferredCurrency`, `preferredRetailers`) directly to `User` entity for authenticated users with fallback to session.
+- [x] Secure `app:user:create` CLI password argument with interactive hidden prompt (`askHidden`).
+- [x] Fix nominal cross-currency comparison and verification checks in `Set::getBestPrice()` (strictly require `VERIFIED` status).
+- [x] Reset cached prices on `Set` to null when price collection is emptied (prevent zombie prices).
+- [x] Fix `AppPricesReloadCommand` to record real currencies (EUR/USD/GBP) and correct provider (`BRICKSET` vs `BRICKPICKER`).
+- [x] Add composite and foreign key database indexes on `SetPrice` (`submitted_by_id`, `currency`, `status`).
+- [x] UI: Eliminate `Check price` dropdown clutter for anonymous users (show clean `—` unless logged in).
+- [x] UI: Replace hardcoded `$` in Value Tier badges with dynamic active currency symbol.
+- [x] UI: Replace hardcoded `¢` (cents) in Price/Pc column with proper minor unit symbol (`Rp.` for CHF, `ct` for EUR, `p` for GBP, `¢` for USD).
+- [x] UI: Refine navbar currency switcher and Sign In button layout, resolving visual clashing and adding GBP option.
+- [x] Implement Option B: "Bring Your Own Prices" (BYOP) & Verified Contributors:
+  - Add `isVerifiedContributor` boolean flag on `User` entity (`--verified` option on `app:user:create`).
+  - Auto-assign `VERIFIED` status for submissions from trusted contributors (`isVerifiedContributor` or `ROLE_ADMIN`); assign `UNVERIFIED` for normal contributors.
+  - Correlated DQL ranking query builder in `SetRepository` applying personal unverified prices to the submitter without cartesian product distortion.
+  - Prioritize personal user price in `ListController` and render `👤 Your price` badge in `list_all.html.twig`.
+  - Comprehensive integration test suite covering verified auto-verification, unverified scoping, and personal ranking overrides.
 
 ---
 
+## Phase 10: Price History Visualizations, Moderation Queue & User Management (Completed)
+
+### 1. Interactive Price History UI & Visualizations
+- [x] Dedicated modal and endpoint (`GET /item/{id}/prices`, `ListController::itemPrices`) triggered from the `{{ set.prices|length }}` badge. Supports both JSON and HTML modal partials with graceful fallback.
+- [x] Render price trend charts (responsive inline SVG sparklines and line chart) showing retailer price history over time, data point markers, and dates.
+- [x] Display lowest historical price badge, highest/MSRP baseline, and savings delta percentage and monetary savings.
+
+### 2. Multi-Currency Exchange Rate Engine
+- [x] Automated exchange rate service (`App\Service\ExchangeRateService`) with daily European Central Bank / Frankfurter API rates and built-in offline fallback.
+- [x] MoneyPHP and decimal conversions across EUR, CHF, USD, and GBP.
+- [x] Console inspection command `app:prices:rates` (`AppExchangeRatesCommand`) with `--refresh` flag.
+- [x] Update `SetRepository::getMostValuableByQuery` with real-time normalized currency conversion in SQL for globally accurate sorting across mixed currencies.
+
+### 3. User Profile & Administrative Management
+- [x] User profile settings page (`/profile`, `ProfileController`, `templates/profile/index.html.twig`) to manage password, preferred currency, and favorite retailers in web UI.
+- [x] Administrative user management tools:
+  - `app:user:list` (`AppUserListCommand`): list users with roles, submission counts, and verification status.
+  - `app:user:promote` (`AppUserPromoteCommand`): grant/revoke `ROLE_ADMIN` and toggle verified contributor status.
+  - `app:user:delete` (`AppUserDeleteCommand`): safely remove users with interactive confirmation or `--force`.
+- [ ] Self-service user registration with email verification.
+- [ ] Password reset / forgot password flow (`symfonycasts/reset-password-bundle`).
+
+### 4. Community Price Moderation Queue
+- [x] Web dashboard for administrators (`/admin/prices/moderation`, `PriceModerationController`, `templates/admin/price_moderation.html.twig`) to view and filter unverified bookmarklet reports.
+- [x] One-click approve/reject actions with CSRF protection, set cached price updates, and audit flash logs.
+- [x] Auto-verification rules: auto-verifies matching unverified prices upon approval, plus consensus action (`/admin/prices/moderation/auto-verify-matching`) verifying reports confirmed by 2+ distinct contributors.
+- [x] Navigation bar admin dropdown integration for quick access to moderation queue.
+
+### 5. API Token Security Hardening
+- [x] Token expiration timestamps (`api_token_expires_at`, `isApiTokenExpired()`) with rejection in `PriceReportController`.
+- [x] Self-service token rotation and regeneration workflow in Profile and Bookmarklet settings.
+- [ ] Store SHA-256 hashed API tokens in database rather than plaintext.
+
+---

@@ -19,6 +19,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderServiceInterface
 {
+    use RateLimitRetryTrait;
+
     private readonly string $source_path;
     /** @var array<string, array<int, array<string|int, string>>> */
     private array $cached_data = [];
@@ -375,15 +377,41 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
 
         try {
             $url = 'https://www.brickset.com/api/?set=' . urlencode($no) . '&get=rrp';
+            $content = '';
             if ($this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
-                $response = $this->httpClient->request('GET', $url, ['timeout' => 5]);
+                $response = $this->executeWithRateLimitRetry(
+                    fn (): \Symfony\Contracts\HttpClient\ResponseInterface => $this->httpClient->request('GET', $url, ['timeout' => 5]),
+                    'Brickset legacy API',
+                    $url,
+                    $this->logger
+                );
+
+                if (!$response instanceof \Symfony\Contracts\HttpClient\ResponseInterface || ($response->getStatusCode() !== 200 && $response->getStatusCode() !== 0)) {
+                    if ($response instanceof \Symfony\Contracts\HttpClient\ResponseInterface && $response->getStatusCode() !== 429) {
+                        $this->logger->warning('Brickset legacy API returned non-200 status', [
+                            'status' => $response->getStatusCode(),
+                            'url' => $url,
+                        ]);
+                    }
+                    return null;
+                }
+
                 $content = $response->getContent(false);
             } else {
-                $context = stream_context_create(['http' => ['timeout' => 5]]);
-                $content = @file_get_contents($url, false, $context);
+                $rawContent = $this->fetchUrlWithRateLimitRetry(
+                    $url,
+                    ['timeout' => 5],
+                    'Brickset legacy API',
+                    $this->logger
+                );
+
+                if ($rawContent === null || $rawContent === '') {
+                    return null;
+                }
+                $content = $rawContent;
             }
 
-            if ($content === false || $content === '') {
+            if ($content === '') {
                 return null;
             }
 

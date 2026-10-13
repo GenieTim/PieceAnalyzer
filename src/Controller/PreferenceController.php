@@ -19,7 +19,10 @@ class PreferenceController extends AbstractController
 
         $referer = $request->headers->get('referer');
         if ($referer !== null && $referer !== '') {
-            return $this->redirect($referer);
+            $parsedHost = parse_url($referer, PHP_URL_HOST);
+            if ($parsedHost === null || $parsedHost === $request->getHost()) {
+                return $this->redirect($referer);
+            }
         }
 
         return $this->redirectToRoute('filter_items');

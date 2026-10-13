@@ -123,6 +123,48 @@ class CommandTest extends TestCase
         $this->assertSame(849.99, $set->getPrice());
     }
 
+    public function testAppPricesReloadCommandWithDelay(): void
+    {
+        $loader = $this->createMock(\App\Service\PriceLoaderServiceInterface::class);
+        $fallback = $this->createMock(BrickPickerPriceLoaderService::class);
+        $em = $this->createMock(EntityManagerInterface::class);
+        $logger = new NullLogger();
+
+        $qb = $this->createMock(QueryBuilder::class);
+        $countQuery = $this->getMockBuilder(Query::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getSingleScalarResult'])
+            ->getMock();
+        $query = $this->getMockBuilder(Query::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['toIterable'])
+            ->getMock();
+
+        $set = new Set();
+        $set->setNo('10047-1');
+
+        $qb->method('select')->willReturnSelf();
+        $qb->method('from')->willReturnSelf();
+        $qb->method('andWhere')->willReturnSelf();
+        $qb->method('getQuery')->willReturnOnConsecutiveCalls($countQuery, $query);
+
+        $countQuery->method('getSingleScalarResult')->willReturn(1);
+        $query->method('toIterable')->willReturn(new \ArrayIterator([$set]));
+
+        $loader->method('loadPriceForSet')->with('10047-1')->willReturn(29.99);
+
+        $em->method('createQueryBuilder')->willReturn($qb);
+
+        $command = new AppPricesReloadCommand($loader, $em, $logger, $fallback);
+        $tester = new CommandTester($command);
+
+        $exitCode = $tester->execute(['--delay' => 5]);
+
+        $this->assertSame(Command::SUCCESS, $exitCode);
+        $this->assertStringContainsString('Prices have been reloaded', $tester->getDisplay());
+        $this->assertSame(29.99, $set->getPrice());
+    }
+
     public function testAppPricesReloadCommandAsync(): void
     {
         $loader = $this->createMock(\App\Service\PriceLoaderServiceInterface::class);

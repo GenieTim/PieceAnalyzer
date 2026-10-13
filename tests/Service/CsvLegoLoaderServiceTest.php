@@ -96,4 +96,38 @@ class CsvLegoLoaderServiceTest extends TestCase
         $price = $service->loadPriceForSet('75192-1');
         $this->assertSame(49.99, $price);
     }
+
+    public function testLoadPriceForSetWith429Retry(): void
+    {
+        $em = $this->createMock(EntityManagerInterface::class);
+        $logger = new NullLogger();
+
+        $httpClient = $this->createMock(HttpClientInterface::class);
+        $response429 = $this->createMock(ResponseInterface::class);
+        $response429->method('getStatusCode')->willReturn(429);
+        $response429->method('getHeaders')->willReturn(['retry-after' => ['2']]);
+
+        $response200 = $this->createMock(ResponseInterface::class);
+        $response200->method('getStatusCode')->willReturn(200);
+        $response200->method('getContent')->willReturn('59.99');
+
+        $calls = 0;
+        $httpClient->method('request')->willReturnCallback(function () use (&$calls, $response429, $response200): \PHPUnit\Framework\MockObject\MockObject {
+            ++$calls;
+            return $calls === 1 ? $response429 : $response200;
+        });
+
+        $slept = [];
+        $service = new CsvLegoLoaderService($em, $logger, '/data', $httpClient);
+        $service->setSleeper(function ($seconds) use (&$slept): void {
+            $slept[] = $seconds;
+        });
+
+        $price = $service->loadPriceForSet('75192-1');
+
+        $this->assertSame(2, $calls);
+        $this->assertSame([2], $slept);
+        $this->assertSame(59.99, $price);
+        $this->assertFalse($service->isRateLimited());
+    }
 }

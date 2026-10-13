@@ -41,6 +41,70 @@ class BookmarkletControllerTest extends WebTestCase
         $em->flush();
     }
 
+    public function testRegenerateTokenWithoutCsrfTokenIsRejected(): void
+    {
+        $client = static::createClient();
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $user = new User('csrf_tester_' . $suffix . '@example.com', 'password');
+        $originalToken = $user->getApiToken();
+        $em->persist($user);
+        $em->flush();
+
+        $client->loginUser($user);
+        $client->request(Request::METHOD_POST, '/bookmarklet/regenerate-token');
+
+        $this->assertResponseRedirects('/bookmarklet');
+
+        // Token must NOT have changed
+        $em->clear();
+        $reloaded = $em->getRepository(User::class)->findOneBy(['email' => $user->getEmail()]);
+        $this->assertNotNull($reloaded);
+        $this->assertSame($originalToken, $reloaded->getApiToken());
+
+        // Cleanup
+        $em->remove($reloaded);
+        $em->flush();
+    }
+
+    public function testRegenerateTokenWithValidCsrfTokenSucceeds(): void
+    {
+        $client = static::createClient();
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $user = new User('csrf_success_' . $suffix . '@example.com', 'password');
+        $originalToken = $user->getApiToken();
+        $em->persist($user);
+        $em->flush();
+
+        $client->loginUser($user);
+        $crawler = $client->request(Request::METHOD_GET, '/bookmarklet');
+        $this->assertResponseIsSuccessful();
+
+        // Extract CSRF token from rendered form
+        $csrfToken = $crawler->filter('form[action$="/bookmarklet/regenerate-token"] input[name="_token"]')->attr('value');
+        $this->assertNotEmpty($csrfToken);
+
+        $client->request(Request::METHOD_POST, '/bookmarklet/regenerate-token', [
+            '_token' => $csrfToken,
+        ]);
+
+        $this->assertResponseRedirects('/bookmarklet');
+
+        // Token MUST have changed and be a valid 64-char hex string
+        $em->clear();
+        $reloaded = $em->getRepository(User::class)->findOneBy(['email' => $user->getEmail()]);
+        $this->assertNotNull($reloaded);
+        $this->assertNotSame($originalToken, $reloaded->getApiToken());
+        $this->assertSame(64, strlen((string) $reloaded->getApiToken()));
+
+        // Cleanup
+        $em->remove($reloaded);
+        $em->flush();
+    }
+
     #[\Override]
     protected function tearDown(): void
     {

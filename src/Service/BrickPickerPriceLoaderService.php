@@ -21,6 +21,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
 {
+    use RateLimitRetryTrait;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
@@ -35,25 +37,49 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
         $src = "https://www.brickpicker.com/bpms/set.cfm?set=" . urlencode($set_no);
 
         try {
+            $html = '';
             if ($this->httpClient instanceof HttpClientInterface) {
-                $response = $this->httpClient->request('GET', $src, [
-                    'headers' => [
-                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    ],
-                    'timeout' => 5,
-                ]);
+                $response = $this->executeWithRateLimitRetry(
+                    fn (): \Symfony\Contracts\HttpClient\ResponseInterface => $this->httpClient->request('GET', $src, [
+                        'headers' => [
+                            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        ],
+                        'timeout' => 5,
+                    ]),
+                    'BrickPicker',
+                    $src,
+                    $this->logger
+                );
+
+                if (!$response instanceof \Symfony\Contracts\HttpClient\ResponseInterface || ($response->getStatusCode() !== 200 && $response->getStatusCode() !== 0)) {
+                    if ($response instanceof \Symfony\Contracts\HttpClient\ResponseInterface && $response->getStatusCode() !== 429) {
+                        $this->logger->warning('BrickPicker returned non-200 status', [
+                            'status' => $response->getStatusCode(),
+                            'url' => $src,
+                        ]);
+                    }
+                    return null;
+                }
+
                 $html = $response->getContent(false);
             } else {
-                $context = stream_context_create([
-                    'http' => [
+                $content = $this->fetchUrlWithRateLimitRetry(
+                    $src,
+                    [
                         'timeout' => 5,
                         'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     ],
-                ]);
-                $html = @file_get_contents($src, false, $context);
+                    'BrickPicker',
+                    $this->logger
+                );
+
+                if ($content === null || $content === '') {
+                    return null;
+                }
+                $html = $content;
             }
 
-            if ($html === false || $html === '') {
+            if ($html === '') {
                 return null;
             }
 
@@ -125,6 +151,9 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
                 } catch (\Throwable $e) {
                     $this->logger->warning('error while loading price', ['error' => $e]);
                 }
+            }
+            if ($this->requestDelayMs > 0) {
+                $this->sleep($this->requestDelayMs / 1000);
             }
             if ($i > 0 && ($i % $batchSize) === 0) {
                 $this->em->flush();

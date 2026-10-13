@@ -31,11 +31,13 @@
                         Showing <strong class="text-body-emphasis">{{ pagination.paginationData.firstItemNumber | number_format }}–{{ pagination.paginationData.lastItemNumber | number_format }}</strong>
                         of <strong class="text-body-emphasis">{{ pagination.totalItemCount | number_format }}</strong> sets
                     </div>
+                    {% set activeCurr = app.session.get('pref_currency', 'CHF') %}
+                    {% set currSymbol = activeCurr == 'CHF' ? 'CHF ' : (activeCurr == 'EUR' ? '€' : (activeCurr == 'GBP' ? '£' : '$')) %}
                     <div class="d-none d-md-flex align-items-center gap-2 small">
                         <span class="text-body-secondary me-1">Value Tier:</span>
-                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-medium">≤ $0.075 Great</span>
-                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-medium">$0.076–$0.105 Fair</span>
-                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-medium">&gt; $0.105 Premium</span>
+                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-medium">≤ {{ currSymbol }}0.075 Great</span>
+                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-medium">{{ currSymbol }}0.076–{{ currSymbol }}0.105 Fair</span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-medium">&gt; {{ currSymbol }}0.105 Premium</span>
                     </div>
                 </div>
             {% endif %}
@@ -67,6 +69,9 @@
                     <tbody>
                         {% for set in pagination %}
                             {% set pieceCount = set.pieceCount %}
+                            {% set userPrice = app.user ? set.getUserPrice(app.user) : null %}
+                            {% set effectivePrice = userPrice ? userPrice.decimalPrice : set.price %}
+                            {% set effectiveCurr = userPrice ? userPrice.currency : (set.priceCurrency|default('CHF')) %}
                             <tr>
                                 <td class="ps-3 d-none d-md-table-cell">
                                     <span class="badge text-bg-light border font-monospace text-dark px-2 py-1">{{ set.no }}</span>
@@ -90,35 +95,54 @@
                                     {{ pieceCount | number_format }}
                                 </td>
                                 <td class="px-2 px-sm-3 text-end font-monospace fw-medium text-nowrap">
-                                    {% if set.price is not null and set.price > 0 %}
-                                        {% set curr = set.priceCurrency|default('CHF') %}
-                                        <span title="{{ curr }} {{ set.price | number_format(2, '.', ',') }}">
-                                            {% if curr == 'CHF' %}CHF {% elseif curr == 'EUR' %}€{% elseif curr == 'USD' %}${% else %}{{ curr }} {% endif %}{{ set.price | number_format(2, '.', ',') }}
+                                    {% if effectivePrice is not null and effectivePrice > 0 %}
+                                        <span title="{{ effectiveCurr }} {{ effectivePrice | number_format(2, '.', ',') }}">
+                                            {% if effectiveCurr == 'CHF' %}CHF {% elseif effectiveCurr == 'EUR' %}€{% elseif effectiveCurr == 'USD' %}${% elseif effectiveCurr == 'GBP' %}£{% else %}{{ effectiveCurr }} {% endif %}{{ effectivePrice | number_format(2, '.', ',') }}
                                         </span>
-                                        {% if set.prices|length > 1 %}
-                                            <span class="badge bg-light text-secondary border ms-1" title="{{ set.prices|length }} price sources recorded" style="font-size: 0.7rem;">
-                                                {{ set.prices|length }}
-                                            </span>
+                                        {% if userPrice %}
+                                            <a href="{{ path('item_prices', {'id': set.id}) }}"
+                                               class="badge text-bg-primary ms-1 text-decoration-none price-history-trigger"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#priceHistoryModal"
+                                               data-url="{{ path('item_prices', {'id': set.id, 'modal': 1}) }}"
+                                               title="Using your submitted price — click for full history"
+                                               style="font-size: 0.65rem; cursor: pointer;">
+                                                👤 Your price
+                                            </a>
+                                        {% elseif set.prices|length > 0 %}
+                                            <a href="{{ path('item_prices', {'id': set.id}) }}"
+                                               class="badge bg-light text-secondary border ms-1 text-decoration-none price-history-trigger"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#priceHistoryModal"
+                                               data-url="{{ path('item_prices', {'id': set.id, 'modal': 1}) }}"
+                                               title="{{ set.prices|length }} price source(s) recorded — click for price history & trends"
+                                               style="font-size: 0.7rem; cursor: pointer;">
+                                                📊 {{ set.prices|length }}
+                                            </a>
                                         {% endif %}
                                     {% else %}
-                                        <div class="dropdown d-inline-block">
-                                            <button class="btn btn-sm btn-outline-secondary py-0 px-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.75rem;">
-                                                Check price
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                <li><h6 class="dropdown-header">Check Swiss / EU Retailers</h6></li>
-                                                <li><a class="dropdown-item small" href="https://www.galaxus.ch/en/search?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Galaxus.ch ↗</a></li>
-                                                <li><a class="dropdown-item small" href="https://www.brack.ch/search?query=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Brack.ch ↗</a></li>
-                                                <li><a class="dropdown-item small" href="https://www.toppreise.ch/s?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Toppreise.ch ↗</a></li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li><a class="dropdown-item small" href="https://www.amazon.de/s?k=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Amazon.de ↗</a></li>
-                                            </ul>
-                                        </div>
+                                        {% if is_granted('ROLE_USER') %}
+                                            <div class="dropdown d-inline-block">
+                                                <button class="btn btn-sm btn-outline-secondary py-0 px-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.75rem;">
+                                                    Check price
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                    <li><h6 class="dropdown-header">Check Swiss / EU Retailers</h6></li>
+                                                    <li><a class="dropdown-item small" href="https://www.galaxus.ch/en/search?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Galaxus.ch ↗</a></li>
+                                                    <li><a class="dropdown-item small" href="https://www.brack.ch/search?query=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Brack.ch ↗</a></li>
+                                                    <li><a class="dropdown-item small" href="https://www.toppreise.ch/s?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Toppreise.ch ↗</a></li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><a class="dropdown-item small" href="https://www.amazon.de/s?k=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Amazon.de ↗</a></li>
+                                                </ul>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-body-tertiary font-monospace">—</span>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                                 <td class="pe-3 ps-2 text-end text-nowrap">
-                                    {% if set.price is not null and set.price > 0 and pieceCount > 0 %}
-                                        {% set unitPrice = set.price / pieceCount %}
+                                    {% if effectivePrice is not null and effectivePrice > 0 and pieceCount > 0 %}
+                                        {% set unitPrice = effectivePrice / pieceCount %}
                                         {% set tierClass = unitPrice <= 0.075
                                             ? 'bg-success-subtle text-success-emphasis border-success-subtle'
                                             : (unitPrice <= 0.105
@@ -128,8 +152,9 @@
                                         <span class="badge {{ tierClass }} border font-monospace px-2 py-1">
                                             {{ unitPrice | number_format(3, '.', ',') }}
                                         </span>
+                                        {% set minorUnit = effectiveCurr == 'CHF' ? 'Rp.' : (effectiveCurr == 'EUR' ? 'ct' : (effectiveCurr == 'GBP' ? 'p' : '¢')) %}
                                         <span class="text-body-secondary small font-monospace ms-1 d-none d-lg-inline">
-                                            ({{ (unitPrice * 100) | number_format(1) }}¢)
+                                            ({{ (unitPrice * 100) | number_format(1) }}{{ minorUnit }})
                                         </span>
                                     {% else %}
                                         <span class="text-body-tertiary font-monospace">—</span>
@@ -170,4 +195,54 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Interactive Price History Modal -->
+    <div class="modal fade" id="priceHistoryModal" tabindex="-1" aria-labelledby="priceHistoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow border-0">
+                <div class="modal-header bg-light border-bottom">
+                    <h5 class="modal-title fw-bold" id="priceHistoryModalLabel">📊 Price History & Trends</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" id="priceHistoryModalBody">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading price data...</span>
+                        </div>
+                        <p class="text-secondary small mt-2 mb-0">Loading price history...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var modalEl = document.getElementById('priceHistoryModal');
+            if (!modalEl) return;
+
+            var modalBody = document.getElementById('priceHistoryModalBody');
+            modalEl.addEventListener('show.bs.modal', function (event) {
+                var trigger = event.relatedTarget;
+                if (!trigger) return;
+
+                var url = trigger.getAttribute('data-url');
+                if (!url) return;
+
+                modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-secondary small mt-2 mb-0">Loading price data...</p></div>';
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('Failed to load price history');
+                        return res.text();
+                    })
+                    .then(function (html) {
+                        modalBody.innerHTML = html;
+                    })
+                    .catch(function (err) {
+                        modalBody.innerHTML = '<div class="alert alert-danger mb-0">Error loading price history: ' + err.message + '</div>';
+                    });
+            });
+        });
+    </script>
 {% endblock %}

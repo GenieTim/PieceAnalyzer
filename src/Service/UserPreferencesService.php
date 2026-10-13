@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\User;
 use App\Enum\Retailer;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 class UserPreferencesService
 {
@@ -13,23 +17,46 @@ class UserPreferencesService
     public const SESSION_RETAILERS = 'pref_retailers';
     public const DEFAULT_CURRENCY = 'CHF';
 
-    public function __construct(private readonly RequestStack $requestStack)
-    {
+    public function __construct(
+        private readonly RequestStack $requestStack,
+        private readonly Security $security,
+        private readonly EntityManagerInterface $em
+    ) {
     }
 
     public function getCurrency(): string
     {
-        $session = $this->requestStack->getSession();
-        $currency = (string) $session->get(self::SESSION_CURRENCY, self::DEFAULT_CURRENCY);
-        return in_array($currency, ['CHF', 'EUR', 'USD', 'GBP'], true) ? $currency : self::DEFAULT_CURRENCY;
+        $user = $this->security->getUser();
+        if ($user instanceof User && $user->getPreferredCurrency() !== '') {
+            return $user->getPreferredCurrency();
+        }
+
+        $session = $this->getSession();
+        if ($session instanceof \Symfony\Component\HttpFoundation\Session\SessionInterface) {
+            $currency = (string) $session->get(self::SESSION_CURRENCY, self::DEFAULT_CURRENCY);
+            return in_array($currency, ['CHF', 'EUR', 'USD', 'GBP'], true) ? $currency : self::DEFAULT_CURRENCY;
+        }
+
+        return self::DEFAULT_CURRENCY;
     }
 
     public function setCurrency(string $currency): void
     {
         $curr = strtoupper(trim($currency));
-        if (in_array($curr, ['CHF', 'EUR', 'USD', 'GBP'], true)) {
-            $session = $this->requestStack->getSession();
+        if (!in_array($curr, ['CHF', 'EUR', 'USD', 'GBP'], true)) {
+            return;
+        }
+
+        $session = $this->getSession();
+        if ($session instanceof \Symfony\Component\HttpFoundation\Session\SessionInterface) {
             $session->set(self::SESSION_CURRENCY, $curr);
+        }
+
+        $user = $this->security->getUser();
+        if ($user instanceof User) {
+            $user->setPreferredCurrency($curr);
+            $this->em->persist($user);
+            $this->em->flush();
         }
     }
 
@@ -38,9 +65,18 @@ class UserPreferencesService
      */
     public function getPreferredRetailers(): array
     {
-        $session = $this->requestStack->getSession();
-        $retailers = $session->get(self::SESSION_RETAILERS, []);
-        return is_array($retailers) ? $retailers : [];
+        $user = $this->security->getUser();
+        if ($user instanceof User) {
+            return $user->getPreferredRetailers();
+        }
+
+        $session = $this->getSession();
+        if ($session instanceof \Symfony\Component\HttpFoundation\Session\SessionInterface) {
+            $retailers = $session->get(self::SESSION_RETAILERS, []);
+            return is_array($retailers) ? $retailers : [];
+        }
+
+        return [];
     }
 
     /**
@@ -48,7 +84,25 @@ class UserPreferencesService
      */
     public function setPreferredRetailers(array $retailers): void
     {
-        $session = $this->requestStack->getSession();
-        $session->set(self::SESSION_RETAILERS, $retailers);
+        $session = $this->getSession();
+        if ($session instanceof \Symfony\Component\HttpFoundation\Session\SessionInterface) {
+            $session->set(self::SESSION_RETAILERS, $retailers);
+        }
+
+        $user = $this->security->getUser();
+        if ($user instanceof User) {
+            $user->setPreferredRetailers($retailers);
+            $this->em->persist($user);
+            $this->em->flush();
+        }
+    }
+
+    private function getSession(): ?SessionInterface
+    {
+        try {
+            return $this->requestStack->getSession();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

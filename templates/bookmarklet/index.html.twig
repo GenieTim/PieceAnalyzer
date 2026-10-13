@@ -49,6 +49,7 @@
                                     <code class="user-select-all font-monospace fw-semibold">{{ apiToken }}</code>
                                 </div>
                                 <form method="post" action="{{ path('bookmarklet_regenerate_token') }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('regenerate_token') }}">
                                     <button type="submit" class="btn btn-outline-secondary btn-sm" onclick="return confirm('Regenerate your token? You will need to re-drag the bookmarklet to your toolbar.');">
                                         Regenerate Token
                                     </button>

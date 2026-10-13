@@ -32,8 +32,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'api_token', type: Types::STRING, length: 64, unique: true)]
     private string $apiToken = '';
 
+    #[ORM\Column(name: 'api_token_expires_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $apiTokenExpiresAt = null;
+
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
+
+    #[ORM\Column(name: 'preferred_currency', type: Types::STRING, length: 3, options: ['default' => 'CHF'])]
+    private string $preferredCurrency = 'CHF';
+
+    /**
+     * @var list<string>
+     */
+    #[ORM\Column(name: 'preferred_retailers', type: Types::JSON, options: ['default' => '[]'])]
+    private array $preferredRetailers = [];
+
+    #[ORM\Column(name: 'is_verified_contributor', type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $isVerifiedContributor = false;
 
     public function __construct(string $email = '', #[ORM\Column(type: Types::STRING)]
     private string $password = '')
@@ -111,9 +126,31 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function regenerateApiToken(): static
+    public function getApiTokenExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->apiTokenExpiresAt;
+    }
+
+    public function setApiTokenExpiresAt(?\DateTimeImmutable $expiresAt): static
+    {
+        $this->apiTokenExpiresAt = $expiresAt;
+
+        return $this;
+    }
+
+    public function isApiTokenExpired(): bool
+    {
+        if (!$this->apiTokenExpiresAt instanceof \DateTimeImmutable) {
+            return false;
+        }
+
+        return $this->apiTokenExpiresAt < new \DateTimeImmutable();
+    }
+
+    public function regenerateApiToken(?\DateTimeImmutable $expiresAt = null): static
     {
         $this->apiToken = bin2hex(random_bytes(32));
+        $this->apiTokenExpiresAt = $expiresAt;
 
         return $this;
     }
@@ -121,6 +158,56 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getPreferredCurrency(): string
+    {
+        return $this->preferredCurrency;
+    }
+
+    public function setPreferredCurrency(string $currency): static
+    {
+        $curr = strtoupper(trim($currency));
+        if (in_array($curr, ['CHF', 'EUR', 'USD', 'GBP'], true)) {
+            $this->preferredCurrency = $curr;
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getPreferredRetailers(): array
+    {
+        return $this->preferredRetailers;
+    }
+
+    /**
+     * @param list<string> $retailers
+     */
+    public function setPreferredRetailers(array $retailers): static
+    {
+        $this->preferredRetailers = array_values(array_unique($retailers));
+
+        return $this;
+    }
+
+    public function isVerifiedContributor(): bool
+    {
+        return $this->isVerifiedContributor;
+    }
+
+    public function setIsVerifiedContributor(bool $verified): static
+    {
+        $this->isVerifiedContributor = $verified;
+
+        return $this;
+    }
+
+    public function isTrusted(): bool
+    {
+        return $this->isVerifiedContributor || in_array('ROLE_ADMIN', $this->getRoles(), true);
     }
 
     #[\Override]

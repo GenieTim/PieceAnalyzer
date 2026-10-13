@@ -24,33 +24,40 @@
 
 						<div class="collapse navbar-collapse" id="mainNavbar">
 							{{ knp_menu_render('main', {'currentClass': 'active', 'template': 'other/b4_knp_menu.html.twig'}) }}
-							<div class="navbar-nav ms-lg-3 d-flex align-items-center gap-2">
+							<div class="navbar-nav ms-lg-3 d-flex align-items-center gap-1">
 								<div class="nav-item dropdown">
 									{% set currentCurr = app.session.get('pref_currency', 'CHF') %}
-									<a class="nav-link dropdown-toggle badge text-bg-secondary px-2 py-1 text-decoration-none" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-										{{ currentCurr }}
+									<a class="nav-link dropdown-toggle text-light py-1 px-2 d-inline-flex align-items-center gap-1" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Preferred currency">
+										<span class="font-monospace fw-semibold">{{ currentCurr }}</span>
 									</a>
 									<ul class="dropdown-menu dropdown-menu-end shadow-sm">
 										<li><h6 class="dropdown-header">Preferred Currency</h6></li>
 										<li><a class="dropdown-item small{% if currentCurr == 'CHF' %} active{% endif %}" href="{{ path('set_currency_preference', {'currency': 'CHF'}) }}">CHF (Swiss Franc)</a></li>
 										<li><a class="dropdown-item small{% if currentCurr == 'EUR' %} active{% endif %}" href="{{ path('set_currency_preference', {'currency': 'EUR'}) }}">EUR (€ Euro)</a></li>
 										<li><a class="dropdown-item small{% if currentCurr == 'USD' %} active{% endif %}" href="{{ path('set_currency_preference', {'currency': 'USD'}) }}">USD ($ Dollar)</a></li>
+										<li><a class="dropdown-item small{% if currentCurr == 'GBP' %} active{% endif %}" href="{{ path('set_currency_preference', {'currency': 'GBP'}) }}">GBP (£ British Pound)</a></li>
 									</ul>
 								</div>
 
 								{% if app.user %}
 									<div class="nav-item dropdown">
-										<a class="nav-link dropdown-toggle small text-light text-decoration-none" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+										<a class="nav-link dropdown-toggle small text-light text-decoration-none py-1 px-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 											👤 {{ app.user.userIdentifier }}
 										</a>
 										<ul class="dropdown-menu dropdown-menu-end shadow-sm">
+											<li><a class="dropdown-item small" href="{{ path('app_profile') }}">⚙️ Profile & Preferences</a></li>
 											<li><a class="dropdown-item small" href="{{ path('bookmarklet') }}">📌 Price Bookmarklet</a></li>
+											{% if is_granted('ROLE_ADMIN') %}
+												<li><hr class="dropdown-divider"></li>
+												<li><h6 class="dropdown-header">Administration</h6></li>
+												<li><a class="dropdown-item small" href="{{ path('admin_price_moderation') }}">🛡️ Price Moderation</a></li>
+											{% endif %}
 											<li><hr class="dropdown-divider"></li>
 											<li><a class="dropdown-item small text-danger" href="{{ path('app_logout') }}">Sign Out</a></li>
 										</ul>
 									</div>
 								{% else %}
-									<a href="{{ path('app_login') }}" class="btn btn-outline-light btn-sm py-1 px-2">Sign In</a>
+									<a href="{{ path('app_login') }}" class="btn btn-sm btn-outline-light ms-1 px-3 py-1">Sign In</a>
 								{% endif %}
 							</div>
 						</div>

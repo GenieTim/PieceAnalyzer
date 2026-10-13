@@ -1,0 +1,173 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}User Profile & Preferences{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-9">
+            <h2 class="fw-bold mb-4">⚙️ User Profile & Preferences</h2>
+
+            <div class="row g-4">
+                <!-- Account Info & Contributor Status -->
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-transparent py-3">
+                            <h5 class="card-title fw-bold mb-0">👤 Account Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush small">
+                                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary">Email</span>
+                                    <span class="fw-semibold font-monospace">{{ user.userIdentifier }}</span>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary">Contributor Status</span>
+                                    {% if user.isVerifiedContributor %}
+                                        <span class="badge text-bg-success">✓ Verified Contributor</span>
+                                    {% else %}
+                                        <span class="badge text-bg-secondary">Standard Contributor</span>
+                                    {% endif %}
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary">Submitted Prices</span>
+                                    <span class="badge text-bg-primary font-monospace">{{ submissionCount }}</span>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary">Member Since</span>
+                                    <span class="text-body-secondary font-monospace">{{ user.createdAt|date('Y-m-d') }}</span>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary">Roles</span>
+                                    <div class="d-flex gap-1">
+                                        {% for r in user.roles %}
+                                            <span class="badge text-bg-light border text-dark">{{ r }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Token & Bookmarklet Credentials -->
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-transparent py-3">
+                            <h5 class="card-title fw-bold mb-0">🔑 Contributor API Token</h5>
+                        </div>
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div>
+                                <p class="text-secondary small mb-3">
+                                    Your personal token authorizes price submissions via the Bookmarklet and API. Keep this confidential.
+                                </p>
+                                <div class="mb-3">
+                                    <label for="apiTokenInput" class="form-label small text-secondary">Active Token</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="password" id="apiTokenInput" class="form-control font-monospace" value="{{ user.apiToken }}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="var el=document.getElementById('apiTokenInput'); el.type = el.type === 'password' ? 'text' : 'password';">
+                                            👁️
+                                        </button>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('apiTokenInput').value); alert('Copied token to clipboard!');">
+                                            📋
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                                <a href="{{ path('bookmarklet') }}" class="btn btn-outline-primary btn-sm">
+                                    📌 Bookmarklet Setup
+                                </a>
+                                <form action="{{ path('app_profile_regenerate_token') }}" method="post" onsubmit="return confirm('Regenerating will invalidate your current bookmarklet. Proceed?');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('regenerate_token') }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        Regenerate
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Currency and Retailer Preferences -->
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-transparent py-3">
+                            <h5 class="card-title fw-bold mb-0">💱 Preferences</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ path('app_profile_preferences') }}" method="post">
+                                <input type="hidden" name="_token" value="{{ csrf_token('update_preferences') }}">
+
+                                <div class="mb-3">
+                                    <label for="currencySelect" class="form-label small fw-semibold">Preferred Currency</label>
+                                    <select id="currencySelect" name="currency" class="form-select form-select-sm">
+                                        <option value="CHF" {% if currentCurrency == 'CHF' %}selected{% endif %}>CHF — Swiss Franc</option>
+                                        <option value="EUR" {% if currentCurrency == 'EUR' %}selected{% endif %}>EUR — Euro (€)</option>
+                                        <option value="USD" {% if currentCurrency == 'USD' %}selected{% endif %}>USD — US Dollar ($)</option>
+                                        <option value="GBP" {% if currentCurrency == 'GBP' %}selected{% endif %}>GBP — British Pound (£)</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold d-block">Favorite Retailers</label>
+                                    <div class="row g-2">
+                                        {% for r in allRetailers %}
+                                            <div class="col-6">
+                                                <div class="form-check small">
+                                                    <input class="form-check-input" type="checkbox" name="retailers[]" value="{{ r.value }}" id="ret_{{ r.value }}" {% if r.value in preferredRetailers %}checked{% endif %}>
+                                                    <label class="form-check-label" for="ret_{{ r.value }}">
+                                                        {{ r.label }}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm">
+                                    Save Preferences
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password Management -->
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-transparent py-3">
+                            <h5 class="card-title fw-bold mb-0">🔒 Change Password</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ path('app_profile_password') }}" method="post">
+                                <input type="hidden" name="_token" value="{{ csrf_token('change_password') }}">
+
+                                <div class="mb-2">
+                                    <label for="currPass" class="form-label small text-secondary mb-1">Current Password</label>
+                                    <input type="password" id="currPass" name="current_password" class="form-control form-control-sm" required autocomplete="current-password">
+                                </div>
+
+                                <div class="mb-2">
+                                    <label for="newPass" class="form-label small text-secondary mb-1">New Password (min 8 chars)</label>
+                                    <input type="password" id="newPass" name="new_password" class="form-control form-control-sm" minlength="8" required autocomplete="new-password">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="confirmPass" class="form-label small text-secondary mb-1">Confirm New Password</label>
+                                    <input type="password" id="confirmPass" name="confirm_password" class="form-control form-control-sm" minlength="8" required autocomplete="new-password">
+                                </div>
+
+                                <button type="submit" class="btn btn-outline-dark btn-sm px-3 shadow-sm">
+                                    Update Password
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -45,8 +45,6 @@ class PriceReportController extends AbstractController
             $token = '';
             if (is_string($authHeader) && preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
                 $token = $matches[1];
-            } elseif ($request->query->has('token')) {
-                $token = (string) $request->query->get('token');
             } elseif (isset($data['token']) && is_string($data['token'])) {
                 $token = $data['token'];
             }
@@ -58,6 +56,10 @@ class PriceReportController extends AbstractController
 
         if (!$user instanceof User) {
             return $this->jsonError('Unauthorized. Valid contributor API token or login session required.', 401, $request);
+        }
+
+        if ($user->isApiTokenExpired()) {
+            return $this->jsonError('Contributor API token has expired. Please regenerate your token in your profile.', 401, $request);
         }
 
         // 2. Enforce Rate Limiting (10 requests / minute per user)
@@ -131,7 +133,10 @@ class PriceReportController extends AbstractController
             retailer: $retailer,
             provider: $provider
         );
-        $setPrice->setStatus(PriceVerificationStatus::UNVERIFIED);
+        $status = $user->isTrusted()
+            ? PriceVerificationStatus::VERIFIED
+            : PriceVerificationStatus::UNVERIFIED;
+        $setPrice->setStatus($status);
         $setPrice->setUrl($url);
         $setPrice->setSubmittedBy($user);
 
@@ -174,12 +179,29 @@ class PriceReportController extends AbstractController
         return $response;
     }
 
+    private const array ALLOWED_ORIGIN_PATTERNS = [
+        '#^https?://([a-z0-9-]+\.)*(galaxus\.(ch|de|at)|digitec\.ch|brack\.ch|amazon\.(de|com|co\.uk|fr|it|es)|toppreise\.ch|lego\.com)$#i',
+        '#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#i',
+    ];
+
     private function addCorsHeaders(Response $response, Request $request): void
     {
-        $origin = $request->headers->get('Origin', '*');
-        $response->headers->set('Access-Control-Allow-Origin', $origin !== '' ? $origin : '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-        $response->headers->set('Access-Control-Max-Age', '3600');
+        $origin = $request->headers->get('Origin') ?? '';
+        $allowed = false;
+        if ($origin !== '') {
+            foreach (self::ALLOWED_ORIGIN_PATTERNS as $pattern) {
+                if (preg_match($pattern, $origin)) {
+                    $allowed = true;
+                    break;
+                }
+            }
+        }
+
+        if ($allowed) {
+            $response->headers->set('Access-Control-Allow-Origin', $origin);
+            $response->headers->set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+            $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+            $response->headers->set('Access-Control-Max-Age', '3600');
+        }
     }
 }

@@ -18,6 +18,8 @@ use Throwable;
  */
 class BricksetPriceLoaderService implements PriceLoaderServiceInterface
 {
+    use RateLimitRetryTrait;
+
     public const API_BASE_URL = 'https://brickset.com/api/v3.asmx/getSets';
     public const WEB_BASE_URL = 'https://brickset.com/sets/';
 
@@ -148,6 +150,10 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
                 }
             }
 
+            if ($this->requestDelayMs > 0) {
+                $this->sleep($this->requestDelayMs / 1000);
+            }
+
             if (($i % $batchSize) === 0) {
                 $this->em->flush();
                 $this->em->clear();
@@ -172,19 +178,26 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
         }
 
         try {
-            $response = $this->httpClient->request('GET', self::API_BASE_URL, [
-                'query' => [
-                    'apiKey' => $this->apiKey,
-                    'userHash' => '',
-                    'params' => json_encode(['setNumber' => $setNo]),
-                ],
-                'timeout' => 10,
-            ]);
+            $response = $this->executeWithRateLimitRetry(
+                fn (): \Symfony\Contracts\HttpClient\ResponseInterface => $this->httpClient->request('GET', self::API_BASE_URL, [
+                    'query' => [
+                        'apiKey' => $this->apiKey,
+                        'userHash' => '',
+                        'params' => json_encode(['setNumber' => $setNo]),
+                    ],
+                    'timeout' => 10,
+                ]),
+                'Brickset API',
+                self::API_BASE_URL,
+                $this->logger
+            );
 
-            if ($response->getStatusCode() !== 200) {
-                $this->logger->warning('Brickset API returned non-200 status', [
-                    'status' => $response->getStatusCode(),
-                ]);
+            if (!$response instanceof \Symfony\Contracts\HttpClient\ResponseInterface || ($response->getStatusCode() !== 200 && $response->getStatusCode() !== 0)) {
+                if ($response instanceof \Symfony\Contracts\HttpClient\ResponseInterface && $response->getStatusCode() !== 429) {
+                    $this->logger->warning('Brickset API returned non-200 status', [
+                        'status' => $response->getStatusCode(),
+                    ]);
+                }
                 return [];
             }
 
@@ -243,32 +256,42 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
         try {
             $html = '';
             if ($this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
-                $response = $this->httpClient->request('GET', $url, [
-                    'headers' => [
-                        'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    ],
-                    'timeout' => 10,
-                ]);
+                $response = $this->executeWithRateLimitRetry(
+                    fn (): \Symfony\Contracts\HttpClient\ResponseInterface => $this->httpClient->request('GET', $url, [
+                        'headers' => [
+                            'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        ],
+                        'timeout' => 10,
+                    ]),
+                    'Brickset web page',
+                    $url,
+                    $this->logger
+                );
 
-                if ($response->getStatusCode() !== 200) {
-                    $this->logger->warning('Brickset web page returned non-200 status', [
-                        'status' => $response->getStatusCode(),
-                        'url' => $url,
-                    ]);
+                if (!$response instanceof \Symfony\Contracts\HttpClient\ResponseInterface || ($response->getStatusCode() !== 200 && $response->getStatusCode() !== 0)) {
+                    if ($response instanceof \Symfony\Contracts\HttpClient\ResponseInterface && $response->getStatusCode() !== 429) {
+                        $this->logger->warning('Brickset web page returned non-200 status', [
+                            'status' => $response->getStatusCode(),
+                            'url' => $url,
+                        ]);
+                    }
                     return [];
                 }
 
                 $html = $response->getContent(false);
             } else {
-                $context = stream_context_create([
-                    'http' => [
+                $content = $this->fetchUrlWithRateLimitRetry(
+                    $url,
+                    [
                         'timeout' => 10,
                         'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     ],
-                ]);
-                $content = @file_get_contents($url, false, $context);
-                if ($content === false) {
+                    'Brickset web page',
+                    $this->logger
+                );
+
+                if ($content === null || $content === '') {
                     return [];
                 }
                 $html = $content;

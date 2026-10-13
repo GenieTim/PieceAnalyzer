@@ -1,0 +1,173 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Community Price Moderation Queue{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">🛡️ Price Moderation Queue</h2>
+            <p class="text-secondary small mb-0">Review, verify, or reject community and bookmarklet price submissions.</p>
+        </div>
+        <div>
+            <form action="{{ path('admin_price_auto_verify_matching') }}" method="post" class="d-inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('auto_verify_matching') }}">
+                <button type="submit" class="btn btn-outline-primary btn-sm shadow-sm">
+                    ⚡ Auto-Verify Consensus Prices
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filter Bar & Statistics -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <ul class="nav nav-pills small">
+                    <li class="nav-item">
+                        <a class="nav-link py-1 px-3 {% if currentStatus == 'unverified' %}active{% endif %}" href="{{ path('admin_price_moderation', {'status': 'unverified', 'retailer': currentRetailer}) }}">
+                            Pending Unverified
+                            <span class="badge {% if currentStatus == 'unverified' %}bg-white text-primary{% else %}bg-warning text-dark{% endif %} ms-1">{{ unverifiedCount }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-1 px-3 {% if currentStatus == 'verified' %}active{% endif %}" href="{{ path('admin_price_moderation', {'status': 'verified', 'retailer': currentRetailer}) }}">
+                            Verified
+                            <span class="badge {% if currentStatus == 'verified' %}bg-white text-primary{% else %}bg-success{% endif %} ms-1">{{ verifiedCount }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-1 px-3 {% if currentStatus == 'rejected' %}active{% endif %}" href="{{ path('admin_price_moderation', {'status': 'rejected', 'retailer': currentRetailer}) }}">
+                            Rejected
+                            <span class="badge {% if currentStatus == 'rejected' %}bg-white text-primary{% else %}bg-danger{% endif %} ms-1">{{ rejectedCount }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-1 px-3 {% if currentStatus == 'all' %}active{% endif %}" href="{{ path('admin_price_moderation', {'status': 'all', 'retailer': currentRetailer}) }}">
+                            All Reports
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Retailer Filter -->
+                <div class="d-flex align-items-center gap-2">
+                    <label for="retailerFilterSelect" class="form-label small mb-0 text-secondary">Retailer:</label>
+                    <select id="retailerFilterSelect" class="form-select form-select-sm" onchange="location = this.value;" style="min-width: 140px;">
+                        <option value="{{ path('admin_price_moderation', {'status': currentStatus}) }}">All Retailers</option>
+                        {% for r in retailers %}
+                            <option value="{{ path('admin_price_moderation', {'status': currentStatus, 'retailer': r.value}) }}" {% if currentRetailer == r.value %}selected{% endif %}>
+                                {{ r.label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Moderation List Table -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            {% if prices is empty %}
+                <div class="text-center py-5">
+                    <span class="fs-1 d-block mb-2">🎉</span>
+                    <h5 class="fw-bold">No submissions found</h5>
+                    <p class="text-secondary small mb-0">There are no price reports matching your current filter selection.</p>
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small">
+                            <tr>
+                                <th class="ps-3 py-3">Set</th>
+                                <th class="py-3">Retailer</th>
+                                <th class="py-3 text-end">Price</th>
+                                <th class="py-3">Contributor</th>
+                                <th class="py-3">Provider</th>
+                                <th class="py-3">Recorded</th>
+                                <th class="py-3 text-center">Status</th>
+                                <th class="py-3 text-end pe-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in prices %}
+                                {% set set = p.set %}
+                                <tr>
+                                    <td class="ps-3">
+                                        {% if set %}
+                                            <a href="{{ path('item_prices', {'id': set.id}) }}" class="fw-semibold text-decoration-none">
+                                                <span class="badge text-bg-light border font-monospace me-1">{{ set.no }}</span>
+                                                {{ set.name }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-secondary">Unknown set</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if p.url %}
+                                            <a href="{{ p.url }}" target="_blank" rel="noopener" class="text-decoration-none fw-semibold">
+                                                {{ p.retailer.label }} ↗
+                                            </a>
+                                        {% else %}
+                                            <span class="fw-semibold">{{ p.retailer.label }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end font-monospace fw-bold">
+                                        {{ p.formattedPrice }}
+                                    </td>
+                                    <td>
+                                        {% if p.submittedBy %}
+                                            <span class="small text-body-secondary font-monospace">
+                                                {{ p.submittedBy.userIdentifier }}
+                                                {% if p.submittedBy.isVerifiedContributor %}
+                                                    <span class="badge text-bg-success" style="font-size: 0.65rem;">Trusted</span>
+                                                {% endif %}
+                                            </span>
+                                        {% else %}
+                                            <span class="small text-body-tertiary">System</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small text-secondary">
+                                        {{ p.provider.label }}
+                                    </td>
+                                    <td class="small text-secondary font-monospace">
+                                        {{ p.recordedAt|date('Y-m-d H:i') }}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if p.status.value == 'verified' %}
+                                            <span class="badge text-bg-success">Verified</span>
+                                        {% elseif p.status.value == 'unverified' %}
+                                            <span class="badge text-bg-warning text-dark">Unverified</span>
+                                        {% else %}
+                                            <span class="badge text-bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-3 text-nowrap">
+                                        {% if p.status.value != 'verified' %}
+                                            <form action="{{ path('admin_price_approve', {'id': p.id}) }}" method="post" class="d-inline">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('approve_price_' ~ p.id) }}">
+                                                <button type="submit" class="btn btn-sm btn-success py-1 px-2" title="Approve price">
+                                                    ✓ Approve
+                                                </button>
+                                            </form>
+                                        {% endif %}
+
+                                        {% if p.status.value != 'rejected' %}
+                                            <form action="{{ path('admin_price_reject', {'id': p.id}) }}" method="post" class="d-inline ms-1">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('reject_price_' ~ p.id) }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Reject price">
+                                                    ✕ Reject
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

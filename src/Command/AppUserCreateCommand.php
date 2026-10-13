@@ -30,8 +30,9 @@ class AppUserCreateCommand extends Command
     {
         $this
             ->addArgument('email', InputArgument::REQUIRED, 'User email address')
-            ->addArgument('password', InputArgument::REQUIRED, 'User password')
+            ->addArgument('password', InputArgument::OPTIONAL, 'User password (prompted interactively if omitted)')
             ->addOption('admin', null, InputOption::VALUE_NONE, 'Grant ROLE_ADMIN')
+            ->addOption('verified', null, InputOption::VALUE_NONE, 'Mark as verified contributor (reports are auto-verified)')
         ;
     }
 
@@ -40,8 +41,16 @@ class AppUserCreateCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         $email = strtolower(trim((string) $input->getArgument('email')));
-        $password = (string) $input->getArgument('password');
+        $password = (string) ($input->getArgument('password') ?? '');
+        if ($password === '') {
+            $password = (string) $io->askHidden('User password:');
+            if ($password === '') {
+                $io->error('Password cannot be empty.');
+                return Command::FAILURE;
+            }
+        }
         $isAdmin = (bool) $input->getOption('admin');
+        $isVerified = (bool) $input->getOption('verified');
 
         $existing = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($existing instanceof User) {
@@ -53,14 +62,18 @@ class AppUserCreateCommand extends Command
         $user->setPassword($this->hasher->hashPassword($user, $password));
         if ($isAdmin) {
             $user->setRoles(['ROLE_USER', 'ROLE_ADMIN']);
+            $user->setIsVerifiedContributor(true);
+        }
+        if ($isVerified) {
+            $user->setIsVerifiedContributor(true);
         }
 
         $this->em->persist($user);
         $this->em->flush();
 
         $io->success(sprintf('User "%s" created successfully!', $email));
-        $io->table(['Email', 'Roles', 'API Token'], [
-            [$user->getEmail(), implode(', ', $user->getRoles()), $user->getApiToken()],
+        $io->table(['Email', 'Roles', 'Verified Contributor', 'API Token'], [
+            [$user->getEmail(), implode(', ', $user->getRoles()), $user->isVerifiedContributor() ? 'Yes' : 'No', $user->getApiToken()],
         ]);
 
         return Command::SUCCESS;

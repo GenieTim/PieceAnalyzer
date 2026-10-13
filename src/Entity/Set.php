@@ -129,11 +129,42 @@ class Set extends Item
      */
     public function getBestPrice(?string $currency = null): ?SetPrice
     {
+        $bestVerified = null;
+        $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
+
+        foreach ($this->prices as $p) {
+            if ($p->getStatus() !== PriceVerificationStatus::VERIFIED) {
+                continue;
+            }
+            if ($targetCurrency !== null && $p->getCurrency() !== $targetCurrency) {
+                continue;
+            }
+
+            if ($bestVerified === null || $p->getDecimalPrice() < $bestVerified->getDecimalPrice()) {
+                $bestVerified = $p;
+            }
+        }
+
+        return $bestVerified;
+    }
+
+    /**
+     * Get the price submitted by a specific user (if any, excluding rejected).
+     */
+    public function getUserPrice(?User $user, ?string $currency = null): ?SetPrice
+    {
+        if (!$user instanceof User || $user->getId() === null) {
+            return null;
+        }
+
         $best = null;
         $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
 
         foreach ($this->prices as $p) {
             if ($p->getStatus() === PriceVerificationStatus::REJECTED) {
+                continue;
+            }
+            if ($p->getSubmittedBy()?->getId() !== $user->getId()) {
                 continue;
             }
             if ($targetCurrency !== null && $p->getCurrency() !== $targetCurrency) {
@@ -148,6 +179,112 @@ class Set extends Item
     }
 
     /**
+     * Get the lowest historical price recorded across all non-rejected prices.
+     */
+    public function getHistoricalLowestPrice(?string $currency = null): ?SetPrice
+    {
+        $lowest = null;
+        $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
+
+        foreach ($this->prices as $p) {
+            if ($p->getStatus() === PriceVerificationStatus::REJECTED) {
+                continue;
+            }
+            if ($targetCurrency !== null && $p->getCurrency() !== $targetCurrency) {
+                continue;
+            }
+            if ($lowest === null || $p->getDecimalPrice() < $lowest->getDecimalPrice()) {
+                $lowest = $p;
+            }
+        }
+
+        return $lowest;
+    }
+
+    /**
+     * Get the highest historical price recorded across all non-rejected prices (e.g. MSRP baseline).
+     */
+    public function getHistoricalHighestPrice(?string $currency = null): ?SetPrice
+    {
+        $highest = null;
+        $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
+
+        foreach ($this->prices as $p) {
+            if ($p->getStatus() === PriceVerificationStatus::REJECTED) {
+                continue;
+            }
+            if ($targetCurrency !== null && $p->getCurrency() !== $targetCurrency) {
+                continue;
+            }
+            if ($highest === null || $p->getDecimalPrice() > $highest->getDecimalPrice()) {
+                $highest = $p;
+            }
+        }
+
+        return $highest;
+    }
+
+    /**
+     * Calculate savings delta between highest recorded price (MSRP/peak) and lowest recorded price.
+     *
+     * @return array{highest: SetPrice, lowest: SetPrice, savingsAmount: float, savingsPercent: float}|null
+     */
+    public function getHistoricalSavingsDelta(?string $currency = null): ?array
+    {
+        $lowest = $this->getHistoricalLowestPrice($currency);
+        $highest = $this->getHistoricalHighestPrice($currency);
+
+        if (!$lowest instanceof SetPrice || !$highest instanceof SetPrice) {
+            return null;
+        }
+
+        if ($lowest->getId() !== null && $highest->getId() !== null && $lowest->getId() === $highest->getId()) {
+            return null;
+        }
+
+        $highVal = $highest->getDecimalPrice();
+        $lowVal = $lowest->getDecimalPrice();
+
+        if ($highVal <= 0.0 || $lowVal >= $highVal) {
+            return null;
+        }
+
+        $savingsAmount = round($highVal - $lowVal, 2);
+        $savingsPercent = round(($savingsAmount / $highVal) * 100, 1);
+
+        return [
+            'highest' => $highest,
+            'lowest' => $lowest,
+            'savingsAmount' => $savingsAmount,
+            'savingsPercent' => $savingsPercent,
+        ];
+    }
+
+    /**
+     * @return list<SetPrice>
+     */
+    public function getPricesSortedByDate(string $direction = 'DESC'): array
+    {
+        $prices = $this->prices->toArray();
+        $asc = strtoupper($direction) === 'ASC';
+
+        usort($prices, static function (SetPrice $a, SetPrice $b) use ($asc): int {
+            $cmp = $a->getRecordedAt() <=> $b->getRecordedAt();
+            return $asc ? $cmp : -$cmp;
+        });
+
+        return array_values($prices);
+    }
+
+    /**
+     * Get the effective price for a user: their own price if they submitted one, otherwise best available price.
+     */
+    public function getEffectivePriceFor(?User $user = null, ?string $currency = null): ?SetPrice
+    {
+        return $this->getUserPrice($user, $currency) ?? $this->getBestPrice($currency);
+    }
+
+    /**
      * Automatically update cached best price and currency from existing SetPrice collection.
      */
     public function updateCachedBestPrice(): static
@@ -156,6 +293,9 @@ class Set extends Item
         if ($best instanceof \App\Entity\SetPrice) {
             $this->price = $best->getDecimalPrice();
             $this->priceCurrency = $best->getCurrency();
+        } elseif ($this->prices->isEmpty()) {
+            $this->price = null;
+            $this->priceCurrency = null;
         }
 
         return $this;
