@@ -19,9 +19,11 @@ class BuilderTest extends TestCase
             ->method('setChildrenAttribute')
             ->with('class', 'navbar-nav ms-auto mb-2 mb-lg-0');
 
-        $rootItem->expects($this->exactly(3))
+        $rootItem->expects($this->exactly(4))
             ->method('addChild')
-            ->willReturnCallback(fn(string $name, array $options): \PHPUnit\Framework\MockObject\MockObject => $rootItem);
+            ->willReturnCallback(
+                fn(string $name, array $options): \PHPUnit\Framework\MockObject\MockObject => $rootItem
+            );
 
         $builder = new Builder($factory);
         $menu = $builder->createMainMenu([]);

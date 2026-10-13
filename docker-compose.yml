@@ -37,6 +37,33 @@ services:
       retries: 3
       start_period: 30s
 
+  # Background Queue Worker (Symfony Messenger)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=256M"]
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      APP_SECRET: ${APP_SECRET:-change_me_in_production_32char_secret}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///%kernel.project_dir%/var/data.db}
+      DATA_PATH: ${DATA_PATH:-%kernel.project_dir%/data}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      REBRICKABLE_API_KEY: ${REBRICKABLE_API_KEY:-}
+      BRICKSET_API_KEY: ${BRICKSET_API_KEY:-}
+      CONSUMER_KEY: ${CONSUMER_KEY:-null}
+      CONSUMER_SECRET: ${CONSUMER_SECRET:-null}
+      TOKEN_VALUE: ${TOKEN_VALUE:-null}
+      TOKEN_SECRET: ${TOKEN_SECRET:-null}
+      AUTO_DB_INIT: 0
+    volumes:
+      - app_data:/app/data
+      - app_var:/app/var
+    depends_on:
+      app:
+        condition: service_started
+
   # Optional dedicated MariaDB database service.
   # Uncomment if you prefer an in-compose database instead of SQLite or a Coolify-managed database.
   # db:

@@ -37,6 +37,7 @@ class SetRepositoryTest extends TestCase
         $qb->method('andWhere')->willReturnSelf();
         $qb->method('groupBy')->willReturnSelf();
         $qb->method('orderBy')->willReturnSelf();
+        $qb->method('addOrderBy')->willReturnSelf();
         $qb->method('having')->willReturnSelf();
         $qb->method('setMaxResults')->willReturnSelf();
         $qb->method('setParameter')->willReturnSelf();

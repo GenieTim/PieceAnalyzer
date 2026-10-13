@@ -28,11 +28,11 @@ class SetRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder('s');
         $qb->addSelect('SUM(p.count) AS HIDDEN pieceCount');
         $qb->addSelect('(s.price / SUM(p.count)) AS HIDDEN pricePerPiece');
+        $qb->addSelect('(CASE WHEN s.price IS NULL OR s.price = 0 THEN 1 ELSE 0 END) AS HIDDEN isUnpriced');
         $qb->leftJoin('s.pieces', 'p');
-        $qb->andWhere('s.price IS NOT NULL');
-        $qb->andWhere('s.price != 0');
-        $qb->groupBy('s.id, s.no, s.name, s.price, s.source, s.obsolete, s.year, s.image_url');
-        $qb->orderBy('pricePerPiece', 'ASC');
+        $qb->groupBy('s.id, s.no, s.name, s.price, s.priceCurrency, s.source, s.obsolete, s.year, s.image_url');
+        $qb->orderBy('isUnpriced', 'ASC');
+        $qb->addOrderBy('pricePerPiece', 'ASC');
         $qb->having('SUM(p.count) != 0');
         if ($limit > 0) {
             $qb->setMaxResults($limit);

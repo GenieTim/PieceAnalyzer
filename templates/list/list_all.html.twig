@@ -90,10 +90,34 @@
                                     {{ pieceCount | number_format }}
                                 </td>
                                 <td class="px-2 px-sm-3 text-end font-monospace fw-medium text-nowrap">
-                                    ${{ set.price | number_format(2, '.', ',') }}
+                                    {% if set.price is not null and set.price > 0 %}
+                                        {% set curr = set.priceCurrency|default('CHF') %}
+                                        <span title="{{ curr }} {{ set.price | number_format(2, '.', ',') }}">
+                                            {% if curr == 'CHF' %}CHF {% elseif curr == 'EUR' %}€{% elseif curr == 'USD' %}${% else %}{{ curr }} {% endif %}{{ set.price | number_format(2, '.', ',') }}
+                                        </span>
+                                        {% if set.prices|length > 1 %}
+                                            <span class="badge bg-light text-secondary border ms-1" title="{{ set.prices|length }} price sources recorded" style="font-size: 0.7rem;">
+                                                {{ set.prices|length }}
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <div class="dropdown d-inline-block">
+                                            <button class="btn btn-sm btn-outline-secondary py-0 px-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.75rem;">
+                                                Check price
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                <li><h6 class="dropdown-header">Check Swiss / EU Retailers</h6></li>
+                                                <li><a class="dropdown-item small" href="https://www.galaxus.ch/en/search?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Galaxus.ch ↗</a></li>
+                                                <li><a class="dropdown-item small" href="https://www.brack.ch/search?query=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Brack.ch ↗</a></li>
+                                                <li><a class="dropdown-item small" href="https://www.toppreise.ch/s?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Toppreise.ch ↗</a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><a class="dropdown-item small" href="https://www.amazon.de/s?k=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Amazon.de ↗</a></li>
+                                            </ul>
+                                        </div>
+                                    {% endif %}
                                 </td>
                                 <td class="pe-3 ps-2 text-end text-nowrap">
-                                    {% if pieceCount > 0 %}
+                                    {% if set.price is not null and set.price > 0 and pieceCount > 0 %}
                                         {% set unitPrice = set.price / pieceCount %}
                                         {% set tierClass = unitPrice <= 0.075
                                             ? 'bg-success-subtle text-success-emphasis border-success-subtle'
@@ -102,13 +126,13 @@
                                                 : 'bg-warning-subtle text-warning-emphasis border-warning-subtle')
                                         %}
                                         <span class="badge {{ tierClass }} border font-monospace px-2 py-1">
-                                            ${{ unitPrice | number_format(3, '.', ',') }}
+                                            {{ unitPrice | number_format(3, '.', ',') }}
                                         </span>
                                         <span class="text-body-secondary small font-monospace ms-1 d-none d-lg-inline">
                                             ({{ (unitPrice * 100) | number_format(1) }}¢)
                                         </span>
                                     {% else %}
-                                        <span class="text-body-tertiary">—</span>
+                                        <span class="text-body-tertiary font-monospace">—</span>
                                     {% endif %}
                                 </td>
                             </tr>

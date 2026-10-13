@@ -108,7 +108,7 @@ class CommandTest extends TestCase
         $query->method('toIterable')->willReturn(new \ArrayIterator([$set]));
 
         $loader->method('loadPriceForSet')->with('75192-1')->willReturn(849.99);
-        $em->expects($this->once())->method('persist')->with($set);
+        $em->expects($this->atLeastOnce())->method('persist');
         $em->expects($this->atLeastOnce())->method('flush');
 
         $em->method('createQueryBuilder')->willReturn($qb);
@@ -121,6 +121,51 @@ class CommandTest extends TestCase
         $this->assertSame(Command::SUCCESS, $exitCode);
         $this->assertStringContainsString('Prices have been reloaded', $tester->getDisplay());
         $this->assertSame(849.99, $set->getPrice());
+    }
+
+    public function testAppPricesReloadCommandAsync(): void
+    {
+        $loader = $this->createMock(\App\Service\PriceLoaderServiceInterface::class);
+        $fallback = $this->createMock(BrickPickerPriceLoaderService::class);
+        $em = $this->createMock(EntityManagerInterface::class);
+        $logger = new NullLogger();
+        $bus = $this->createMock(\Symfony\Component\Messenger\MessageBusInterface::class);
+
+        $qb = $this->createMock(QueryBuilder::class);
+        $countQuery = $this->getMockBuilder(Query::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getSingleScalarResult'])
+            ->getMock();
+        $query = $this->getMockBuilder(Query::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['toIterable'])
+            ->getMock();
+
+        $set = new Set();
+        $set->setId(42);
+        $set->setNo('10311-1');
+
+        $qb->method('select')->willReturnSelf();
+        $qb->method('from')->willReturnSelf();
+        $qb->method('andWhere')->willReturnSelf();
+        $qb->method('getQuery')->willReturnOnConsecutiveCalls($countQuery, $query);
+
+        $countQuery->method('getSingleScalarResult')->willReturn(1);
+        $query->method('toIterable')->willReturn(new \ArrayIterator([$set]));
+
+        $bus->expects($this->once())
+            ->method('dispatch')
+            ->willReturn(new \Symfony\Component\Messenger\Envelope(new \App\Message\FetchSetPriceMessage(42)));
+
+        $em->method('createQueryBuilder')->willReturn($qb);
+
+        $command = new AppPricesReloadCommand($loader, $em, $logger, $fallback, null, $bus);
+        $tester = new CommandTester($command);
+
+        $exitCode = $tester->execute(['--async' => true]);
+
+        $this->assertSame(Command::SUCCESS, $exitCode);
+        $this->assertStringContainsString('Dispatched 1 sets to asynchronous queue worker', $tester->getDisplay());
     }
 
     public function testAppDataImportCsvCommandTimeout(): void

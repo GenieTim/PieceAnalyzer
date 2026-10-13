@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\Set;
+use App\Entity\SetPrice;
+use App\Enum\PriceSourceProvider;
+use App\Enum\Retailer;
+use App\Message\FetchSetPriceMessage;
 use App\Service\BrickPickerPriceLoaderService;
 use App\Service\BricksetPriceLoaderService;
 use App\Service\PriceLoaderServiceInterface;
@@ -17,6 +21,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsCommand(name: 'app:prices:reload', description: 'Reload the prices of the Items.')]
 class AppPricesReloadCommand extends Command
@@ -26,7 +31,8 @@ class AppPricesReloadCommand extends Command
         protected readonly EntityManagerInterface $em,
         protected readonly LoggerInterface $logger,
         protected readonly ?BrickPickerPriceLoaderService $fallbackLoader = null,
-        protected readonly ?TaskStatusService $statusService = null
+        protected readonly ?TaskStatusService $statusService = null,
+        protected readonly ?MessageBusInterface $bus = null
     ) {
         parent::__construct();
     }
@@ -38,6 +44,7 @@ class AppPricesReloadCommand extends Command
             ->addOption('all', null, InputOption::VALUE_NONE, 'Reload prices for all items.')
             ->addOption('timeout', 't', InputOption::VALUE_REQUIRED, 'Maximum execution time in seconds (0 = unlimited)', '3600')
             ->addOption('limit', null, InputOption::VALUE_REQUIRED, 'Limit the number of sets to update prices for', '0')
+            ->addOption('async', null, InputOption::VALUE_NONE, 'Dispatch reload jobs to asynchronous messenger queue worker.')
         ;
     }
 
@@ -83,6 +90,22 @@ class AppPricesReloadCommand extends Command
         if ($targetCount === 0) {
             $io->success('No sets require price reload.');
             $statusService->finish(true, ['total' => 0, 'updated' => 0]);
+            return Command::SUCCESS;
+        }
+
+        if ($input->getOption('async') && $this->bus instanceof \Symfony\Component\Messenger\MessageBusInterface) {
+            $q = $qb->getQuery();
+            $unsolved_sets = $q->toIterable();
+            $dispatched = 0;
+            foreach ($unsolved_sets as $row) {
+                $set = is_array($row) ? $row[0] : $row;
+                if ($set instanceof Set && $set->getId() !== null) {
+                    $this->bus->dispatch(new FetchSetPriceMessage($set->getId()));
+                    ++$dispatched;
+                }
+            }
+            $io->success(sprintf('Dispatched %d sets to asynchronous queue worker.', $dispatched));
+            $statusService->finish(true, ['total_dispatched' => $dispatched]);
             return Command::SUCCESS;
         }
 
@@ -146,6 +169,15 @@ class AppPricesReloadCommand extends Command
 
                 if ($price !== null && $price > 0) {
                     $set->setPrice($price);
+                    $setPrice = new SetPrice(
+                        set: $set,
+                        amount: (int) round($price * 100),
+                        currency: $set->getPriceCurrency() ?? 'USD',
+                        retailer: Retailer::OTHER,
+                        provider: PriceSourceProvider::BRICKPICKER
+                    );
+                    $set->addPrice($setPrice);
+                    $this->em->persist($setPrice);
                     $this->em->persist($set);
                     ++$updated;
                 } else {

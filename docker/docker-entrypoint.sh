@@ -6,7 +6,7 @@ if [ "${1#-}" != "$1" ]; then
 	set -- frankenphp run "$@"
 fi
 
-if [ "$1" = "frankenphp" ] || [ "$1" = "bin/console" ]; then
+if [ "$1" = "frankenphp" ] || [ "$1" = "bin/console" ] || [ "$1" = "php" ]; then
     # Ensure var/cache, var/log, data directories exist
     mkdir -p var/cache var/log data
 
@@ -36,8 +36,8 @@ if [ "$1" = "frankenphp" ] || [ "$1" = "bin/console" ]; then
         php bin/console doctrine:schema:update --force --no-interaction 2>&1 || true
     fi
 
-    # Warm up cache if in prod
-    if [ "$APP_ENV" = "prod" ]; then
+    # Warm up cache if in prod and AUTO_DB_INIT is enabled
+    if [ "$APP_ENV" = "prod" ] && [ "${AUTO_DB_INIT:-1}" = "1" ]; then
         php bin/console cache:clear --no-warmup 2>&1 || true
         php bin/console cache:warmup 2>&1 || true
     fi

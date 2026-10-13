@@ -5,6 +5,7 @@
         "@symfony/webpack-encore": "^7.2.0",
         "bootstrap": "^5.3.8",
         "jquery": "^4.0.0",
+        "playwright": "^1.64.0",
         "sass": "^1.105.0",
         "sass-loader": "^17.0.1",
         "webpack": "^5.111.1",
