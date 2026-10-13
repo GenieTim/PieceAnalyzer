@@ -394,4 +394,41 @@ class Set extends Item
         }
         return $count;
     }
+
+    /**
+     * Get the count of pieces in this set matching a specific part identifier and optional filters.
+     */
+    public function getMatchingPartCount(?string $part = null, ?int $color = null, ?int $category = null): int
+    {
+        $hasPart = $part !== null && trim($part) !== '';
+        $hasColor = $color !== null && $color > 0;
+        $hasCategory = $category !== null && $category > 0;
+
+        if (!$hasPart && !$hasColor && !$hasCategory) {
+            return $this->getPieceCount();
+        }
+
+        $partTrimmed = $hasPart ? trim((string) $part) : null;
+        $partLower = $partTrimmed !== null ? strtolower($partTrimmed) : null;
+
+        $count = 0;
+        foreach ($this->pieces as $piece) {
+            if ($partLower !== null) {
+                $pNo = (string) $piece->getNo();
+                $pName = strtolower((string) $piece->getName());
+                if ($pNo !== $partTrimmed && !str_contains($pName, $partLower)) {
+                    continue;
+                }
+            }
+            if ($hasColor && $piece->getColor() !== $color) {
+                continue;
+            }
+            if ($hasCategory && $piece->getCategory() !== $category) {
+                continue;
+            }
+            $count += (int) $piece->getCount();
+        }
+
+        return $count;
+    }
 }

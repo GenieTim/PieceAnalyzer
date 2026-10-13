@@ -50,12 +50,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'is_verified_contributor', type: Types::BOOLEAN, options: ['default' => false])]
     private bool $isVerifiedContributor = false;
 
+    #[ORM\Column(name: 'is_email_verified', type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $isEmailVerified = false;
+
+    #[ORM\Column(name: 'email_verification_token', type: Types::STRING, length: 64, nullable: true)]
+    private ?string $emailVerificationToken = null;
+
+    #[ORM\Column(name: 'email_verification_token_expires_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $emailVerificationTokenExpiresAt = null;
+
     public function __construct(string $email = '', #[ORM\Column(type: Types::STRING)]
-    private string $password = '')
+    private string $password = '', bool $isEmailVerified = true)
     {
         $this->email = strtolower(trim($email));
         $this->apiToken = bin2hex(random_bytes(32));
         $this->createdAt = new \DateTimeImmutable();
+        $this->isEmailVerified = $isEmailVerified;
     }
 
     public function getId(): ?int
@@ -203,6 +213,60 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->isVerifiedContributor = $verified;
 
         return $this;
+    }
+
+    public function isEmailVerified(): bool
+    {
+        return $this->isEmailVerified;
+    }
+
+    public function setIsEmailVerified(bool $verified): static
+    {
+        $this->isEmailVerified = $verified;
+
+        return $this;
+    }
+
+    public function getEmailVerificationToken(): ?string
+    {
+        return $this->emailVerificationToken;
+    }
+
+    public function setEmailVerificationToken(?string $token): static
+    {
+        $this->emailVerificationToken = $token;
+
+        return $this;
+    }
+
+    public function getEmailVerificationTokenExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->emailVerificationTokenExpiresAt;
+    }
+
+    public function setEmailVerificationTokenExpiresAt(?\DateTimeImmutable $expiresAt): static
+    {
+        $this->emailVerificationTokenExpiresAt = $expiresAt;
+
+        return $this;
+    }
+
+    public function generateEmailVerificationToken(int $ttlHours = 24): string
+    {
+        $token = bin2hex(random_bytes(32));
+        $this->emailVerificationToken = $token;
+        $this->emailVerificationTokenExpiresAt = new \DateTimeImmutable(sprintf('+%d hours', $ttlHours));
+
+        return $token;
+    }
+
+    public function isEmailVerificationTokenExpired(): bool
+    {
+        if (!$this->emailVerificationTokenExpiresAt instanceof \DateTimeImmutable) {
+            return true;
+        }
+
+        return $this->emailVerificationTokenExpiresAt < new \DateTimeImmutable();
     }
 
     public function isTrusted(): bool

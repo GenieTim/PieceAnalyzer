@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Resend Verification Email — Piece Analyzer{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-md-5">
+                    <div class="text-center mb-4">
+                        <span class="fs-1">✉️</span>
+                        <h1 class="h4 fw-bold mt-2 mb-1">Resend Verification Email</h1>
+                        <p class="text-body-secondary small mb-0">
+                            Enter your registered email address to receive a fresh verification link.
+                        </p>
+                    </div>
+
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="inputEmail" class="form-label small fw-semibold">Email Address</label>
+                            <input type="email" name="email" id="inputEmail" class="form-control" placeholder="you@example.com" required autofocus>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-primary fw-semibold py-2">
+                                Send Verification Link
+                            </button>
+                        </div>
+
+                        <div class="text-center small text-body-secondary">
+                            <a href="{{ path('app_login') }}" class="text-decoration-none">Back to Sign In</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

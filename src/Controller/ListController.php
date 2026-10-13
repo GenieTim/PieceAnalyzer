@@ -44,7 +44,15 @@ class ListController extends AbstractController
         $criteria = [];
         if ($form->isSubmitted() && $form->isValid()) {
             $criteria = (array) $form->getData();
+        } elseif (!$form->isSubmitted() && ($request->query->has('part') || $request->query->has('color') || $request->query->has('category'))) {
+            $criteria = [
+                'part' => $request->query->get('part'),
+                'color' => $request->query->getInt('color'),
+                'category' => $request->query->getInt('category'),
+            ];
+            $form->submit($criteria, false);
         }
+
         $user = $this->getUser();
         $currency = $preferencesService->getCurrency();
         $pagination = $paginator->paginate(
@@ -57,6 +65,7 @@ class ListController extends AbstractController
         return $this->render('list/list_all.html.twig', [
             'pagination' => $pagination,
             'form' => $form->createView(),
+            'criteria' => $criteria,
         ]);
     }
 

@@ -31,7 +31,6 @@ class Builder
                 ],
             ],
         ]);
-        $menu->addChild('Import Range', ['route' => 'load_range']);
         $menu->addChild('Bookmarklet', ['route' => 'bookmarklet']);
 
         return $menu;

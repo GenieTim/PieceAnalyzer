@@ -60,6 +60,7 @@ class AppUserCreateCommand extends Command
 
         $user = new User($email);
         $user->setPassword($this->hasher->hashPassword($user, $password));
+        $user->setIsEmailVerified(true);
         if ($isAdmin) {
             $user->setRoles(['ROLE_USER', 'ROLE_ADMIN']);
             $user->setIsVerifiedContributor(true);

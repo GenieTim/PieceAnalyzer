@@ -19,15 +19,21 @@ class BuilderTest extends TestCase
             ->method('setChildrenAttribute')
             ->with('class', 'navbar-nav ms-auto mb-2 mb-lg-0');
 
-        $rootItem->expects($this->exactly(4))
+        $addedChildren = [];
+        $rootItem->expects($this->exactly(3))
             ->method('addChild')
             ->willReturnCallback(
-                fn(string $name, array $options): \PHPUnit\Framework\MockObject\MockObject => $rootItem
+                function (string $name, array $options) use (&$addedChildren, $rootItem): \PHPUnit\Framework\MockObject\MockObject {
+                    $addedChildren[] = $name;
+                    return $rootItem;
+                }
             );
 
         $builder = new Builder($factory);
         $menu = $builder->createMainMenu([]);
 
         $this->assertSame($rootItem, $menu);
+        $this->assertSame(['Home', 'Explore Sets', 'Bookmarklet'], $addedChildren);
+        $this->assertNotContains('Import Range', $addedChildren);
     }
 }

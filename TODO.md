@@ -126,7 +126,7 @@ Transition the piece-analyzer price system from synchronous single-source scrapi
   - `app:user:list` (`AppUserListCommand`): list users with roles, submission counts, and verification status.
   - `app:user:promote` (`AppUserPromoteCommand`): grant/revoke `ROLE_ADMIN` and toggle verified contributor status.
   - `app:user:delete` (`AppUserDeleteCommand`): safely remove users with interactive confirmation or `--force`.
-- [ ] Self-service user registration with email verification.
+- [x] Self-service user registration with email verification (`RegistrationController`, `RegistrationFormType`, `UserChecker`).
 - [ ] Password reset / forgot password flow (`symfonycasts/reset-password-bundle`).
 
 ### 4. Community Price Moderation Queue

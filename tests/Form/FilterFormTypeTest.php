@@ -46,6 +46,7 @@ class FilterFormTypeTest extends TypeTestCase
         $form = $this->factory->create(FilterFormType::class);
 
         $formData = [
+            'part' => '3001',
             'color' => 1,
             'category' => 2,
         ];
@@ -53,6 +54,7 @@ class FilterFormTypeTest extends TypeTestCase
         $form->submit($formData);
 
         $this->assertTrue($form->isSynchronized());
+        $this->assertSame('3001', $form->get('part')->getData());
         $this->assertSame(1, $form->get('color')->getData());
         $this->assertSame(2, $form->get('category')->getData());
     }

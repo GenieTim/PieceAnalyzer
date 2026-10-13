@@ -4,19 +4,52 @@
 
 {% block content %}
     <div class="container">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+        {% set activePart = criteria.part|default('')|trim %}
+        {% set activeColor = criteria.color|default(0) %}
+        {% set activeCategory = criteria.category|default(0) %}
+        {% set isTargetPartSearch = activePart is not empty %}
+        {% set activeCurr = user_currency() %}
+        {% set currSymbol = currency_symbol(activeCurr) %}
+
+        <div class="d-flex flex-column flex-md-row justify-between align-items-md-center gap-2 mb-4">
             <div>
                 <h1 class="h2 fw-bold mb-1">Set &amp; Piece Value Explorer</h1>
                 <p class="text-body-secondary mb-0">
-                    Compare LEGO® sets by matching piece count, retail price, and unit cost per piece.
+                    {% if isTargetPartSearch %}
+                        Finding the best-value models to buy for part <strong>"{{ activePart }}"</strong>, ranked by lowest cost per target piece.
+                    {% else %}
+                        Compare LEGO® sets by piece count, retail price, and unit cost per piece.
+                    {% endif %}
                 </p>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge text-bg-dark fs-6 px-3 py-2 rounded-pill">
-                    {{ pagination.totalItemCount | number_format }} {{ pagination.totalItemCount == 1 ? 'Set' : 'Sets' }} Found
-                </span>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                {% if isTargetPartSearch %}
+                    <span class="badge text-bg-primary fs-6 px-3 py-2 rounded-pill shadow-sm">
+                        🎯 {{ pagination.totalItemCount | number_format }} {{ pagination.totalItemCount == 1 ? 'Model Contains Target Part' : 'Models Contain Target Part' }}
+                    </span>
+                {% else %}
+                    <span class="badge text-bg-dark fs-6 px-3 py-2 rounded-pill shadow-sm">
+                        {{ pagination.totalItemCount | number_format }} {{ pagination.totalItemCount == 1 ? 'Set in Catalog' : 'Sets in Catalog' }}
+                    </span>
+                {% endif %}
             </div>
         </div>
+
+        {% if isTargetPartSearch %}
+            <div class="alert alert-info border-info-subtle shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+                <div>
+                    <span class="fs-5 me-1">🎯</span>
+                    <strong>Filtering for Part:</strong>
+                    <span class="badge bg-primary text-white font-monospace px-2 py-1 ms-1">{{ activePart }}</span>
+                    {% if activeColor > 0 %}<span class="badge bg-secondary text-white ms-1">Color #{{ activeColor }}</span>{% endif %}
+                    {% if activeCategory > 0 %}<span class="badge bg-secondary text-white ms-1">Category #{{ activeCategory }}</span>{% endif %}
+                    <span class="d-block d-md-inline ms-md-2 small text-body-secondary mt-1 mt-md-0">
+                        Ranked by <strong>lowest price per target piece</strong> — buy the top model to get the most parts for the lowest price!
+                    </span>
+                </div>
+                <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary">Clear part filter</a>
+            </div>
+        {% endif %}
 
         {% if form is defined %}
             {% include 'form/filter_form.html.twig' with {
@@ -29,16 +62,17 @@
                 <div class="card-header bg-white border-bottom py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div class="text-body-secondary small">
                         Showing <strong class="text-body-emphasis">{{ pagination.paginationData.firstItemNumber | number_format }}–{{ pagination.paginationData.lastItemNumber | number_format }}</strong>
-                        of <strong class="text-body-emphasis">{{ pagination.totalItemCount | number_format }}</strong> sets
+                        of <strong class="text-body-emphasis">{{ pagination.totalItemCount | number_format }}</strong> cataloged models
+                        <span class="text-muted small ms-1">(unpriced models listed last)</span>
                     </div>
-                    {% set activeCurr = app.session.get('pref_currency', 'CHF') %}
-                    {% set currSymbol = activeCurr == 'CHF' ? 'CHF ' : (activeCurr == 'EUR' ? '€' : (activeCurr == 'GBP' ? '£' : '$')) %}
-                    <div class="d-none d-md-flex align-items-center gap-2 small">
-                        <span class="text-body-secondary me-1">Value Tier:</span>
-                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-medium">≤ {{ currSymbol }}0.075 Great</span>
-                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-medium">{{ currSymbol }}0.076–{{ currSymbol }}0.105 Fair</span>
-                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-medium">&gt; {{ currSymbol }}0.105 Premium</span>
-                    </div>
+                    {% if not isTargetPartSearch %}
+                        <div class="d-none d-md-flex align-items-center gap-2 small">
+                            <span class="text-body-secondary me-1">Value Tier:</span>
+                            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-medium">≤ {{ currSymbol }}0.075 Great</span>
+                            <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-medium">{{ currSymbol }}0.076–{{ currSymbol }}0.105 Fair</span>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-medium">&gt; {{ currSymbol }}0.105 Premium</span>
+                        </div>
+                    {% endif %}
                 </div>
             {% endif %}
 
@@ -55,23 +89,33 @@
                             <th scope="col" class="py-3 text-end d-none d-md-table-cell{% if pagination.isSorted('s.year') %} sorted{% endif %}" style="width: 95px;">
                                 {{ knp_pagination_sortable(pagination, 'Year', 's.year') }}
                             </th>
-                            <th scope="col" class="py-3 text-end d-none d-sm-table-cell{% if pagination.isSorted('pieceCount') %} sorted{% endif %}" style="width: 115px;">
-                                {{ knp_pagination_sortable(pagination, 'Pieces', 'pieceCount') }}
+                            <th scope="col" class="py-3 text-end d-none d-sm-table-cell{% if pagination.isSorted('pieceCount') %} sorted{% endif %}" style="width: 135px;">
+                                {% if isTargetPartSearch %}
+                                    <span title="Target part count included in model / Total set pieces">Target Pcs</span>
+                                {% else %}
+                                    {{ knp_pagination_sortable(pagination, 'Pieces', 'pieceCount') }}
+                                {% endif %}
                             </th>
                             <th scope="col" class="px-2 px-sm-3 py-3 text-end{% if pagination.isSorted('s.price') %} sorted{% endif %}">
-                                {{ knp_pagination_sortable(pagination, 'Price', 's.price') }}
+                                {{ knp_pagination_sortable(pagination, 'Price (' ~ activeCurr ~ ')', 's.price') }}
                             </th>
                             <th scope="col" class="pe-3 ps-2 py-3 text-end{% if pagination.isSorted('pricePerPiece') %} sorted{% endif %}">
-                                {{ knp_pagination_sortable(pagination, 'Price / Pc', 'pricePerPiece') }}
+                                {% if isTargetPartSearch %}
+                                    <span title="Price per unit of the target part in this model">Cost / Target Pc</span>
+                                {% else %}
+                                    {{ knp_pagination_sortable(pagination, 'Price / Pc', 'pricePerPiece') }}
+                                {% endif %}
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for set in pagination %}
-                            {% set pieceCount = set.pieceCount %}
-                            {% set userPrice = app.user ? set.getUserPrice(app.user) : null %}
-                            {% set effectivePrice = userPrice ? userPrice.decimalPrice : set.price %}
-                            {% set effectiveCurr = userPrice ? userPrice.currency : (set.priceCurrency|default('CHF')) %}
+                            {% set totalPieces = set.pieceCount %}
+                            {% set targetPieces = isTargetPartSearch ? set.getMatchingPartCount(activePart, activeColor, activeCategory) : totalPieces %}
+                            {% set userPrice = app.user ? set.getUserPrice(app.user, activeCurr) : null %}
+                            {% set rawPrice = userPrice ? userPrice.decimalPrice : set.price %}
+                            {% set rawCurr = userPrice ? userPrice.currency : (set.priceCurrency|default('CHF')) %}
+                            {% set effectivePrice = convert_price(rawPrice, rawCurr, activeCurr) %}
                             <tr>
                                 <td class="ps-3 d-none d-md-table-cell">
                                     <span class="badge text-bg-light border font-monospace text-dark px-2 py-1">{{ set.no }}</span>
@@ -85,20 +129,32 @@
                                         {% if set.year %}
                                             <span>· {{ set.year|date('Y') }}</span>
                                         {% endif %}
-                                        <span class="d-sm-none font-monospace">· {{ pieceCount | number_format }} pcs</span>
+                                        {% if isTargetPartSearch %}
+                                            <span class="badge text-bg-primary font-monospace">{{ targetPieces }}x target</span>
+                                        {% else %}
+                                            <span class="d-sm-none font-monospace">· {{ totalPieces | number_format }} pcs</span>
+                                        {% endif %}
                                     </div>
                                 </td>
                                 <td class="text-end text-body-secondary font-monospace d-none d-md-table-cell">
                                     {{ set.year ? set.year|date('Y') : '—' }}
                                 </td>
                                 <td class="text-end font-monospace text-nowrap d-none d-sm-table-cell">
-                                    {{ pieceCount | number_format }}
+                                    {% if isTargetPartSearch %}
+                                        <span class="badge bg-primary text-white fs-6 px-2 py-1">{{ targetPieces }} pcs</span>
+                                        <div class="small text-body-secondary" style="font-size: 0.72rem;">{{ totalPieces | number_format }} total</div>
+                                    {% else %}
+                                        {{ totalPieces | number_format }}
+                                    {% endif %}
                                 </td>
                                 <td class="px-2 px-sm-3 text-end font-monospace fw-medium text-nowrap">
                                     {% if effectivePrice is not null and effectivePrice > 0 %}
-                                        <span title="{{ effectiveCurr }} {{ effectivePrice | number_format(2, '.', ',') }}">
-                                            {% if effectiveCurr == 'CHF' %}CHF {% elseif effectiveCurr == 'EUR' %}€{% elseif effectiveCurr == 'USD' %}${% elseif effectiveCurr == 'GBP' %}£{% else %}{{ effectiveCurr }} {% endif %}{{ effectivePrice | number_format(2, '.', ',') }}
+                                        <span title="{{ rawCurr != activeCurr ? ('Converted from ' ~ rawCurr ~ ' ' ~ (rawPrice|number_format(2)) ~ ' at current exchange rate') : (activeCurr ~ ' ' ~ (effectivePrice|number_format(2))) }}">
+                                            {{ currSymbol }}{{ effectivePrice | number_format(2, '.', ',') }}
                                         </span>
+                                        {% if rawCurr != activeCurr %}
+                                            <span class="badge bg-light text-secondary border ms-1" style="font-size: 0.65rem;" title="Original currency: {{ rawCurr }}">~{{ rawCurr }}</span>
+                                        {% endif %}
                                         {% if userPrice %}
                                             <a href="{{ path('item_prices', {'id': set.id}) }}"
                                                class="badge text-bg-primary ms-1 text-decoration-none price-history-trigger"
@@ -141,21 +197,25 @@
                                     {% endif %}
                                 </td>
                                 <td class="pe-3 ps-2 text-end text-nowrap">
-                                    {% if effectivePrice is not null and effectivePrice > 0 and pieceCount > 0 %}
-                                        {% set unitPrice = effectivePrice / pieceCount %}
+                                    {% if effectivePrice is not null and effectivePrice > 0 and targetPieces > 0 %}
+                                        {% set unitPrice = effectivePrice / targetPieces %}
                                         {% set tierClass = unitPrice <= 0.075
                                             ? 'bg-success-subtle text-success-emphasis border-success-subtle'
                                             : (unitPrice <= 0.105
                                                 ? 'bg-primary-subtle text-primary-emphasis border-primary-subtle'
                                                 : 'bg-warning-subtle text-warning-emphasis border-warning-subtle')
                                         %}
-                                        <span class="badge {{ tierClass }} border font-monospace px-2 py-1">
-                                            {{ unitPrice | number_format(3, '.', ',') }}
+                                        <span class="badge {{ isTargetPartSearch ? 'bg-success-subtle text-success-emphasis border border-success-subtle' : tierClass }} font-monospace px-2 py-1">
+                                            {{ currSymbol }}{{ unitPrice | number_format(3, '.', ',') }}
                                         </span>
-                                        {% set minorUnit = effectiveCurr == 'CHF' ? 'Rp.' : (effectiveCurr == 'EUR' ? 'ct' : (effectiveCurr == 'GBP' ? 'p' : '¢')) %}
-                                        <span class="text-body-secondary small font-monospace ms-1 d-none d-lg-inline">
-                                            ({{ (unitPrice * 100) | number_format(1) }}{{ minorUnit }})
-                                        </span>
+                                        {% if isTargetPartSearch %}
+                                            <div class="small text-body-secondary font-monospace" style="font-size: 0.70rem;">/ target pc</div>
+                                        {% else %}
+                                            {% set minorUnit = activeCurr == 'CHF' ? 'Rp.' : (activeCurr == 'EUR' ? 'ct' : (activeCurr == 'GBP' ? 'p' : '¢')) %}
+                                            <span class="text-body-secondary small font-monospace ms-1 d-none d-lg-inline">
+                                                ({{ (unitPrice * 100) | number_format(1) }}{{ minorUnit }})
+                                            </span>
+                                        {% endif %}
                                     {% else %}
                                         <span class="text-body-tertiary font-monospace">—</span>
                                     {% endif %}
@@ -167,11 +227,14 @@
                                     <div class="py-3">
                                         <h2 class="h5 fw-bold text-body-emphasis mb-2">No LEGO® Sets Match Your Criteria</h2>
                                         <p class="text-body-secondary mb-3">
-                                            No priced sets with matching piece inventories were found. Try resetting your filters or importing set data.
+                                            {% if isTargetPartSearch %}
+                                                No sets containing part <code>{{ activePart }}</code> were found. Try another part number or name.
+                                            {% else %}
+                                                No sets matching your filters were found. Try resetting your filters.
+                                            {% endif %}
                                         </p>
                                         <div class="d-flex justify-content-center gap-2">
                                             <a href="{{ path('filter_items') }}" class="btn btn-outline-secondary btn-sm">Reset Filters</a>
-                                            <a href="{{ path('load_range') }}" class="btn btn-primary btn-sm">Import Set Range</a>
                                         </div>
                                     </div>
                                 </td>

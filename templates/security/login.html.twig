@@ -34,10 +34,15 @@
 
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-                        <div class="d-grid mt-4">
+                        <div class="d-grid mt-4 mb-3">
                             <button class="btn btn-primary" type="submit">
                                 Sign In
                             </button>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center small text-body-secondary mt-3">
+                            <span>Don't have an account? <a href="{{ path('app_register') }}" class="fw-semibold text-decoration-none">Register</a></span>
+                            <a href="{{ path('app_resend_verification') }}" class="text-body-secondary text-decoration-none">Resend email verification</a>
                         </div>
                     </form>
                 </div>

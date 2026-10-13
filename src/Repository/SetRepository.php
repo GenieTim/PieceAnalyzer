@@ -19,7 +19,7 @@ use Doctrine\Persistence\ManagerRegistry;
 class SetRepository extends ServiceEntityRepository
 {
     /** @var string[] */
-    private array $allowedCriteria = ['color', 'category', 'type'];
+    private array $allowedCriteria = ['color', 'category', 'type', 'part', 'partNo'];
 
     public function __construct(
         ManagerRegistry $registry,
@@ -102,8 +102,19 @@ class SetRepository extends ServiceEntityRepository
         ?string $targetCurrency = null
     ): Query {
         $qb = $this->getMostValuableQueryBuilder($limit, $currentUser, $targetCurrency);
+
+        $part = isset($criteria['part']) ? trim((string) $criteria['part']) : (isset($criteria['partNo']) ? trim((string) $criteria['partNo']) : '');
+        if ($part !== '') {
+            $qb->andWhere('(p.no = :partExact OR LOWER(p.name) LIKE :partLike)');
+            $qb->setParameter('partExact', $part);
+            $qb->setParameter('partLike', '%' . strtolower($part) . '%');
+        }
+
         foreach ($criteria as $key => $value) {
             if (!in_array($key, $this->allowedCriteria, true)) {
+                continue;
+            }
+            if ($key === 'part' || $key === 'partNo') {
                 continue;
             }
             if ($value === 0 || $value === '0' || $value === null || $value === '') {

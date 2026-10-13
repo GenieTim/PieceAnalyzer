@@ -9,6 +9,7 @@ use App\Service\CsvLegoLoaderService;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 
 class FilterFormType extends AbstractType
@@ -27,15 +28,24 @@ class FilterFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
+            ->add('part', TextType::class, [
+                'label' => 'Specific Part (# or Name)',
+                'required' => false,
+                'attr' => [
+                    'placeholder' => 'e.g. 3001, 3020, Brick 2x4',
+                ],
+            ])
             ->add('color', ChoiceType::class, [
                 'label' => 'Piece Color',
                 'choices' => $this->getCsvColorChoices(),
                 'multiple' => false,
+                'required' => false,
             ])
             ->add('category', ChoiceType::class, [
                 'label' => 'Part Category',
                 'choices' => $this->getCsvCategoryChoices(),
                 'multiple' => false,
+                'required' => false,
             ])
             ->add('search', SubmitType::class, [
                 'label' => 'Apply Filters',
