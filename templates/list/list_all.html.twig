@@ -1,53 +1,149 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}List of sets{% endblock %}
+{% block title %}Explore LEGO® Sets{% endblock %}
 
 {% block content %}
     <div class="container">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+            <div>
+                <h1 class="h2 fw-bold mb-1">Set &amp; Piece Value Explorer</h1>
+                <p class="text-body-secondary mb-0">
+                    Compare LEGO® sets by matching piece count, retail price, and unit cost per piece.
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge text-bg-dark fs-6 px-3 py-2 rounded-pill">
+                    {{ pagination.totalItemCount | number_format }} {{ pagination.totalItemCount == 1 ? 'Set' : 'Sets' }} Found
+                </span>
+            </div>
+        </div>
+
         {% if form is defined %}
             {% include 'form/filter_form.html.twig' with {
-                'form' : form
-            }
-            only %}
+                'form': form
+            } only %}
         {% endif %}
-    </div>
 
-    <div class="container">
-        <table class="table">
-            <thead class="thead-dark">
-                <tr>
-                    <th {% if pagination.isSorted('name') %} class="sorted" {% endif %}>{{ knp_pagination_sortable(pagination, 'Set Name', 'name') }}</th>
-                    <th {% if pagination.isSorted('price') %} class="sorted" {% endif %}>{{ knp_pagination_sortable(pagination, 'Set Price', 'price') }}</th>
-                    <th {% if pagination.isSorted('pieceCount') %} class="sorted" {% endif %}>{{ knp_pagination_sortable(pagination, '#Pieces', 'pieceCount') }}</th>
-                    <th {% if pagination.isSorted('') %} class="sorted" {% endif %}>{{ knp_pagination_sortable(pagination, 'price/piece', '') }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for set in pagination %}
-                    <tr>
-                        <td>
-                            <a href="{{ absolute_url(path('list_item', {'id': set.id})) }}">{{ set.name }}</a>
-                        </td>
-                        <td>{{ set.price | number_format(2, '.', '`') }}
-                            $</td>
-                        <td>{{ set.pieceCount }}</td>
-                        <td>
-                            {% if set.pieces | length %}{{ (set.price / (set.pieceCount)) | number_format(5, '.', '`') }}
-                                ${% endif %}
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td>No Sets loaded.
-                            {# <a href="{{ path('load_files') }}">Reload all</a>. #}
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        <div class="card border-0 shadow-sm">
+            {% if pagination.totalItemCount > 0 %}
+                <div class="card-header bg-white border-bottom py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="text-body-secondary small">
+                        Showing <strong class="text-body-emphasis">{{ pagination.paginationData.firstItemNumber | number_format }}–{{ pagination.paginationData.lastItemNumber | number_format }}</strong>
+                        of <strong class="text-body-emphasis">{{ pagination.totalItemCount | number_format }}</strong> sets
+                    </div>
+                    <div class="d-none d-md-flex align-items-center gap-2 small">
+                        <span class="text-body-secondary me-1">Value Tier:</span>
+                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-medium">≤ $0.075 Great</span>
+                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-medium">$0.076–$0.105 Fair</span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-medium">&gt; $0.105 Premium</span>
+                    </div>
+                </div>
+            {% endif %}
 
-    <div class="navigation container">
-        {{ knp_pagination_render(pagination) }}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light border-bottom">
+                        <tr>
+                            <th scope="col" class="ps-3 py-3 d-none d-md-table-cell{% if pagination.isSorted('s.no') %} sorted{% endif %}" style="width: 130px;">
+                                {{ knp_pagination_sortable(pagination, 'Set #', 's.no') }}
+                            </th>
+                            <th scope="col" class="ps-3 ps-md-2 py-3{% if pagination.isSorted('s.name') %} sorted{% endif %}">
+                                {{ knp_pagination_sortable(pagination, 'Set Name', 's.name') }}
+                            </th>
+                            <th scope="col" class="py-3 text-end d-none d-md-table-cell{% if pagination.isSorted('s.year') %} sorted{% endif %}" style="width: 95px;">
+                                {{ knp_pagination_sortable(pagination, 'Year', 's.year') }}
+                            </th>
+                            <th scope="col" class="py-3 text-end d-none d-sm-table-cell{% if pagination.isSorted('pieceCount') %} sorted{% endif %}" style="width: 115px;">
+                                {{ knp_pagination_sortable(pagination, 'Pieces', 'pieceCount') }}
+                            </th>
+                            <th scope="col" class="px-2 px-sm-3 py-3 text-end{% if pagination.isSorted('s.price') %} sorted{% endif %}">
+                                {{ knp_pagination_sortable(pagination, 'Price', 's.price') }}
+                            </th>
+                            <th scope="col" class="pe-3 ps-2 py-3 text-end{% if pagination.isSorted('pricePerPiece') %} sorted{% endif %}">
+                                {{ knp_pagination_sortable(pagination, 'Price / Pc', 'pricePerPiece') }}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for set in pagination %}
+                            {% set pieceCount = set.pieceCount %}
+                            <tr>
+                                <td class="ps-3 d-none d-md-table-cell">
+                                    <span class="badge text-bg-light border font-monospace text-dark px-2 py-1">{{ set.no }}</span>
+                                </td>
+                                <td class="ps-3 ps-md-2">
+                                    <a href="{{ path('list_item', {'id': set.id}) }}" class="fw-semibold link-primary text-decoration-none" target="_blank" rel="noopener">
+                                        {{ set.name }}
+                                    </a>
+                                    <div class="d-md-none mt-1 d-flex flex-wrap align-items-center gap-1 text-body-secondary small">
+                                        <span class="badge text-bg-light border font-monospace text-dark">{{ set.no }}</span>
+                                        {% if set.year %}
+                                            <span>· {{ set.year|date('Y') }}</span>
+                                        {% endif %}
+                                        <span class="d-sm-none font-monospace">· {{ pieceCount | number_format }} pcs</span>
+                                    </div>
+                                </td>
+                                <td class="text-end text-body-secondary font-monospace d-none d-md-table-cell">
+                                    {{ set.year ? set.year|date('Y') : '—' }}
+                                </td>
+                                <td class="text-end font-monospace text-nowrap d-none d-sm-table-cell">
+                                    {{ pieceCount | number_format }}
+                                </td>
+                                <td class="px-2 px-sm-3 text-end font-monospace fw-medium text-nowrap">
+                                    ${{ set.price | number_format(2, '.', ',') }}
+                                </td>
+                                <td class="pe-3 ps-2 text-end text-nowrap">
+                                    {% if pieceCount > 0 %}
+                                        {% set unitPrice = set.price / pieceCount %}
+                                        {% set tierClass = unitPrice <= 0.075
+                                            ? 'bg-success-subtle text-success-emphasis border-success-subtle'
+                                            : (unitPrice <= 0.105
+                                                ? 'bg-primary-subtle text-primary-emphasis border-primary-subtle'
+                                                : 'bg-warning-subtle text-warning-emphasis border-warning-subtle')
+                                        %}
+                                        <span class="badge {{ tierClass }} border font-monospace px-2 py-1">
+                                            ${{ unitPrice | number_format(3, '.', ',') }}
+                                        </span>
+                                        <span class="text-body-secondary small font-monospace ms-1 d-none d-lg-inline">
+                                            ({{ (unitPrice * 100) | number_format(1) }}¢)
+                                        </span>
+                                    {% else %}
+                                        <span class="text-body-tertiary">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <div class="py-3">
+                                        <h2 class="h5 fw-bold text-body-emphasis mb-2">No LEGO® Sets Match Your Criteria</h2>
+                                        <p class="text-body-secondary mb-3">
+                                            No priced sets with matching piece inventories were found. Try resetting your filters or importing set data.
+                                        </p>
+                                        <div class="d-flex justify-content-center gap-2">
+                                            <a href="{{ path('filter_items') }}" class="btn btn-outline-secondary btn-sm">Reset Filters</a>
+                                            <a href="{{ path('load_range') }}" class="btn btn-primary btn-sm">Import Set Range</a>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if pagination.totalItemCount > 0 %}
+                <div class="card-footer bg-white border-top py-3 px-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+                    <div class="text-body-secondary small">
+                        Showing <strong class="text-body-emphasis">{{ pagination.paginationData.firstItemNumber | number_format }}</strong>
+                        to <strong class="text-body-emphasis">{{ pagination.paginationData.lastItemNumber | number_format }}</strong>
+                        of <strong class="text-body-emphasis">{{ pagination.totalItemCount | number_format }}</strong> sets
+                    </div>
+                    <div class="navigation">
+                        {{ knp_pagination_render(pagination) }}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
     </div>
 {% endblock %}

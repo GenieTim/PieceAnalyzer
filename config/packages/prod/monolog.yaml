@@ -23,8 +23,14 @@ monolog:
             content_type: text/html
         console:
             type: console
-            process_psr_3_messages: false
+            process_psr_3_messages: true
             channels: ["!event", "!doctrine"]
+        scheduled_tasks:
+            type: rotating_file
+            path: "%kernel.logs_dir%/scheduled_tasks.log"
+            level: info
+            max_files: 7
+            channels: ["console"]
 
         # Uncomment to log deprecations
         #deprecation:

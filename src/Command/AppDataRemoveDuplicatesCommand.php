@@ -91,4 +91,3 @@ class AppDataRemoveDuplicatesCommand extends Command
         return $purgeNo;
     }
 }
-

@@ -19,10 +19,19 @@ class Builder
     public function createMainMenu(array $options): ItemInterface
     {
         $menu = $this->factory->createItem('root');
-        $menu->setChildrenAttribute('class', 'nav navbar-nav navbar-right');
+        $menu->setChildrenAttribute('class', 'navbar-nav ms-auto mb-2 mb-lg-0');
 
         $menu->addChild('Home', ['route' => 'index']);
-        $menu->addChild('List Sets', ['route' => 'list_all']);
+        $menu->addChild('Explore Sets', [
+            'route' => 'filter_items',
+            'extras' => [
+                'routes' => [
+                    ['route' => 'filter_items'],
+                    ['route' => 'list_all'],
+                ],
+            ],
+        ]);
+        $menu->addChild('Import Range', ['route' => 'load_range']);
 
         return $menu;
     }

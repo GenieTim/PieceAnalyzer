@@ -17,9 +17,9 @@ class BuilderTest extends TestCase
         $factory->method('createItem')->with('root')->willReturn($rootItem);
         $rootItem->expects($this->once())
             ->method('setChildrenAttribute')
-            ->with('class', 'nav navbar-nav navbar-right');
+            ->with('class', 'navbar-nav ms-auto mb-2 mb-lg-0');
 
-        $rootItem->expects($this->exactly(2))
+        $rootItem->expects($this->exactly(3))
             ->method('addChild')
             ->willReturnCallback(fn(string $name, array $options): \PHPUnit\Framework\MockObject\MockObject => $rootItem);
 

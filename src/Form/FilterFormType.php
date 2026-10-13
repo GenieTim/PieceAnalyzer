@@ -27,9 +27,19 @@ class FilterFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('color', ChoiceType::class, ['choices' => $this->getCsvColorChoices(), 'multiple' => false])
-            ->add('category', ChoiceType::class, ['choices' => $this->getCsvCategoryChoices(), 'multiple' => false])
-            ->add('search', SubmitType::class, [])
+            ->add('color', ChoiceType::class, [
+                'label' => 'Piece Color',
+                'choices' => $this->getCsvColorChoices(),
+                'multiple' => false,
+            ])
+            ->add('category', ChoiceType::class, [
+                'label' => 'Part Category',
+                'choices' => $this->getCsvCategoryChoices(),
+                'multiple' => false,
+            ])
+            ->add('search', SubmitType::class, [
+                'label' => 'Apply Filters',
+            ])
         ;
     }
 
@@ -50,7 +60,7 @@ class FilterFormType extends AbstractType
             }
         }
         asort($choices);
-        $this->colorChoices = ['any' => 0] + $choices;
+        $this->colorChoices = ['All Colors' => 0] + $choices;
 
         return $this->colorChoices;
     }
@@ -72,9 +82,8 @@ class FilterFormType extends AbstractType
             }
         }
         asort($choices);
-        $this->categoryChoices = ['any' => 0] + $choices;
+        $this->categoryChoices = ['All Categories' => 0] + $choices;
 
         return $this->categoryChoices;
     }
 }
-

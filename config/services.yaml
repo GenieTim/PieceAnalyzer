@@ -64,6 +64,10 @@ services:
         arguments:
             $apiKey: "%brickset_api_key%"
 
+    App\Service\TaskStatusService:
+        arguments:
+            $projectDir: "%kernel.project_dir%"
+
     app.menu_builder:
         class: App\Menu\Builder
         autowire: false

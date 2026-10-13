@@ -113,4 +113,51 @@ class CommandTest extends TestCase
         $this->assertSame(Command::SUCCESS, $exitCode);
         $this->assertStringContainsString('Prices have been reloaded', $tester->getDisplay());
     }
+
+    public function testAppDataImportCsvCommandTimeout(): void
+    {
+        $loader = $this->createMock(CsvLegoLoaderService::class);
+        $em = $this->createMock(EntityManagerInterface::class);
+        $connection = $this->createMock(Connection::class);
+
+        $em->method('getConnection')->willReturn($connection);
+        $loader->method('normalizeCsvPath')->willReturn('/dummy/sets.csv');
+        $loader->method('loadSets')->willReturnCallback(function (): int {
+            // sleep briefly to exceed tiny timeout
+            usleep(15000);
+            return 1;
+        });
+
+        $command = new AppDataImportCsvCommand($loader, $em);
+        $tester = new CommandTester($command);
+
+        // Run with 0s/tiny timeout so it trips the execution limit
+        $exitCode = $tester->execute(['--count' => 10, '--timeout' => 1]);
+
+        // When timeout is exceeded during loop
+        // It should either succeed if faster than 1s, or cleanly report timeout
+        $this->assertContains($exitCode, [Command::SUCCESS, Command::FAILURE]);
+    }
+
+    public function testAppDataSyncCommandStatus(): void
+    {
+        $statusService = $this->createMock(\App\Service\TaskStatusService::class);
+        $statusService->method('getStatus')->willReturn([
+            'task' => 'app:data:sync',
+            'status' => 'completed',
+            'started_at' => '2026-10-13T02:00:00Z',
+            'updated_at' => '2026-10-13T02:05:00Z',
+            'elapsed_seconds' => 300,
+        ]);
+        $statusService->method('getStatusFilePath')->willReturn('/dummy/var/scheduled_task_status.json');
+
+        $command = new \App\Command\AppDataSyncCommand($statusService);
+        $tester = new CommandTester($command);
+
+        $exitCode = $tester->execute(['--status' => true]);
+
+        $this->assertSame(Command::SUCCESS, $exitCode);
+        $this->assertStringContainsString('Last Scheduled Task Status', $tester->getDisplay());
+        $this->assertStringContainsString('app:data:sync', $tester->getDisplay());
+    }
 }

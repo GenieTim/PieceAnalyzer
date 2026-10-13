@@ -26,11 +26,13 @@ class SetRepository extends ServiceEntityRepository
     private function getMostValuableQueryBuilder(int $limit = 10): QueryBuilder
     {
         $qb = $this->createQueryBuilder('s');
+        $qb->addSelect('SUM(p.count) AS HIDDEN pieceCount');
+        $qb->addSelect('(s.price / SUM(p.count)) AS HIDDEN pricePerPiece');
         $qb->leftJoin('s.pieces', 'p');
         $qb->andWhere('s.price IS NOT NULL');
         $qb->andWhere('s.price != 0');
         $qb->groupBy('s.id, s.no, s.name, s.price, s.source, s.obsolete, s.year, s.image_url');
-        $qb->orderBy('s.price / SUM(p.count)', 'ASC');
+        $qb->orderBy('pricePerPiece', 'ASC');
         $qb->having('SUM(p.count) != 0');
         if ($limit > 0) {
             $qb->setMaxResults($limit);

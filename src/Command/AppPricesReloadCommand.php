@@ -84,4 +84,3 @@ class AppPricesReloadCommand extends Command
         $this->em->flush();
     }
 }
-

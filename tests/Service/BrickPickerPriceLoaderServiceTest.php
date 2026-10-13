@@ -14,7 +14,7 @@ class BrickPickerPriceLoaderServiceTest extends TestCase
         $em = $this->createMock(EntityManagerInterface::class);
         $logger = new NullLogger();
 
-        $service = new class($em, $logger) extends BrickPickerPriceLoaderService {
+        $service = new class ($em, $logger) extends BrickPickerPriceLoaderService {
             public function testFindPriceMethod(?string $str): ?float
             {
                 return $this->findPrice($str);

@@ -24,6 +24,14 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
     private array $cached_data = [];
     /** @var array<string, array<int, Item>>|null */
     private ?array $known_numbers = null;
+    /** @var array<string, array<int, string>>|null */
+    private ?array $inventorySetIndex = null;
+    /** @var array<string, array<int|string, string>>|null */
+    private ?array $partsIndex = null;
+    /** @var array<string, array{0: int, 1: int}>|null */
+    private ?array $inventoryPartsOffsets = null;
+    /** @var resource|null */
+    private mixed $inventoryPartsHandle = null;
 
     // fields in sets.csv: set_num, name, year, theme_id, num_parts, img_url
     public const SET_NUM_KEY = 0;
@@ -282,33 +290,32 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
     #[\Override]
     public function getPiecesOfSet(Set &$set, bool $flush = false): Collection
     {
+        $startTime = microtime(true);
         $set_no = (string) $set->getNo();
         $this->logger->info('Loading Pieces of Set ' . $set_no);
 
-        $inventories = $this->findDataInCsv('inventories', self::INVENTORY_SET_KEY, [$set_no]);
-        $inventory_ids = array_column($inventories, self::INVENTORY_ID);
+        $inventory_ids = $this->getInventoryIdsForSet($set_no);
+        if ($inventory_ids === []) {
+            $inventories = $this->findDataInCsv('inventories', self::INVENTORY_SET_KEY, [$set_no]);
+            $inventory_ids = array_column($inventories, self::INVENTORY_ID);
+        }
 
         $partCollection = new ArrayCollection();
 
         foreach ($inventory_ids as $inventory_id) {
-            $inventory_parts = $this->findDataInCsv('inventory_parts', self::INVENTORY_PART_INVENTORY, [$inventory_id]);
+            $inventory_parts = $this->getPartsForInventory($inventory_id);
+            if ($inventory_parts === [] && $this->inventoryPartsOffsets === null) {
+                $inventory_parts = $this->findDataInCsv('inventory_parts', self::INVENTORY_PART_INVENTORY, [$inventory_id]);
+            }
 
             if (count($inventory_parts) <= $partCollection->count()) {
                 continue;
             }
 
-            $part_ids = array_column($inventory_parts, self::INVENTORY_PART_PART);
-            $parts = $this->findDataInCsv('parts', self::PART_NUM_KEY, $part_ids);
-
-            $ordered_parts = [];
-            foreach ($parts as $part) {
-                $ordered_parts[(string) $part[self::PART_NUM_KEY]] = $part;
-            }
-
             $pieces = [];
             foreach ($inventory_parts as $pieceData) {
                 $partNum = (string) $pieceData[self::INVENTORY_PART_PART];
-                $part = $ordered_parts[$partNum] ?? [
+                $part = $this->getPartRow($partNum) ?? [
                     self::PART_NUM_KEY => $partNum,
                     self::PART_NAME_KEY => $partNum,
                     self::PART_CAT_KEY => 0,
@@ -324,6 +331,15 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
                 }
             }
             $partCollection = new ArrayCollection($pieces);
+        }
+
+        $duration = microtime(true) - $startTime;
+        if ($duration > 0.5) {
+            $this->logger->warning('Slow piece loading for set', [
+                'set_no' => $set_no,
+                'duration_seconds' => round($duration, 3),
+                'pieces_count' => $partCollection->count(),
+            ]);
         }
 
         return $partCollection;
@@ -424,5 +440,193 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
             $clean .= '.csv';
         }
         return $this->source_path . $clean;
+    }
+
+    /**
+     * Preload/warm all CSV indexes for maximum bulk throughput.
+     */
+    public function warmIndexCache(): void
+    {
+        $start = microtime(true);
+        $this->buildInventorySetIndex();
+        $this->buildPartsIndex();
+        $this->buildInventoryPartsOffsets();
+        $elapsed = round(microtime(true) - $start, 3);
+        $this->logger->info('Warmed CSV indexes', [
+            'duration_seconds' => $elapsed,
+            'inventories' => count($this->inventorySetIndex ?? []),
+            'parts' => count($this->partsIndex ?? []),
+            'inventory_parts' => count($this->inventoryPartsOffsets ?? []),
+        ]);
+    }
+
+    /**
+     * Get inventory IDs for a given set number using cached index.
+     *
+     * @return array<int, string>
+     */
+    public function getInventoryIdsForSet(string $setNo): array
+    {
+        if ($this->inventorySetIndex === null) {
+            $this->buildInventorySetIndex();
+        }
+
+        return $this->inventorySetIndex[$setNo] ?? [];
+    }
+
+    private function buildInventorySetIndex(): void
+    {
+        $this->inventorySetIndex = [];
+        $filePath = $this->normalizeCsvPath('inventories');
+        if (!file_exists($filePath) || ($handle = fopen($filePath, 'r')) === false) {
+            return;
+        }
+
+        // Skip header
+        fgetcsv($handle, 0, ',', '"', '\\');
+        while (($row = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+            if (isset($row[self::INVENTORY_ID], $row[self::INVENTORY_SET_KEY])) {
+                $setNo = (string) $row[self::INVENTORY_SET_KEY];
+                $this->inventorySetIndex[$setNo][] = (string) $row[self::INVENTORY_ID];
+            }
+        }
+        fclose($handle);
+    }
+
+    /**
+     * Get parts row data for a given part number using cached index.
+     *
+     * @return array<int|string, string>|null
+     */
+    public function getPartRow(string $partNum): ?array
+    {
+        if ($this->partsIndex === null) {
+            $this->buildPartsIndex();
+        }
+
+        return $this->partsIndex[$partNum] ?? null;
+    }
+
+    private function buildPartsIndex(): void
+    {
+        $this->partsIndex = [];
+        $filePath = $this->normalizeCsvPath('parts');
+        if (!file_exists($filePath) || ($handle = fopen($filePath, 'r')) === false) {
+            return;
+        }
+
+        // Skip header
+        fgetcsv($handle, 0, ',', '"', '\\');
+        while (($row = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+            if (isset($row[self::PART_NUM_KEY])) {
+                $this->partsIndex[(string) $row[self::PART_NUM_KEY]] = $row;
+            }
+        }
+        fclose($handle);
+    }
+
+    /**
+     * Get parsed rows from inventory_parts.csv for a given inventory ID using fast byte offset seeking.
+     *
+     * @return array<int, array<int, string>>
+     */
+    public function getPartsForInventory(string $inventoryId): array
+    {
+        if ($this->inventoryPartsOffsets === null) {
+            $this->buildInventoryPartsOffsets();
+        }
+
+        if (!isset($this->inventoryPartsOffsets[$inventoryId])) {
+            return [];
+        }
+
+        [$offset, $length] = $this->inventoryPartsOffsets[$inventoryId];
+        if (!is_resource($this->inventoryPartsHandle)) {
+            $filePath = $this->normalizeCsvPath('inventory_parts');
+            $handle = @fopen($filePath, 'r');
+            if ($handle === false) {
+                return [];
+            }
+            $this->inventoryPartsHandle = $handle;
+        }
+
+        if ($length <= 0) {
+            return [];
+        }
+
+        fseek($this->inventoryPartsHandle, $offset);
+        $chunk = fread($this->inventoryPartsHandle, $length);
+        if ($chunk === false || $chunk === '') {
+            return [];
+        }
+
+        $lines = explode("\n", trim($chunk));
+        $rows = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            /** @var array<int, string> $row */
+            $row = array_map(static fn(?string $val): string => $val ?? '', str_getcsv($line, ',', '"', '\\'));
+            if ($row !== []) {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
+    }
+
+    private function buildInventoryPartsOffsets(): void
+    {
+        $this->inventoryPartsOffsets = [];
+        $filePath = $this->normalizeCsvPath('inventory_parts');
+        if (!file_exists($filePath) || ($handle = fopen($filePath, 'r')) === false) {
+            return;
+        }
+
+        // Skip header
+        fgets($handle);
+        $currentId = null;
+        $tell = ftell($handle);
+        if ($tell === false) {
+            fclose($handle);
+            return;
+        }
+        $startPos = $tell;
+        $pos = $startPos;
+
+        while (($line = fgets($handle)) !== false) {
+            $commaPos = strpos($line, ',');
+            if ($commaPos === false) {
+                continue;
+            }
+            $id = substr($line, 0, $commaPos);
+            if ($id !== $currentId) {
+                if ($currentId !== null && $pos > $startPos) {
+                    $this->inventoryPartsOffsets[$currentId] = [$startPos, $pos - $startPos];
+                }
+                $currentId = $id;
+                $startPos = $pos;
+            }
+            $tell = ftell($handle);
+            if ($tell === false) {
+                break;
+            }
+            $pos = $tell;
+        }
+        if ($currentId !== null && $pos > $startPos) {
+            $this->inventoryPartsOffsets[$currentId] = [$startPos, $pos - $startPos];
+        }
+
+        $this->inventoryPartsHandle = $handle;
+    }
+
+    public function __destruct()
+    {
+        if (is_resource($this->inventoryPartsHandle)) {
+            fclose($this->inventoryPartsHandle);
+            $this->inventoryPartsHandle = null;
+        }
     }
 }

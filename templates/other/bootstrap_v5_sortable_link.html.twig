@@ -1,0 +1,9 @@
+{# Bootstrap 5 sortable table header link with directional indicator #}
+<a{% for attr, value in options %}{% if attr != 'class' %} {{ attr }}="{{ value }}"{% endif %}{% endfor %} class="link-body-emphasis text-decoration-none d-inline-flex align-items-center gap-1 fw-semibold text-nowrap">
+    <span>{{- title -}}</span>
+    {% if sorted %}
+        <span class="text-primary" aria-hidden="true">{{ direction == 'desc' ? '↓' : '↑' }}</span>
+    {% else %}
+        <span class="text-body-tertiary small" aria-hidden="true">⇅</span>
+    {% endif %}
+</a>

@@ -160,7 +160,10 @@
     {% import "knp_menu.html.twig" as macros %}
     {% import _self as ownmacro %}
     {{ ownmacro.setCssClassAttribute(item, 'LinkAttribute', 'nav-link') }}
-    <a href="{{ item.uri }}"{{ macros.attributes(item.linkAttributes) }}>
+    {% if matcher.isCurrent(item) or matcher.isAncestor(item, options.depth) %}
+        {{ ownmacro.setCssClassAttribute(item, 'LinkAttribute', options.currentClass) }}
+    {% endif %}
+    <a href="{{ item.uri }}"{{ macros.attributes(item.linkAttributes) }}{% if matcher.isCurrent(item) %} aria-current="page"{% endif %}>
         {% if item.attribute('icon') is not empty  %}
             <i class="{{ item.attribute('icon') }}"></i>
         {% endif %}
@@ -186,7 +189,7 @@
     {%- set classes = classes|merge(['dropdown-toggle', 'nav-link']) %}
     {%- set attributes = item.linkAttributes %}
     {%- set attributes = attributes|merge({'class': classes|join(' ')}) %}
-    {%- set attributes = attributes|merge({'data-toggle': 'dropdown'}) %}
+    {%- set attributes = attributes|merge({'data-bs-toggle': 'dropdown'}) %}
     <a href="#"{{ macros.attributes(attributes) }}>
         {% if item.attribute('icon') is not empty  %}
             <i class="{{ item.attribute('icon') }}"></i>
