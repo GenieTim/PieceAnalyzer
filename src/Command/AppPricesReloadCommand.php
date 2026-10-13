@@ -6,6 +6,9 @@ namespace App\Command;
 
 use App\Entity\Set;
 use App\Service\BrickPickerPriceLoaderService;
+use App\Service\BricksetPriceLoaderService;
+use App\Service\PriceLoaderServiceInterface;
+use App\Service\TaskStatusService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -19,9 +22,11 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class AppPricesReloadCommand extends Command
 {
     public function __construct(
-        protected readonly BrickPickerPriceLoaderService $loader,
+        protected readonly PriceLoaderServiceInterface $loader,
         protected readonly EntityManagerInterface $em,
-        protected readonly LoggerInterface $logger
+        protected readonly LoggerInterface $logger,
+        protected readonly ?BrickPickerPriceLoaderService $fallbackLoader = null,
+        protected readonly ?TaskStatusService $statusService = null
     ) {
         parent::__construct();
     }
@@ -31,6 +36,8 @@ class AppPricesReloadCommand extends Command
     {
         $this
             ->addOption('all', null, InputOption::VALUE_NONE, 'Reload prices for all items.')
+            ->addOption('timeout', 't', InputOption::VALUE_REQUIRED, 'Maximum execution time in seconds (0 = unlimited)', '3600')
+            ->addOption('limit', null, InputOption::VALUE_REQUIRED, 'Limit the number of sets to update prices for', '0')
         ;
     }
 
@@ -38,49 +45,158 @@ class AppPricesReloadCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $timeout = max(0, (int) $input->getOption('timeout'));
+        $limit = max(0, (int) $input->getOption('limit'));
+        $reloadAll = (bool) $input->getOption('all');
+
+        $statusService = $this->statusService ?? new TaskStatusService(
+            \dirname(__DIR__, 2)
+        );
+
+        $statusService->start('app:prices:reload', [
+            'reload_all' => $reloadAll,
+            'timeout' => $timeout,
+            'limit' => $limit,
+        ]);
 
         $qb = $this->em->createQueryBuilder()->select('s')->from(Set::class, 's');
-        if (!$input->getOption('all')) {
-            $qb->andWhere('s.price IS NULL');
+        if (!$reloadAll) {
+            $qb->andWhere('s.price IS NULL OR s.price = 0');
         }
         $countQuery = clone $qb;
-        $count = (int) $countQuery->select('count(s.id)')->getQuery()->getSingleScalarResult();
-        $io->progressStart($count);
-        $q = $qb->getQuery();
+        $totalAvailable = (int) $countQuery->select('count(s.id)')->getQuery()->getSingleScalarResult();
+        $targetCount = $limit > 0 ? min($limit, $totalAvailable) : $totalAvailable;
 
-        $unsolved_sets = $q->toIterable();
-        $this->loadPriceForSets($unsolved_sets, $io);
-        $io->progressFinish();
+        if ($limit > 0) {
+            $qb->setMaxResults($limit);
+        }
 
-        $io->success('Prices have been reloaded.');
+        $io->title('Lego Set Prices Reload');
+        $io->writeln(sprintf(
+            'Target sets: %d (available: %d) | Timeout: %s | Mode: %s',
+            $targetCount,
+            $totalAvailable,
+            $timeout > 0 ? TaskStatusService::formatDuration($timeout) : 'unlimited',
+            $reloadAll ? 'All sets' : 'Missing/zero prices only'
+        ));
 
-        return Command::SUCCESS;
-    }
+        if ($targetCount === 0) {
+            $io->success('No sets require price reload.');
+            $statusService->finish(true, ['total' => 0, 'updated' => 0]);
+            return Command::SUCCESS;
+        }
 
-    /**
-     * @param iterable<mixed> $rows
-     */
-    protected function loadPriceForSets(iterable $rows, SymfonyStyle $io): void
-    {
+        $startTime = microtime(true);
+        $lastHeartbeat = $startTime;
+        $heartbeatInterval = 15; // Log every 15 seconds
+
         $batchSize = 50;
-        $i = 0;
-        foreach ($rows as $row) {
+        $processed = 0;
+        $updated = 0;
+        $failed = 0;
+
+        $q = $qb->getQuery();
+        $unsolved_sets = $q->toIterable();
+
+        foreach ($unsolved_sets as $row) {
+            $now = microtime(true);
+            $elapsed = $now - $startTime;
+
+            if ($timeout > 0 && $elapsed >= $timeout) {
+                $rate = $processed > 0 ? round($processed / $elapsed, 2) : 0.0;
+                $diagnostics = [
+                    'elapsed_seconds' => round($elapsed, 1),
+                    'processed' => $processed,
+                    'total' => $targetCount,
+                    'updated' => $updated,
+                    'failed' => $failed,
+                    'rate' => $rate,
+                ];
+                $statusService->fail('Price reload execution timeout limit reached', $diagnostics);
+                $this->logger->critical('Price reload aborted due to timeout', $diagnostics);
+                $io->error(sprintf(
+                    'Execution time limit of %s reached. Processed %d/%d sets (%d updated, %d missing). Aborted cleanly.',
+                    TaskStatusService::formatDuration($timeout),
+                    $processed,
+                    $targetCount,
+                    $updated,
+                    $failed
+                ));
+                return Command::FAILURE;
+            }
+
             $set = is_array($row) ? $row[0] : $row;
-            $io->progressAdvance();
             if ($set instanceof Set) {
+                $price = null;
+                $setNo = (string) $set->getNo();
+
                 try {
-                    $set->setPrice($this->loader->loadPriceForSet($set->getNo()));
-                    $this->em->persist($set);
+                    $price = $this->loader->loadPriceForSet($setNo);
                 } catch (\Throwable $e) {
-                    $this->logger->warning('error while loading price', ['error' => $e]);
+                    $this->logger->warning('Error loading price with primary loader for set ' . $setNo, ['error' => $e->getMessage()]);
+                }
+
+                if ($price === null && $this->fallbackLoader instanceof \App\Service\BrickPickerPriceLoaderService) {
+                    try {
+                        $price = $this->fallbackLoader->loadPriceForSet($setNo);
+                    } catch (\Throwable $e) {
+                        $this->logger->warning('Error loading price with fallback loader for set ' . $setNo, ['error' => $e->getMessage()]);
+                    }
+                }
+
+                if ($price !== null && $price > 0) {
+                    $set->setPrice($price);
+                    $this->em->persist($set);
+                    ++$updated;
+                } else {
+                    ++$failed;
                 }
             }
-            if ($i > 0 && ($i % $batchSize) === 0) {
+
+            ++$processed;
+
+            if (($processed % $batchSize) === 0) {
                 $this->em->flush();
                 $this->em->clear();
             }
-            ++$i;
+
+            if (($now - $lastHeartbeat) >= $heartbeatInterval || $processed >= $targetCount) {
+                $lastHeartbeat = $now;
+                $metrics = $statusService->updateStep('reload_prices', $processed, $targetCount);
+                $io->writeln(sprintf(
+                    '[%s] %d/%d sets (%.1f%%) | Updated: %d | Missing: %d | Rate: %.1f sets/s | Elapsed: %s | ETA: %s | Mem: %.1f MB',
+                    date('H:i:s'),
+                    $processed,
+                    $targetCount,
+                    $metrics['percentage'],
+                    $updated,
+                    $failed,
+                    $metrics['rate_per_second'],
+                    TaskStatusService::formatDuration($metrics['elapsed_seconds']),
+                    $metrics['eta_seconds'] !== null ? TaskStatusService::formatDuration($metrics['eta_seconds']) : 'N/A',
+                    $metrics['memory_mb']
+                ));
+            }
         }
+
         $this->em->flush();
+
+        $totalDuration = microtime(true) - $startTime;
+        $statusService->finish(true, [
+            'total_processed' => $processed,
+            'updated_prices' => $updated,
+            'missing_prices' => $failed,
+            'duration_seconds' => round($totalDuration, 2),
+        ]);
+
+        $io->success(sprintf(
+            'Prices have been reloaded. Processed: %d, Updated: %d, Missing: %d in %s.',
+            $processed,
+            $updated,
+            $failed,
+            TaskStatusService::formatDuration($totalDuration)
+        ));
+
+        return Command::SUCCESS;
     }
 }

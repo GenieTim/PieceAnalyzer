@@ -81,7 +81,8 @@ class CommandTest extends TestCase
 
     public function testAppPricesReloadCommand(): void
     {
-        $loader = $this->createMock(BrickPickerPriceLoaderService::class);
+        $loader = $this->createMock(\App\Service\PriceLoaderServiceInterface::class);
+        $fallback = $this->createMock(BrickPickerPriceLoaderService::class);
         $em = $this->createMock(EntityManagerInterface::class);
         $logger = new NullLogger();
 
@@ -95,23 +96,31 @@ class CommandTest extends TestCase
             ->onlyMethods(['toIterable'])
             ->getMock();
 
+        $set = new Set();
+        $set->setNo('75192-1');
+
         $qb->method('select')->willReturnSelf();
         $qb->method('from')->willReturnSelf();
         $qb->method('andWhere')->willReturnSelf();
         $qb->method('getQuery')->willReturnOnConsecutiveCalls($countQuery, $query);
 
-        $countQuery->method('getSingleScalarResult')->willReturn(0);
-        $query->method('toIterable')->willReturn(new \ArrayIterator([]));
+        $countQuery->method('getSingleScalarResult')->willReturn(1);
+        $query->method('toIterable')->willReturn(new \ArrayIterator([$set]));
+
+        $loader->method('loadPriceForSet')->with('75192-1')->willReturn(849.99);
+        $em->expects($this->once())->method('persist')->with($set);
+        $em->expects($this->atLeastOnce())->method('flush');
 
         $em->method('createQueryBuilder')->willReturn($qb);
 
-        $command = new AppPricesReloadCommand($loader, $em, $logger);
+        $command = new AppPricesReloadCommand($loader, $em, $logger, $fallback);
         $tester = new CommandTester($command);
 
         $exitCode = $tester->execute([]);
 
         $this->assertSame(Command::SUCCESS, $exitCode);
         $this->assertStringContainsString('Prices have been reloaded', $tester->getDisplay());
+        $this->assertSame(849.99, $set->getPrice());
     }
 
     public function testAppDataImportCsvCommandTimeout(): void

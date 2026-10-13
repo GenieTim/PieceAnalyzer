@@ -68,6 +68,11 @@ services:
         arguments:
             $projectDir: "%kernel.project_dir%"
 
+    App\Command\AppPricesReloadCommand:
+        arguments:
+            $loader: "@App\\Service\\BricksetPriceLoaderService"
+            $fallbackLoader: "@App\\Service\\BrickPickerPriceLoaderService"
+
     app.menu_builder:
         class: App\Menu\Builder
         autowire: false
