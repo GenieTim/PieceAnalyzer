@@ -318,6 +318,150 @@ class PriceReportControllerTest extends WebTestCase
         $this->em->flush();
     }
 
+    public function testRejectMaliciousJavascriptUrl(): void
+    {
+        $client = static::createClient();
+        $this->em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $email = 'contributor_xss_' . $suffix . '@example.com';
+        $token = 'token_xss_' . bin2hex(random_bytes(16));
+
+        $user = new User($email, 'password');
+        $user->setApiToken($token);
+        $this->em->persist($user);
+
+        $set = new Set();
+        $set->setNo('XSS_' . $suffix . '-1');
+        $set->setName('XSS Test Set');
+        $this->em->persist($set);
+        $this->em->flush();
+
+        try {
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode([
+                    'setNo' => 'XSS_' . $suffix,
+                    'retailer' => 'other',
+                    'amountCents' => 5000,
+                    'url' => 'javascript:alert(document.cookie)',
+                ])
+            );
+
+            $this->assertResponseStatusCodeSame(400);
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertFalse($data['success']);
+            $this->assertStringContainsString('HTTP or HTTPS', $data['error']);
+        } finally {
+            $this->em->remove($set);
+            $this->em->remove($user);
+            $this->em->flush();
+        }
+    }
+
+    public function testRejectSpoofedDomainUrl(): void
+    {
+        $client = static::createClient();
+        $this->em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $email = 'contributor_spoof_' . $suffix . '@example.com';
+        $token = 'token_spoof_' . bin2hex(random_bytes(16));
+
+        $user = new User($email, 'password');
+        $user->setApiToken($token);
+        $this->em->persist($user);
+
+        $set = new Set();
+        $set->setNo('SPOOF_' . $suffix . '-1');
+        $set->setName('Spoof Test Set');
+        $this->em->persist($set);
+        $this->em->flush();
+
+        try {
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode([
+                    'setNo' => 'SPOOF_' . $suffix,
+                    'retailer' => 'galaxus',
+                    'amountCents' => 5000,
+                    'url' => 'https://evilattackergalaxus.ch/product/123',
+                ])
+            );
+
+            $this->assertResponseStatusCodeSame(400);
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertFalse($data['success']);
+            $this->assertStringContainsString('does not match the specified retailer domain', $data['error']);
+        } finally {
+            $this->em->remove($set);
+            $this->em->remove($user);
+            $this->em->flush();
+        }
+    }
+
+    public function testRejectExcessivePriceBounds(): void
+    {
+        $client = static::createClient();
+        $this->em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $email = 'contributor_bound_' . $suffix . '@example.com';
+        $token = 'token_bound_' . bin2hex(random_bytes(16));
+
+        $user = new User($email, 'password');
+        $user->setApiToken($token);
+        $this->em->persist($user);
+
+        $set = new Set();
+        $set->setNo('BOUND_' . $suffix . '-1');
+        $set->setName('Bound Test Set');
+        $this->em->persist($set);
+        $this->em->flush();
+
+        try {
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode([
+                    'setNo' => 'BOUND_' . $suffix,
+                    'retailer' => 'galaxus',
+                    'amountCents' => 50_000_000,
+                    'url' => 'https://www.galaxus.ch/product/123',
+                ])
+            );
+
+            $this->assertResponseStatusCodeSame(422);
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertFalse($data['success']);
+            $this->assertStringContainsString('exceeds maximum allowed bounds', $data['error']);
+        } finally {
+            $this->em->remove($set);
+            $this->em->remove($user);
+            $this->em->flush();
+        }
+    }
+
     #[\Override]
     protected function tearDown(): void
     {

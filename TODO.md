@@ -138,6 +138,52 @@ Transition the piece-analyzer price system from synchronous single-source scrapi
 ### 5. API Token Security Hardening
 - [x] Token expiration timestamps (`api_token_expires_at`, `isApiTokenExpired()`) with rejection in `PriceReportController`.
 - [x] Self-service token rotation and regeneration workflow in Profile and Bookmarklet settings.
-- [ ] Store SHA-256 hashed API tokens in database rather than plaintext.
 
 ---
+
+## Phase 11: Release Year Filtering, Security Hardening & Modern Symfony Refactoring (Completed)
+
+### 1. Release Year Filtering
+- [x] Filter for release year (`minYear`) in `FilterFormType` (number input, min 1949, placeholder e.g. 2020) so buyers can exclude vintage sets from the 90s that can barely be bought anymore.
+- [x] Doctrine DQL filtering in `SetRepository` supporting `minYear` (`s.year >= :minYearDate`) and `maxYear` (`s.year <= :maxYearDate`), accounting for `Set::$year` Date column storage format.
+- [x] Controller binding in `ListController` supporting both form submission and direct query parameter (`?minYear=2020`).
+- [x] UI filter form layout: responsive 12-column grid in `templates/form/filter_form.html.twig` with active filter indicator pill and reset option in `templates/list/list_all.html.twig`.
+- [x] Test coverage in `FilterFormTypeTest`, `SetRepositoryPartFilterTest`, and `ListControllerTest`.
+
+### 2. Security Hardening
+- [x] `PriceReportController`: Fix Stored XSS vulnerability by enforcing strictly `http` and `https` URL schemes.
+- [x] `PriceReportController`: Fix retailer domain spoofing in `isHostMatching()` (verifying exact host or subdomain match rather than suffix match).
+- [x] `PriceReportController`: Add upper price sanity bound (max 10,000,000 cents / 100,000 CHF/EUR/USD) to reject absurd prices.
+- [x] `LoadController`: Protect administrative `/range` import action with `#[IsGranted('ROLE_ADMIN')]` and update `security.yaml` access control.
+- [x] `RegistrationController`: Protect `/resend-verification` against CSRF attacks with token validation and CSRF token input in `resend_verification.html.twig`.
+- [x] `PreferenceController`: Harden referer validation against open redirects (`/\evil.com` and protocol-relative redirect bypasses).
+- [x] `AppUserPromoteCommand`: Re-index `$roles` array via `array_values()` to prevent JSON array serialization issues when revoking roles.
+
+### 3. DRY Principles & Modern Symfony Updates
+- [x] `Currency` backed Enum: centralize currency symbols, minor units, labels, and supported currency list in `App\Enum\Currency`.
+- [x] Deduplicate currency presentation across `AppExtension` and Twig templates (`minor_unit()` Twig function).
+- [x] Deduplicate price extremum calculations in `Set` entity via reusable `findExtremumPrice()` helper method.
+- [x] Add `ItemRepository::findByNo()` helper method.
+- [x] Fix PHP 8.4 `fgetcsv()` deprecation in `CsvLegoLoaderService` by setting `$escape = ''`.
+- [x] Uncomment `failure_transport: failed` in `messenger.yaml` to ensure failed messages are captured in dead letter queue.
+- [x] Centralize external provider resilience: Implement `ProviderResilienceManager` and `CircuitBreakerState` with unit test suite covering circuit breaker (403 block threshold), AIMD adaptive pacing delay, and 429 backoff handling.
+
+---
+
+## Phase 12: Architectural Improvements & Long-Term Backlog
+
+### 1. Security & Authentication
+- [ ] Store SHA-256 hashed API tokens in database (`api_token_hash`) rather than plaintext tokens, providing one-time display on generation.
+- [ ] Store hashed email verification tokens (`email_verification_token_hash`) with short-lived expiration timestamps.
+- [ ] Refactor API authentication to use Symfony `AccessTokenHandlerInterface` and firewall authenticator rather than manual `Authorization: Bearer` extraction in `PriceReportController`.
+- [ ] Moderation consensus rule: Require that auto-verifying consensus reports come from verified contributors (`isVerifiedContributor=true`) rather than arbitrary accounts to prevent Sybil attacks.
+
+### 2. Performance & Database Optimization
+- [ ] Eliminate Set Explorer N+1 queries by caching `pieceCount` integer column directly on `lego_set` table (updated during CSV import) instead of lazy-loading the `pieces` collection.
+- [ ] Eager load prices for the current page of sets in `ListController` using `LEFT JOIN FETCH` or batch relation loading.
+- [x] Wire `ProviderResilienceManager` into `BricksetPriceLoaderService` and `BrickPickerPriceLoaderService` via `RateLimitRetryTrait` and constructor injection.
+
+### 3. Modern Symfony & Architecture
+- [ ] Convert `PriceReportController` request payload parsing to Symfony `#[MapRequestPayload]` with a typed DTO and Symfony Validator constraints.
+- [ ] Refactor `RegistrationController` inline HTML string concatenation to modern Twig `TemplatedEmail` templates.
+- [ ] Convert `ListController` filter criteria handling into a typed `SetFilterCriteria` DTO.

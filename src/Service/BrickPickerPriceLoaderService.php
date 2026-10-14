@@ -26,13 +26,21 @@ class BrickPickerPriceLoaderService implements PriceLoaderServiceInterface
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
-        private readonly ?HttpClientInterface $httpClient = null
+        private readonly ?HttpClientInterface $httpClient = null,
+        ?ProviderResilienceManagerInterface $resilienceManager = null
     ) {
+        if ($resilienceManager instanceof \App\Service\ProviderResilienceManagerInterface) {
+            $this->setResilienceManager($resilienceManager);
+        }
     }
 
     #[\Override]
     public function loadPriceForSet(mixed $set_no): ?float
     {
+        if (!$this->isAvailable('BrickPicker')) {
+            return null;
+        }
+
         $set_no = (string) $set_no;
         $src = "https://www.brickpicker.com/bpms/set.cfm?set=" . urlencode($set_no);
 

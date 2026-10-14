@@ -19,7 +19,7 @@ use Doctrine\Persistence\ManagerRegistry;
 class SetRepository extends ServiceEntityRepository
 {
     /** @var string[] */
-    private array $allowedCriteria = ['color', 'category', 'type', 'part', 'partNo'];
+    private array $allowedCriteria = ['color', 'category', 'type', 'part', 'partNo', 'year', 'minYear', 'maxYear'];
 
     public function __construct(
         ManagerRegistry $registry,
@@ -110,11 +110,31 @@ class SetRepository extends ServiceEntityRepository
             $qb->setParameter('partLike', '%' . strtolower($part) . '%');
         }
 
+        $minYear = null;
+        if (isset($criteria['minYear']) && $criteria['minYear'] !== '' && $criteria['minYear'] !== 0 && $criteria['minYear'] !== '0') {
+            $minYear = (int) $criteria['minYear'];
+        } elseif (isset($criteria['year']) && $criteria['year'] !== '' && $criteria['year'] !== 0 && $criteria['year'] !== '0') {
+            $minYear = (int) $criteria['year'];
+        }
+
+        if ($minYear !== null && $minYear > 0) {
+            $qb->andWhere('s.year >= :minYearDate');
+            $qb->setParameter('minYearDate', new \DateTimeImmutable(sprintf('%04d-01-01', $minYear)));
+        }
+
+        if (isset($criteria['maxYear']) && $criteria['maxYear'] !== '' && $criteria['maxYear'] !== 0 && $criteria['maxYear'] !== '0') {
+            $maxYear = (int) $criteria['maxYear'];
+            if ($maxYear > 0) {
+                $qb->andWhere('s.year <= :maxYearDate');
+                $qb->setParameter('maxYearDate', new \DateTimeImmutable(sprintf('%04d-12-31 23:59:59', $maxYear)));
+            }
+        }
+
         foreach ($criteria as $key => $value) {
             if (!in_array($key, $this->allowedCriteria, true)) {
                 continue;
             }
-            if ($key === 'part' || $key === 'partNo') {
+            if ($key === 'part' || $key === 'partNo' || $key === 'year' || $key === 'minYear' || $key === 'maxYear') {
                 continue;
             }
             if ($value === 0 || $value === '0' || $value === null || $value === '') {

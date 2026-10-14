@@ -15,7 +15,7 @@ class RegistrationControllerTest extends WebTestCase
     public function testRegisterPageRenders(): void
     {
         $client = static::createClient();
-        $crawler = $client->request(Request::METHOD_GET, '/register');
+        $client->request(Request::METHOD_GET, '/register');
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Create Account');
@@ -157,5 +157,18 @@ class RegistrationControllerTest extends WebTestCase
 
         $em->remove($updatedUser);
         $em->flush();
+    }
+
+    public function testResendVerificationRejectsInvalidCsrfToken(): void
+    {
+        $client = static::createClient();
+        $client->request(Request::METHOD_POST, '/resend-verification', [
+            'email' => 'test@example.com',
+            '_token' => 'invalid_csrf_token',
+        ]);
+
+        $this->assertResponseRedirects('/resend-verification');
+        $client->followRedirect();
+        $this->assertSelectorTextContains('.alert-danger', 'Invalid security token');
     }
 }

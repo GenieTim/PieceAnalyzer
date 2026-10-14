@@ -125,27 +125,49 @@ class Set extends Item
     }
 
     /**
-     * Get the best (lowest) recorded price, optionally filtered by currency.
+     * Find extremum (lowest or highest) price matching criteria.
      */
-    public function getBestPrice(?string $currency = null): ?SetPrice
-    {
-        $bestVerified = null;
+    private function findExtremumPrice(
+        bool $findLowest = true,
+        ?string $currency = null,
+        bool $verifiedOnly = false,
+        ?User $submittedBy = null
+    ): ?SetPrice {
+        $result = null;
         $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
 
         foreach ($this->prices as $p) {
-            if ($p->getStatus() !== PriceVerificationStatus::VERIFIED) {
+            if ($verifiedOnly && $p->getStatus() !== PriceVerificationStatus::VERIFIED) {
+                continue;
+            }
+            if (!$verifiedOnly && $p->getStatus() === PriceVerificationStatus::REJECTED) {
+                continue;
+            }
+            if ($submittedBy instanceof User && $p->getSubmittedBy()?->getId() !== $submittedBy->getId()) {
                 continue;
             }
             if ($targetCurrency !== null && $p->getCurrency() !== $targetCurrency) {
                 continue;
             }
 
-            if ($bestVerified === null || $p->getDecimalPrice() < $bestVerified->getDecimalPrice()) {
-                $bestVerified = $p;
+            if ($result === null) {
+                $result = $p;
+            } elseif ($findLowest && $p->getDecimalPrice() < $result->getDecimalPrice()) {
+                $result = $p;
+            } elseif (!$findLowest && $p->getDecimalPrice() > $result->getDecimalPrice()) {
+                $result = $p;
             }
         }
 
-        return $bestVerified;
+        return $result;
+    }
+
+    /**
+     * Get the best (lowest) recorded price, optionally filtered by currency.
+     */
+    public function getBestPrice(?string $currency = null): ?SetPrice
+    {
+        return $this->findExtremumPrice(findLowest: true, currency: $currency, verifiedOnly: true);
     }
 
     /**
@@ -157,25 +179,7 @@ class Set extends Item
             return null;
         }
 
-        $best = null;
-        $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
-
-        foreach ($this->prices as $p) {
-            if ($p->getStatus() === PriceVerificationStatus::REJECTED) {
-                continue;
-            }
-            if ($p->getSubmittedBy()?->getId() !== $user->getId()) {
-                continue;
-            }
-            if ($targetCurrency !== null && $p->getCurrency() !== $targetCurrency) {
-                continue;
-            }
-            if ($best === null || $p->getDecimalPrice() < $best->getDecimalPrice()) {
-                $best = $p;
-            }
-        }
-
-        return $best;
+        return $this->findExtremumPrice(findLowest: true, currency: $currency, verifiedOnly: false, submittedBy: $user);
     }
 
     /**
@@ -183,22 +187,7 @@ class Set extends Item
      */
     public function getHistoricalLowestPrice(?string $currency = null): ?SetPrice
     {
-        $lowest = null;
-        $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
-
-        foreach ($this->prices as $p) {
-            if ($p->getStatus() === PriceVerificationStatus::REJECTED) {
-                continue;
-            }
-            if ($targetCurrency !== null && $p->getCurrency() !== $targetCurrency) {
-                continue;
-            }
-            if ($lowest === null || $p->getDecimalPrice() < $lowest->getDecimalPrice()) {
-                $lowest = $p;
-            }
-        }
-
-        return $lowest;
+        return $this->findExtremumPrice(findLowest: true, currency: $currency, verifiedOnly: false);
     }
 
     /**
@@ -206,22 +195,7 @@ class Set extends Item
      */
     public function getHistoricalHighestPrice(?string $currency = null): ?SetPrice
     {
-        $highest = null;
-        $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
-
-        foreach ($this->prices as $p) {
-            if ($p->getStatus() === PriceVerificationStatus::REJECTED) {
-                continue;
-            }
-            if ($targetCurrency !== null && $p->getCurrency() !== $targetCurrency) {
-                continue;
-            }
-            if ($highest === null || $p->getDecimalPrice() > $highest->getDecimalPrice()) {
-                $highest = $p;
-            }
-        }
-
-        return $highest;
+        return $this->findExtremumPrice(findLowest: false, currency: $currency, verifiedOnly: false);
     }
 
     /**

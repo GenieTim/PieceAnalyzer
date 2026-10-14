@@ -44,12 +44,19 @@ class ListController extends AbstractController
         $criteria = [];
         if ($form->isSubmitted() && $form->isValid()) {
             $criteria = (array) $form->getData();
-        } elseif (!$form->isSubmitted() && ($request->query->has('part') || $request->query->has('color') || $request->query->has('category'))) {
+        } elseif (!$form->isSubmitted() && ($request->query->has('part') || $request->query->has('color') || $request->query->has('category') || $request->query->has('minYear') || $request->query->has('year'))) {
+            $minYear = $request->query->has('minYear')
+                ? $request->query->getInt('minYear')
+                : ($request->query->has('year') ? $request->query->getInt('year') : null);
+
             $criteria = [
                 'part' => $request->query->get('part'),
                 'color' => $request->query->getInt('color'),
                 'category' => $request->query->getInt('category'),
             ];
+            if ($minYear !== null && $minYear > 0) {
+                $criteria['minYear'] = $minYear;
+            }
             $form->submit($criteria, false);
         }
 

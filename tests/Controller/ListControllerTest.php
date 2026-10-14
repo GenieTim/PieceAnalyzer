@@ -22,6 +22,16 @@ class ListControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
+    public function testFilterWithMinYearQueryParameter(): void
+    {
+        $client = static::createClient();
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/filter?minYear=2020');
+
+        $this->assertResponseIsSuccessful();
+        $content = (string) $client->getResponse()->getContent();
+        $this->assertStringContainsString('Released in 2020 or newer', $content);
+    }
+
     public function testBringYourOwnPriceOverridesDisplayForSubmittingUser(): void
     {
         $client = static::createClient();

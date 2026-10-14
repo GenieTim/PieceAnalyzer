@@ -17,6 +17,7 @@
                     </div>
 
                     <form method="post">
+                        <input type="hidden" name="_token" value="{{ csrf_token('resend_verification') }}">
                         <div class="mb-3">
                             <label for="inputEmail" class="form-label small fw-semibold">Email Address</label>
                             <input type="email" name="email" id="inputEmail" class="form-control" placeholder="you@example.com" required autofocus>

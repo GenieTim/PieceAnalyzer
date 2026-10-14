@@ -29,7 +29,7 @@ class RegistrationController extends AbstractController
         MailerInterface $mailer,
         LoggerInterface $logger
     ): Response {
-        if ($this->getUser()) {
+        if ($this->getUser() instanceof \Symfony\Component\Security\Core\User\UserInterface) {
             return $this->redirectToRoute('index');
         }
 
@@ -136,6 +136,11 @@ class RegistrationController extends AbstractController
         LoggerInterface $logger
     ): Response {
         if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('resend_verification', (string) $request->request->get('_token'))) {
+                $this->addFlash('danger', 'Invalid security token. Please try again.');
+                return $this->redirectToRoute('app_resend_verification');
+            }
+
             $email = strtolower(trim((string) $request->request->get('email')));
             $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
 

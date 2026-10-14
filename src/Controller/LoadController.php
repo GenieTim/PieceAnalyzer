@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class LoadController extends AbstractController
 {
@@ -25,6 +26,7 @@ class LoadController extends AbstractController
      * @deprecated v3
      */
     #[Route(path: '/range', name: 'load_range')]
+    #[IsGranted('ROLE_ADMIN')]
     public function loadRange(Request $request, BricklinkLegoLoaderService $loader): Response
     {
         $form = $this->createForm(SelectLoadFormType::class);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Twig;
 
+use App\Enum\Currency;
 use App\Service\ExchangeRateService;
 use App\Service\UserPreferencesService;
 use Twig\Extension\AbstractExtension;
@@ -22,9 +23,11 @@ class AppExtension extends AbstractExtension
     public function getFunctions(): array
     {
         return [
-            new TwigFunction('user_currency', [$this, 'getUserCurrency']),
-            new TwigFunction('currency_symbol', [$this, 'getCurrencySymbol']),
-            new TwigFunction('convert_price', [$this, 'convertPrice']),
+            new TwigFunction('user_currency', $this->getUserCurrency(...)),
+            new TwigFunction('currency_symbol', $this->getCurrencySymbol(...)),
+            new TwigFunction('minor_unit', $this->getMinorUnit(...)),
+            new TwigFunction('convert_price', $this->convertPrice(...)),
+            new TwigFunction('supported_currencies', $this->getSupportedCurrencies(...)),
         ];
     }
 
@@ -32,8 +35,9 @@ class AppExtension extends AbstractExtension
     public function getFilters(): array
     {
         return [
-            new TwigFilter('convert_currency', [$this, 'convertPrice']),
-            new TwigFilter('currency_symbol', [$this, 'getCurrencySymbol']),
+            new TwigFilter('convert_currency', $this->convertPrice(...)),
+            new TwigFilter('currency_symbol', $this->getCurrencySymbol(...)),
+            new TwigFilter('minor_unit', $this->getMinorUnit(...)),
         ];
     }
 
@@ -45,14 +49,25 @@ class AppExtension extends AbstractExtension
     public function getCurrencySymbol(?string $currency = null): string
     {
         $curr = $currency !== null && $currency !== '' ? strtoupper(trim($currency)) : $this->getUserCurrency();
+        $case = Currency::tryFrom($curr);
 
-        return match ($curr) {
-            'CHF' => 'CHF ',
-            'EUR' => '€',
-            'GBP' => '£',
-            'USD' => '$',
-            default => $curr . ' ',
-        };
+        return $case?->symbol() ?? ($curr . ' ');
+    }
+
+    public function getMinorUnit(?string $currency = null): string
+    {
+        $curr = $currency !== null && $currency !== '' ? strtoupper(trim($currency)) : $this->getUserCurrency();
+        $case = Currency::tryFrom($curr);
+
+        return $case?->minorUnit() ?? '¢';
+    }
+
+    /**
+     * @return Currency[]
+     */
+    public function getSupportedCurrencies(): array
+    {
+        return Currency::cases();
     }
 
     public function convertPrice(?float $amount, ?string $fromCurrency = null, ?string $toCurrency = null): ?float

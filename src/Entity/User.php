@@ -50,9 +50,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'is_verified_contributor', type: Types::BOOLEAN, options: ['default' => false])]
     private bool $isVerifiedContributor = false;
 
-    #[ORM\Column(name: 'is_email_verified', type: Types::BOOLEAN, options: ['default' => false])]
-    private bool $isEmailVerified = false;
-
     #[ORM\Column(name: 'email_verification_token', type: Types::STRING, length: 64, nullable: true)]
     private ?string $emailVerificationToken = null;
 
@@ -60,12 +57,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?\DateTimeImmutable $emailVerificationTokenExpiresAt = null;
 
     public function __construct(string $email = '', #[ORM\Column(type: Types::STRING)]
-    private string $password = '', bool $isEmailVerified = true)
+    private string $password = '', #[ORM\Column(name: 'is_email_verified', type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $isEmailVerified = true)
     {
         $this->email = strtolower(trim($email));
         $this->apiToken = bin2hex(random_bytes(32));
         $this->createdAt = new \DateTimeImmutable();
-        $this->isEmailVerified = $isEmailVerified;
     }
 
     public function getId(): ?int

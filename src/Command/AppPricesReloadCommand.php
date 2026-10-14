@@ -119,6 +119,7 @@ class AppPricesReloadCommand extends Command
         $processed = 0;
         $updated = 0;
         $failed = 0;
+        $fallbackTrippedLogged = false;
 
         $q = $qb->getQuery();
         $unsolved_sets = $q->toIterable();
@@ -201,25 +202,34 @@ class AppPricesReloadCommand extends Command
                 }
 
                 if (!$foundPrices && $this->fallbackLoader instanceof \App\Service\BrickPickerPriceLoaderService) {
-                    try {
-                        $price = $this->fallbackLoader->loadPriceForSet($setNo);
-                        if ($price !== null && $price > 0) {
-                            $setPrice = new SetPrice(
-                                set: $set,
-                                amount: (int) round($price * 100),
-                                currency: 'USD',
-                                retailer: Retailer::OTHER,
-                                provider: PriceSourceProvider::BRICKPICKER
+                    if (!$this->fallbackLoader->isAvailable('BrickPicker')) {
+                        if (!$fallbackTrippedLogged) {
+                            $fallbackTrippedLogged = true;
+                            $io->warning(
+                                'BrickPicker circuit breaker is OPEN (repeated 403s). Skipping fallback.'
                             );
-                            $setPrice->setUrl('https://www.brickpicker.com/bpms/set.cfm?set=' . urlencode($setNo));
-                            $set->addPrice($setPrice);
-                            $this->em->persist($setPrice);
-                            $this->em->persist($set);
-                            $foundPrices = true;
-                            ++$updated;
                         }
-                    } catch (\Throwable $e) {
-                        $this->logger->warning('Error loading price with fallback loader for set ' . $setNo, ['error' => $e->getMessage()]);
+                    } else {
+                        try {
+                            $price = $this->fallbackLoader->loadPriceForSet($setNo);
+                            if ($price !== null && $price > 0) {
+                                $setPrice = new SetPrice(
+                                    set: $set,
+                                    amount: (int) round($price * 100),
+                                    currency: 'USD',
+                                    retailer: Retailer::OTHER,
+                                    provider: PriceSourceProvider::BRICKPICKER
+                                );
+                                $setPrice->setUrl('https://www.brickpicker.com/bpms/set.cfm?set=' . urlencode($setNo));
+                                $set->addPrice($setPrice);
+                                $this->em->persist($setPrice);
+                                $this->em->persist($set);
+                                $foundPrices = true;
+                                ++$updated;
+                            }
+                        } catch (\Throwable $e) {
+                            $this->logger->warning('Error loading price with fallback loader for set ' . $setNo, ['error' => $e->getMessage()]);
+                        }
                     }
                 }
 
@@ -242,8 +252,14 @@ class AppPricesReloadCommand extends Command
             if (($now - $lastHeartbeat) >= $heartbeatInterval || $processed >= $targetCount) {
                 $lastHeartbeat = $now;
                 $metrics = $statusService->updateStep('reload_prices', $processed, $targetCount);
+                $pacingInfo = '';
+                if ($this->loader instanceof BricksetPriceLoaderService) {
+                    $pacingInfo = sprintf(' | Pace: %dms', $this->loader->getAdaptiveDelayMs('Brickset'));
+                }
+                $format = '[%s] %d/%d sets (%.1f%%) | Updated: %d | Missing: %d | Rate: %.1f sets/s%s | '
+                    . 'Elapsed: %s | ETA: %s | Mem: %.1f MB';
                 $io->writeln(sprintf(
-                    '[%s] %d/%d sets (%.1f%%) | Updated: %d | Missing: %d | Rate: %.1f sets/s | Elapsed: %s | ETA: %s | Mem: %.1f MB',
+                    $format,
                     date('H:i:s'),
                     $processed,
                     $targetCount,
@@ -251,6 +267,7 @@ class AppPricesReloadCommand extends Command
                     $updated,
                     $failed,
                     $metrics['rate_per_second'],
+                    $pacingInfo,
                     TaskStatusService::formatDuration($metrics['elapsed_seconds']),
                     $metrics['eta_seconds'] !== null ? TaskStatusService::formatDuration($metrics['eta_seconds']) : 'N/A',
                     $metrics['memory_mb']

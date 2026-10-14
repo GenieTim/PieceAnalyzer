@@ -107,15 +107,20 @@ class PriceReportController extends AbstractController
         // Validate and sanitize URL
         $url = isset($data['url']) ? trim((string) $data['url']) : null;
         if ($url !== null && $url !== '') {
-            if (!filter_var($url, FILTER_VALIDATE_URL)) {
-                $url = null;
-            } elseif (!$this->isValidRetailerUrl($retailer, $url)) {
+            $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+            if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array($scheme, ['http', 'https'], true)) {
+                return $this->jsonError('Product URL must be a valid HTTP or HTTPS web address.', 400, $request);
+            }
+            if (!$this->isValidRetailerUrl($retailer, $url)) {
                 return $this->jsonError('Product URL does not match the specified retailer domain.', 400, $request);
             }
         }
 
-        // Validate sanity bounds: price should not be absurd (e.g. 0.01 CHF for a 1000-piece set)
+        // Validate sanity bounds: price should not be absurd (e.g. 0.01 CHF for a 1000-piece set or > 100,000)
         $decimalPrice = $amountCents / 100;
+        if ($amountCents > 10_000_000) {
+            return $this->jsonError('Reported price exceeds maximum allowed bounds.', 422, $request);
+        }
         $pieceCount = $set->getPieceCount();
         if ($pieceCount > 50 && $decimalPrice < 2.0) {
             return $this->jsonError('Price is unreasonably low for this set size.', 422, $request);
@@ -162,14 +167,23 @@ class PriceReportController extends AbstractController
     private function isValidRetailerUrl(Retailer $retailer, string $url): bool
     {
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        if ($host === '') {
+            return false;
+        }
+
         return match ($retailer) {
-            Retailer::GALAXUS => str_ends_with($host, 'galaxus.ch') || str_ends_with($host, 'digitec.ch'),
-            Retailer::BRACK => str_ends_with($host, 'brack.ch'),
-            Retailer::AMAZON_DE => str_ends_with($host, 'amazon.de'),
-            Retailer::AMAZON_COM => str_ends_with($host, 'amazon.com'),
-            Retailer::LEGO_STORE => str_ends_with($host, 'lego.com'),
+            Retailer::GALAXUS => $this->isHostMatching($host, 'galaxus.ch') || $this->isHostMatching($host, 'digitec.ch'),
+            Retailer::BRACK => $this->isHostMatching($host, 'brack.ch'),
+            Retailer::AMAZON_DE => $this->isHostMatching($host, 'amazon.de'),
+            Retailer::AMAZON_COM => $this->isHostMatching($host, 'amazon.com'),
+            Retailer::LEGO_STORE => $this->isHostMatching($host, 'lego.com'),
             Retailer::OTHER => true,
         };
+    }
+
+    private function isHostMatching(string $host, string $expectedDomain): bool
+    {
+        return $host === $expectedDomain || str_ends_with($host, '.' . $expectedDomain);
     }
 
     private function jsonError(string $message, int $status, Request $request): JsonResponse

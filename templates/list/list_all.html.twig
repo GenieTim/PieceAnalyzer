@@ -7,6 +7,7 @@
         {% set activePart = criteria.part|default('')|trim %}
         {% set activeColor = criteria.color|default(0) %}
         {% set activeCategory = criteria.category|default(0) %}
+        {% set activeMinYear = criteria.minYear|default(criteria.year|default(null)) %}
         {% set isTargetPartSearch = activePart is not empty %}
         {% set activeCurr = user_currency() %}
         {% set currSymbol = currency_symbol(activeCurr) %}
@@ -41,6 +42,7 @@
                     <span class="fs-5 me-1">🎯</span>
                     <strong>Filtering for Part:</strong>
                     <span class="badge bg-primary text-white font-monospace px-2 py-1 ms-1">{{ activePart }}</span>
+                    {% if activeMinYear %}<span class="badge bg-secondary text-white ms-1">Year ≥ {{ activeMinYear }}</span>{% endif %}
                     {% if activeColor > 0 %}<span class="badge bg-secondary text-white ms-1">Color #{{ activeColor }}</span>{% endif %}
                     {% if activeCategory > 0 %}<span class="badge bg-secondary text-white ms-1">Category #{{ activeCategory }}</span>{% endif %}
                     <span class="d-block d-md-inline ms-md-2 small text-body-secondary mt-1 mt-md-0">
@@ -48,6 +50,17 @@
                     </span>
                 </div>
                 <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary">Clear part filter</a>
+            </div>
+        {% elseif activeMinYear %}
+            <div class="alert alert-light border shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+                <div>
+                    <span class="fs-5 me-1">📅</span>
+                    <strong>Filtered by Release Year:</strong>
+                    <span class="badge bg-primary text-white px-2 py-1 ms-1">Released in {{ activeMinYear }} or newer</span>
+                    {% if activeColor > 0 %}<span class="badge bg-secondary text-white ms-1">Color #{{ activeColor }}</span>{% endif %}
+                    {% if activeCategory > 0 %}<span class="badge bg-secondary text-white ms-1">Category #{{ activeCategory }}</span>{% endif %}
+                </div>
+                <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary">Clear filters</a>
             </div>
         {% endif %}
 
@@ -211,7 +224,7 @@
                                         {% if isTargetPartSearch %}
                                             <div class="small text-body-secondary font-monospace" style="font-size: 0.70rem;">/ target pc</div>
                                         {% else %}
-                                            {% set minorUnit = activeCurr == 'CHF' ? 'Rp.' : (activeCurr == 'EUR' ? 'ct' : (activeCurr == 'GBP' ? 'p' : '¢')) %}
+                                            {% set minorUnit = minor_unit(activeCurr) %}
                                             <span class="text-body-secondary small font-monospace ms-1 d-none d-lg-inline">
                                                 ({{ (unitPrice * 100) | number_format(1) }}{{ minorUnit }})
                                             </span>

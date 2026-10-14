@@ -161,4 +161,69 @@ class SetRepositoryPartFilterTest extends KernelTestCase
         $this->em->remove($setC);
         $this->em->flush();
     }
+
+    public function testFilterByYearExcludesOlderSets(): void
+    {
+        $suffix = bin2hex(random_bytes(4));
+
+        // 90s set (1995)
+        $vintageSet = new Set();
+        $vintageSet->setNo('VINTAGE-' . $suffix);
+        $vintageSet->setName('Vintage 90s Set');
+        $vintageSet->setPrice(50.0);
+        $vintageSet->setPriceCurrency('CHF');
+        $vintageSet->setYear(new \DateTime('1995-01-01'));
+
+        $p1 = new Piece();
+        $p1->setNo('P1-' . $suffix);
+        $p1->setName('Vintage Piece');
+        $p1->setColor(1);
+        $p1->setCount(20);
+        $p1->setCategory(1);
+        $p1->setSet($vintageSet);
+        $vintageSet->addPiece($p1);
+
+        // Modern set (2022)
+        $modernSet = new Set();
+        $modernSet->setNo('MODERN-' . $suffix);
+        $modernSet->setName('Modern 2020s Set');
+        $modernSet->setPrice(50.0);
+        $modernSet->setPriceCurrency('CHF');
+        $modernSet->setYear(new \DateTime('2022-01-01'));
+
+        $p2 = new Piece();
+        $p2->setNo('P2-' . $suffix);
+        $p2->setName('Modern Piece');
+        $p2->setColor(1);
+        $p2->setCount(20);
+        $p2->setCategory(1);
+        $p2->setSet($modernSet);
+        $modernSet->addPiece($p2);
+
+        $this->em->persist($vintageSet);
+        $this->em->persist($p1);
+        $this->em->persist($modernSet);
+        $this->em->persist($p2);
+        $this->em->flush();
+
+        try {
+            // Filter with minYear = 2020: should only return modern set
+            $modernResults = $this->setRepo->findMostValuableBy(['minYear' => 2020], 10, null, 'CHF');
+            $modernNos = array_map(fn(Set $s): ?string => $s->getNo(), $modernResults);
+            $this->assertContains('MODERN-' . $suffix, $modernNos);
+            $this->assertNotContains('VINTAGE-' . $suffix, $modernNos, 'Sets from the 90s must be excluded when filtering for modern sets.');
+
+            // Filter with minYear = 1990: should return both sets
+            $allResults = $this->setRepo->findMostValuableBy(['minYear' => 1990], 10, null, 'CHF');
+            $allNos = array_map(fn(Set $s): ?string => $s->getNo(), $allResults);
+            $this->assertContains('MODERN-' . $suffix, $allNos);
+            $this->assertContains('VINTAGE-' . $suffix, $allNos);
+        } finally {
+            $this->em->remove($p1);
+            $this->em->remove($vintageSet);
+            $this->em->remove($p2);
+            $this->em->remove($modernSet);
+            $this->em->flush();
+        }
+    }
 }

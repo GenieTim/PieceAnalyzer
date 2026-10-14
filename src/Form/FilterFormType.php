@@ -8,6 +8,7 @@ use App\Repository\PieceRepository;
 use App\Service\CsvLegoLoaderService;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -33,6 +34,15 @@ class FilterFormType extends AbstractType
                 'required' => false,
                 'attr' => [
                     'placeholder' => 'e.g. 3001, 3020, Brick 2x4',
+                ],
+            ])
+            ->add('minYear', IntegerType::class, [
+                'label' => 'Released Since (Year)',
+                'required' => false,
+                'attr' => [
+                    'placeholder' => 'e.g. 2020',
+                    'min' => 1949,
+                    'max' => (int) date('Y') + 1,
                 ],
             ])
             ->add('color', ChoiceType::class, [

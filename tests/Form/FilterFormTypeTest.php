@@ -47,6 +47,7 @@ class FilterFormTypeTest extends TypeTestCase
 
         $formData = [
             'part' => '3001',
+            'minYear' => 2020,
             'color' => 1,
             'category' => 2,
         ];
@@ -55,6 +56,7 @@ class FilterFormTypeTest extends TypeTestCase
 
         $this->assertTrue($form->isSynchronized());
         $this->assertSame('3001', $form->get('part')->getData());
+        $this->assertSame(2020, $form->get('minYear')->getData());
         $this->assertSame(1, $form->get('color')->getData());
         $this->assertSame(2, $form->get('category')->getData());
     }

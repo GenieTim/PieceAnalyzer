@@ -23,8 +23,17 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
     public const API_BASE_URL = 'https://brickset.com/api/v3.asmx/getSets';
     public const WEB_BASE_URL = 'https://brickset.com/sets/';
 
-    public function __construct(private readonly EntityManagerInterface $em, private readonly LoggerInterface $logger = new NullLogger(), private readonly ?HttpClientInterface $httpClient = null, private string $apiKey = '', private string $defaultCurrency = 'EUR')
-    {
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly LoggerInterface $logger = new NullLogger(),
+        private readonly ?HttpClientInterface $httpClient = null,
+        private string $apiKey = '',
+        private string $defaultCurrency = 'EUR',
+        ?ProviderResilienceManagerInterface $resilienceManager = null
+    ) {
+        if ($resilienceManager instanceof \App\Service\ProviderResilienceManagerInterface) {
+            $this->setResilienceManager($resilienceManager);
+        }
     }
 
     public function getApiKey(): string
@@ -96,6 +105,10 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
      */
     public function loadPricesForSet(mixed $set_no): array
     {
+        if (!$this->isAvailable('Brickset')) {
+            return [];
+        }
+
         $setNo = (string) ($set_no instanceof Set ? $set_no->getNo() : $set_no);
         $setNo = trim($setNo);
         if ($setNo === '') {

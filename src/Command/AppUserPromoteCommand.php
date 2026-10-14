@@ -56,7 +56,7 @@ class AppUserPromoteCommand extends Command
                 $changes[] = 'Granted ROLE_ADMIN';
             }
         } elseif ($input->getOption('unadmin')) {
-            $roles = array_diff($roles, ['ROLE_ADMIN']);
+            $roles = array_values(array_diff($roles, ['ROLE_ADMIN']));
             $user->setRoles($roles);
             $changes[] = 'Revoked ROLE_ADMIN';
         }

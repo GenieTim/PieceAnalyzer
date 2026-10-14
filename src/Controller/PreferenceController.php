@@ -20,7 +20,12 @@ class PreferenceController extends AbstractController
         $referer = $request->headers->get('referer');
         if ($referer !== null && $referer !== '') {
             $parsedHost = parse_url($referer, PHP_URL_HOST);
-            if ($parsedHost === null || $parsedHost === $request->getHost()) {
+            $parsedScheme = parse_url($referer, PHP_URL_SCHEME);
+            if ($parsedHost !== null) {
+                if ($parsedHost === $request->getHost() && in_array(strtolower((string) $parsedScheme), ['http', 'https'], true)) {
+                    return $this->redirect($referer);
+                }
+            } elseif (str_starts_with($referer, '/') && !str_starts_with($referer, '//') && !str_starts_with($referer, '/\\')) {
                 return $this->redirect($referer);
             }
         }

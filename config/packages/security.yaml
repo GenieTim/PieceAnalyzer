@@ -32,5 +32,5 @@ security:
 
     access_control:
         - { path: ^/(login|register|verify-email|resend-verification), roles: PUBLIC_ACCESS }
-        - { path: ^/(files|price/brickpicker|admin), roles: ROLE_ADMIN }
+        - { path: ^/(files|range|price/brickpicker|admin), roles: ROLE_ADMIN }
         - { path: ^/(bookmarklet|profile), roles: ROLE_USER }

@@ -88,9 +88,9 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
 
         $rows = [];
         if (file_exists($filePath) && ($handle = fopen($filePath, 'r')) !== false) {
-            $header = fgetcsv($handle, 0, ',', '"', '\\');
+            $header = fgetcsv($handle, 0, ',', '"', '');
             if ($header !== false) {
-                while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+                while (($data = fgetcsv($handle, 0, ',', '"', '')) !== false) {
                     $rows[] = count($data) === count($header) ? array_combine($header, $data) : $data;
                 }
             }
@@ -125,7 +125,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         }
 
         if (($handle = fopen($filePath, 'r')) !== false) {
-            while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+            while (($data = fgetcsv($handle, 0, ',', '"', '')) !== false) {
                 ++$index;
                 if ($index < $start) {
                     continue;
@@ -511,8 +511,8 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         }
 
         // Skip header
-        fgetcsv($handle, 0, ',', '"', '\\');
-        while (($row = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+        fgetcsv($handle, 0, ',', '"', '');
+        while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
             if (isset($row[self::INVENTORY_ID], $row[self::INVENTORY_SET_KEY])) {
                 $setNo = (string) $row[self::INVENTORY_SET_KEY];
                 $this->inventorySetIndex[$setNo][] = (string) $row[self::INVENTORY_ID];
@@ -544,8 +544,8 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         }
 
         // Skip header
-        fgetcsv($handle, 0, ',', '"', '\\');
-        while (($row = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+        fgetcsv($handle, 0, ',', '"', '');
+        while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
             if (isset($row[self::PART_NUM_KEY])) {
                 $this->partsIndex[(string) $row[self::PART_NUM_KEY]] = $row;
             }

@@ -17,4 +17,12 @@ class ItemRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Item::class);
     }
+
+    /**
+     * @return Item[]
+     */
+    public function findByNo(string $no): array
+    {
+        return $this->findBy(['no' => $no]);
+    }
 }
