@@ -132,7 +132,7 @@
                                     <span class="font-monospace text-body-secondary small">{{ set.no }}</span>
                                 </td>
                                 <td class="ps-3 ps-md-2">
-                                    <a href="{{ path('item_prices', {'id': set.id}) }}" class="fw-semibold text-decoration-none text-body-emphasis link-primary">
+                                    <a href="{{ path('set_detail', {'id': set.id}) }}" class="fw-semibold text-decoration-none text-body-emphasis link-primary">
                                         {{ set.name }}
                                     </a>
                                     <div class="d-md-none mt-1 d-flex flex-wrap align-items-center gap-1 text-secondary small">
@@ -167,27 +167,21 @@
                                             <span class="text-body-tertiary small ms-1" style="font-size: 0.75rem;" title="Original currency: {{ rawCurr }}">~{{ rawCurr }}</span>
                                         {% endif %}
                                         {% if userPrice %}
-                                            <button type="button"
-                                                    class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1 py-1 px-1 price-history-trigger align-baseline text-decoration-none"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#priceHistoryModal"
-                                                    data-url="{{ path('item_prices', {'id': set.id, 'modal': 1}) }}"
-                                                    title="{{ 'table.your_price'|trans }}">
+                                            <a href="{{ path('set_detail', {'id': set.id}) }}#prices"
+                                               class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1 py-1 px-1 align-baseline text-decoration-none"
+                                               title="{{ 'table.your_price'|trans }}">
                                                 {{ 'table.your_price'|trans }}
-                                            </button>
+                                            </a>
                                         {% elseif set.prices|length > 0 %}
-                                            <button type="button"
-                                                    class="btn btn-sm btn-light border-0 py-0 px-1 ms-1 text-secondary price-history-trigger align-baseline"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#priceHistoryModal"
-                                                    data-url="{{ path('item_prices', {'id': set.id, 'modal': 1}) }}"
-                                                    title="{{ 'set.view_price_history'|trans }} ({{ set.prices|length }})"
-                                                    aria-label="{{ 'set.view_price_history'|trans }}">
+                                            <a href="{{ path('set_detail', {'id': set.id}) }}#prices"
+                                               class="btn btn-sm btn-light border-0 py-0 px-1 ms-1 text-secondary align-baseline"
+                                               title="{{ 'set.view_price_history'|trans }} ({{ set.prices|length }})"
+                                               aria-label="{{ 'set.view_price_history'|trans }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-graph-up text-primary" viewBox="0 0 16 16">
                                                     <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/>
                                                 </svg>
                                                 <span class="font-monospace text-body-secondary small ms-1" style="font-size: 0.72rem;">{{ set.prices|length }}</span>
-                                            </button>
+                                            </a>
                                         {% endif %}
                                     {% else %}
                                         {% if is_granted('ROLE_USER') %}
@@ -269,53 +263,4 @@
         </div>
     </div>
 
-    <!-- Interactive Price History Modal -->
-    <div class="modal fade" id="priceHistoryModal" tabindex="-1" aria-labelledby="priceHistoryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content shadow-sm border-0">
-                <div class="modal-header bg-light border-bottom py-2 px-3">
-                    <h5 class="modal-title fw-bold fs-6 mb-0" id="priceHistoryModalLabel">{{ 'set.price_history_title'|trans }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-3 p-md-4" id="priceHistoryModalBody">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary spinner-border-sm" role="status">
-                            <span class="visually-hidden">{{ 'set.loading'|trans }}</span>
-                        </div>
-                        <p class="text-secondary small mt-2 mb-0">{{ 'set.loading'|trans }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var modalEl = document.getElementById('priceHistoryModal');
-            if (!modalEl) return;
-
-            var modalBody = document.getElementById('priceHistoryModalBody');
-            modalEl.addEventListener('show.bs.modal', function (event) {
-                var trigger = event.relatedTarget;
-                if (!trigger) return;
-
-                var url = trigger.getAttribute('data-url');
-                if (!url) return;
-
-                modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-secondary small mt-2 mb-0">Loading price data...</p></div>';
-
-                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                    .then(function (res) {
-                        if (!res.ok) throw new Error('Failed to load price history');
-                        return res.text();
-                    })
-                    .then(function (html) {
-                        modalBody.innerHTML = html;
-                    })
-                    .catch(function (err) {
-                        modalBody.innerHTML = '<div class="alert alert-danger mb-0 small">Error loading price history: ' + err.message + '</div>';
-                    });
-            });
-        });
-    </script>
 {% endblock %}

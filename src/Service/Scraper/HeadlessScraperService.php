@@ -139,6 +139,7 @@ class HeadlessScraperService
                 Retailer::AMAZON_DE => 'https://www.amazon.de/s?k=lego+' . urlencode($cleanNo),
                 Retailer::AMAZON_COM => 'https://www.amazon.com/s?k=lego+' . urlencode($cleanNo),
                 Retailer::LEGO_STORE => 'https://www.lego.com/search?q=' . urlencode($cleanNo),
+                Retailer::BRICKLINK => 'https://www.bricklink.com/v2/catalog/catalogitem.page?S=' . urlencode(str_contains(trim($setNo), '-') ? trim($setNo) : trim($setNo) . '-1'),
                 Retailer::OTHER => 'https://www.toppreise.ch/s?q=lego+' . urlencode($cleanNo),
             };
 

@@ -279,12 +279,13 @@ class Set extends Item
     /**
      * Calculate savings delta between highest recorded price (MSRP/peak) and lowest recorded price.
      *
-     * @return array{highest: SetPrice, lowest: SetPrice, savingsAmount: float, savingsPercent: float}|null
+     * @return array{highest: SetPrice, lowest: SetPrice, savingsAmount: float, savingsPercent: float, targetCurrency?: string}|null
      */
-    public function getHistoricalSavingsDelta(?string $currency = null): ?array
+    public function getHistoricalSavingsDelta(?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?array
     {
-        $lowest = $this->getHistoricalLowestPrice($currency);
-        $highest = $this->getHistoricalHighestPrice($currency);
+        $targetCurr = $currency !== null ? strtoupper(trim($currency)) : 'CHF';
+        $lowest = $this->getHistoricalLowestPrice($targetCurr, $exchangeRateService);
+        $highest = $this->getHistoricalHighestPrice($targetCurr, $exchangeRateService);
 
         if (!$lowest instanceof SetPrice || !$highest instanceof SetPrice) {
             return null;
@@ -294,8 +295,29 @@ class Set extends Item
             return null;
         }
 
-        $highVal = $highest->getDecimalPrice();
-        $lowVal = $lowest->getDecimalPrice();
+        $convert = function (float $amt, string $curr) use ($targetCurr, $exchangeRateService): float {
+            if ($curr === $targetCurr) {
+                return $amt;
+            }
+            if ($exchangeRateService instanceof \App\Service\ExchangeRateService) {
+                return $exchangeRateService->convert($amt, $curr, $targetCurr);
+            }
+            $chf = match ($curr) {
+                'EUR' => $amt * 0.96,
+                'USD' => $amt * 0.90,
+                'GBP' => $amt * 1.15,
+                default => $amt,
+            };
+            return match ($targetCurr) {
+                'EUR' => $chf / 0.96,
+                'USD' => $chf / 0.90,
+                'GBP' => $chf / 1.15,
+                default => $chf,
+            };
+        };
+
+        $highVal = $convert($highest->getDecimalPrice(), $highest->getCurrency());
+        $lowVal = $convert($lowest->getDecimalPrice(), $lowest->getCurrency());
 
         if ($highVal <= 0.0 || $lowVal >= $highVal) {
             return null;
@@ -309,6 +331,7 @@ class Set extends Item
             'lowest' => $lowest,
             'savingsAmount' => $savingsAmount,
             'savingsPercent' => $savingsPercent,
+            'targetCurrency' => $targetCurr,
         ];
     }
 

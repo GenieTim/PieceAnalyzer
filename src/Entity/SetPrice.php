@@ -40,6 +40,9 @@ class SetPrice
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $url = null;
 
+    #[ORM\Column(name: 'item_condition', type: Types::STRING, length: 32, nullable: true)]
+    private ?string $itemCondition = null;
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Set::class, inversedBy: 'prices')]
         #[ORM\JoinColumn(name: 'set_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
@@ -55,9 +58,11 @@ class SetPrice
         #[ORM\Column(type: Types::STRING, length: 32, enumType: PriceSourceProvider::class)]
         private PriceSourceProvider $provider = PriceSourceProvider::MANUAL,
         #[ORM\Column(name: 'recorded_at', type: Types::DATETIME_IMMUTABLE)]
-        private \DateTimeImmutable $recordedAt = new \DateTimeImmutable()
+        private \DateTimeImmutable $recordedAt = new \DateTimeImmutable(),
+        ?string $itemCondition = null
     ) {
         $this->currency = strtoupper(trim($currency));
+        $this->itemCondition = $itemCondition !== null ? strtolower(trim($itemCondition)) : null;
     }
 
     public function getId(): ?int
@@ -208,4 +213,71 @@ class SetPrice
     {
         return sprintf('%s %.2f', $this->currency, $this->getDecimalPrice());
     }
+
+    public function getItemCondition(): ?string
+    {
+        return $this->itemCondition;
+    }
+
+    public function setItemCondition(?string $condition): static
+    {
+        $this->itemCondition = $condition !== null ? strtolower(trim($condition)) : null;
+
+        return $this;
+    }
+
+    public function getConditionLabel(): string
+    {
+        return match ($this->itemCondition) {
+            'msrp' => 'MSRP / UVP',
+            'new' => 'Neu',
+            'used' => 'Gebraucht',
+            default => '',
+        };
+    }
+
+    /**
+     * URL directly to the merchant/retailer store or retailer search.
+     */
+    public function getRetailerUrl(): string
+    {
+        $setNo = $this->set?->getNo() ?? '';
+
+        // If the stored URL already points directly to the retailer domain, prefer it
+        if ($this->url !== null && $this->url !== '') {
+            $retailerHost = match ($this->retailer) {
+                Retailer::GALAXUS => 'galaxus.',
+                Retailer::BRACK => 'brack.',
+                Retailer::AMAZON_DE => 'amazon.de',
+                Retailer::AMAZON_COM => 'amazon.com',
+                Retailer::LEGO_STORE => 'lego.com',
+                Retailer::BRICKLINK => 'bricklink.com',
+                Retailer::OTHER => null,
+            };
+
+            if ($retailerHost !== null && str_contains(strtolower($this->url), $retailerHost)) {
+                return $this->url;
+            }
+        }
+
+        return $this->retailer->searchUrl($setNo);
+    }
+
+    /**
+     * URL directly to the data provider / reference source (e.g. Brickset, BrickPicker).
+     */
+    public function getSourceUrl(): ?string
+    {
+        if ($this->url !== null && $this->url !== '') {
+            return $this->url;
+        }
+
+        $setNo = $this->set?->getNo() ?? '';
+        return match ($this->provider) {
+            PriceSourceProvider::BRICKSET => 'https://brickset.com/sets/' . urlencode($setNo),
+            PriceSourceProvider::BRICKPICKER => 'https://www.brickpicker.com/bpms/set.cfm?set=' . urlencode($setNo),
+            default => null,
+        };
+    }
 }
+

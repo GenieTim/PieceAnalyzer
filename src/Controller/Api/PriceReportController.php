@@ -264,6 +264,7 @@ class PriceReportController extends AbstractController
             Retailer::AMAZON_DE => $this->isHostMatching($host, 'amazon.de'),
             Retailer::AMAZON_COM => $this->isHostMatching($host, 'amazon.com'),
             Retailer::LEGO_STORE => $this->isHostMatching($host, 'lego.com'),
+            Retailer::BRICKLINK => $this->isHostMatching($host, 'bricklink.com'),
             Retailer::OTHER => true,
         };
     }

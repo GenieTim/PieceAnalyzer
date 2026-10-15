@@ -293,5 +293,93 @@ class BricksetPriceLoaderServiceTest extends TestCase
         $this->assertSame(['EUR' => 99.99], $prices);
         $this->assertFalse($service->isRateLimited());
     }
+
+    public function testParseCurrencyAndAmount(): void
+    {
+        $em = $this->createMock(EntityManagerInterface::class);
+        $service = new BricksetPriceLoaderService($em, new NullLogger());
+
+        $this->assertSame(['currency' => 'CHF', 'amount' => 223.0], $service->parseCurrencyAndAmount('~Fr223'));
+        $this->assertSame(['currency' => 'CHF', 'amount' => 63.50], $service->parseCurrencyAndAmount('Fr. 63.50'));
+        $this->assertSame(['currency' => 'CHF', 'amount' => 79.80], $service->parseCurrencyAndAmount('~Fr79.80'));
+        $this->assertSame(['currency' => 'USD', 'amount' => 29.99], $service->parseCurrencyAndAmount('$29.99'));
+        $this->assertSame(['currency' => 'GBP', 'amount' => 26.99], $service->parseCurrencyAndAmount('£26.99'));
+        $this->assertSame(['currency' => 'EUR', 'amount' => 49.99], $service->parseCurrencyAndAmount('49,99€'));
+        $this->assertSame(['currency' => 'CAD', 'amount' => 34.99], $service->parseCurrencyAndAmount('CA$34.99'));
+        $this->assertNull($service->parseCurrencyAndAmount('N/A'));
+        $this->assertNull($service->parseCurrencyAndAmount(''));
+    }
+
+    public function testParseDetailedPricesFromHtmlWithTurboShredderSample(): void
+    {
+        $em = $this->createMock(EntityManagerInterface::class);
+        $service = new BricksetPriceLoaderService($em, new NullLogger());
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <meta property="og:image" content="https://images.brickset.com/sets/images/2263-1.jpg" />
+</head>
+<body>
+    <div class="featureblock">
+        <dl>
+            <dt>RRP</dt>
+            <dd>£26.99, $29.99</dd>
+            <dt>Current value</dt>
+            <dd>New: ~Fr223, Used: ~Fr63</dd>
+        </dl>
+    </div>
+    <div class="bricklink-box">
+        <h4>bricklink</h4>
+        <p>BUY THIS SET: New ~Fr208, Used ~Fr74</p>
+        <p>SWITZERLAND: N/A, N/A</p>
+        <p>EUROPEAN UNION: N/A, ~Fr79.80</p>
+    </div>
+</body>
+</html>
+HTML;
+
+        $detailed = $service->parseDetailedPricesFromHtml($html, '2263-1');
+
+        $this->assertNotEmpty($detailed);
+
+        // Find MSRP prices
+        $msrpUsd = array_values(array_filter($detailed, fn($p): bool => $p['condition'] === 'msrp' && $p['currency'] === 'USD'));
+        $this->assertCount(1, $msrpUsd);
+        $this->assertSame(29.99, $msrpUsd[0]['amount']);
+        $this->assertSame(\App\Enum\Retailer::LEGO_STORE, $msrpUsd[0]['retailer']);
+
+        $msrpGbp = array_values(array_filter($detailed, fn($p): bool => $p['condition'] === 'msrp' && $p['currency'] === 'GBP'));
+        $this->assertCount(1, $msrpGbp);
+        $this->assertSame(26.99, $msrpGbp[0]['amount']);
+
+        // Find Current Market Value (New: ~Fr223, Used: ~Fr63)
+        $marketNew = array_values(array_filter($detailed, fn($p): bool => $p['condition'] === 'new' && $p['retailer'] === \App\Enum\Retailer::OTHER));
+        $this->assertCount(1, $marketNew);
+        $this->assertSame('CHF', $marketNew[0]['currency']);
+        $this->assertSame(223.0, $marketNew[0]['amount']);
+
+        $marketUsed = array_values(array_filter($detailed, fn($p): bool => $p['condition'] === 'used' && $p['retailer'] === \App\Enum\Retailer::OTHER));
+        $this->assertCount(1, $marketUsed);
+        $this->assertSame('CHF', $marketUsed[0]['currency']);
+        $this->assertSame(63.0, $marketUsed[0]['amount']);
+
+        // Find BrickLink prices (New ~Fr208, Used ~Fr74)
+        $blNew = array_values(array_filter($detailed, fn($p): bool => $p['condition'] === 'new' && $p['retailer'] === \App\Enum\Retailer::BRICKLINK));
+        $this->assertCount(1, $blNew);
+        $this->assertSame('CHF', $blNew[0]['currency']);
+        $this->assertSame(208.0, $blNew[0]['amount']);
+        $this->assertStringContainsString('bricklink.com', $blNew[0]['url']);
+
+        $blUsed = array_values(array_filter($detailed, fn($p): bool => $p['condition'] === 'used' && $p['retailer'] === \App\Enum\Retailer::BRICKLINK));
+        $this->assertCount(1, $blUsed);
+        $this->assertSame('CHF', $blUsed[0]['currency']);
+        $this->assertSame(74.0, $blUsed[0]['amount']);
+
+        // Check image URL
+        $this->assertSame('https://images.brickset.com/sets/images/2263-1.jpg', $detailed[0]['imageUrl']);
+    }
 }
+
 

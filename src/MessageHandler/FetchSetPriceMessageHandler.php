@@ -59,22 +59,59 @@ class FetchSetPriceMessageHandler
             }
         }
 
-        // 2. Try Brickset (reliable MSRP in multi-currency: EUR, USD, GBP)
+        // 2. Try Brickset (reliable MSRP, BrickLink, Market Values)
         if (!$provider instanceof \App\Enum\PriceSourceProvider || $provider === PriceSourceProvider::BRICKSET) {
             try {
-                $prices = $this->bricksetLoader->loadPricesForSet($setNo);
-                if ($prices !== []) {
-                    foreach ($prices as $currency => $decimalPrice) {
+                $detailedPrices = $this->bricksetLoader->loadDetailedPricesForSet($setNo);
+                if ($detailedPrices === []) {
+                    $legacy = $this->bricksetLoader->loadPricesForSet($setNo);
+                    foreach ($legacy as $curr => $val) {
+                        $detailedPrices[] = [
+                            'amount' => $val,
+                            'currency' => $curr,
+                            'retailer' => Retailer::LEGO_STORE,
+                            'provider' => PriceSourceProvider::BRICKSET,
+                            'condition' => 'msrp',
+                            'url' => 'https://brickset.com/sets/' . urlencode($setNo),
+                        ];
+                    }
+                }
+                if ($detailedPrices !== []) {
+                    $oneDayAgo = (new \DateTimeImmutable())->modify('-24 hours');
+                    foreach ($detailedPrices as $dp) {
+                        $amountCents = (int) round($dp['amount'] * 100);
+                        $currency = $dp['currency'];
+                        $retailerEnum = $dp['retailer'];
+                        $condition = $dp['condition'] ?? 'msrp';
+
+                        // Deduplicate within 24h
+                        $existing = $this->em->getRepository(SetPrice::class)->findOneBy([
+                            'set' => $set,
+                            'retailer' => $retailerEnum,
+                            'amount' => $amountCents,
+                            'currency' => $currency,
+                            'itemCondition' => $condition,
+                        ]);
+
+                        if ($existing instanceof SetPrice && $existing->getRecordedAt() > $oneDayAgo) {
+                            continue;
+                        }
+
                         $setPrice = new SetPrice(
                             set: $set,
-                            amount: (int) round($decimalPrice * 100),
+                            amount: $amountCents,
                             currency: $currency,
-                            retailer: Retailer::LEGO_STORE,
-                            provider: PriceSourceProvider::BRICKSET
+                            retailer: $retailerEnum,
+                            provider: $dp['provider'] ?? PriceSourceProvider::BRICKSET,
+                            itemCondition: $condition
                         );
-                        $setPrice->setUrl('https://brickset.com/sets/' . urlencode($setNo));
+                        $setPrice->setUrl($dp['url'] ?? ('https://brickset.com/sets/' . urlencode($setNo)));
                         $set->addPrice($setPrice);
                         $this->em->persist($setPrice);
+
+                        if (($set->getImageUrl() === null || $set->getImageUrl() === '') && !empty($dp['imageUrl'])) {
+                            $set->setImageUrl($dp['imageUrl']);
+                        }
                     }
                     $set->updateCachedBestPrice($this->exchangeRateService);
                     $this->em->persist($set);

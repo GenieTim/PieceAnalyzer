@@ -258,7 +258,7 @@ class ListControllerTest extends WebTestCase
 
         try {
             $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/en/item/%d', $set->getId()));
-            $this->assertResponseRedirects(sprintf('/en/item/%d/prices', $set->getId()));
+            $this->assertResponseRedirects(sprintf('/en/set/%d', $set->getId()));
         } finally {
             $cleanupEm = $client->getContainer()->get(\Doctrine\ORM\EntityManagerInterface::class);
             $s = $cleanupEm->getRepository(\App\Entity\Set::class)->findOneBy(['no' => 'ITEM_' . $suffix . '-1']);

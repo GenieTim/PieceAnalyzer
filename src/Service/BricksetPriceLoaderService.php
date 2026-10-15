@@ -131,6 +131,37 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
     }
 
     /**
+     * Fetch detailed prices (MSRP, BrickLink, Current Market Value) for a set.
+     *
+     * @return list<array{
+     *     amount: float,
+     *     currency: string,
+     *     retailer: \App\Enum\Retailer,
+     *     provider: \App\Enum\PriceSourceProvider,
+     *     condition: string,
+     *     url: string,
+     *     imageUrl?: string|null,
+     * }>
+     */
+    public function loadDetailedPricesForSet(mixed $set_no): array
+    {
+        if (!$this->isAvailable('Brickset')) {
+            return [];
+        }
+
+        $setNo = (string) ($set_no instanceof Set ? $set_no->getNo() : $set_no);
+        $setNo = trim($setNo);
+        if ($setNo === '') {
+            return [];
+        }
+
+        $normalizedSetNo = $this->normalizeSetNum($setNo);
+        $this->logger->info('Loading detailed Brickset prices for set ' . $normalizedSetNo);
+
+        return $this->loadDetailedPricesFromWeb($normalizedSetNo);
+    }
+
+    /**
      * Batch reload prices for sets in the database.
      */
     #[\Override]
@@ -264,10 +295,42 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
      */
     private function loadPricesFromWeb(string $setNo): array
     {
+        $html = $this->fetchHtmlFromWeb($setNo);
+        if ($html === '') {
+            return [];
+        }
+
+        return $this->parsePricesFromHtml($html);
+    }
+
+    /**
+     * Scrape public Brickset set page for detailed prices and metadata.
+     *
+     * @return list<array{
+     *     amount: float,
+     *     currency: string,
+     *     retailer: \App\Enum\Retailer,
+     *     provider: \App\Enum\PriceSourceProvider,
+     *     condition: string,
+     *     url: string,
+     *     imageUrl?: string|null,
+     * }>
+     */
+    private function loadDetailedPricesFromWeb(string $setNo): array
+    {
+        $html = $this->fetchHtmlFromWeb($setNo);
+        if ($html === '') {
+            return [];
+        }
+
+        return $this->parseDetailedPricesFromHtml($html, $setNo);
+    }
+
+    private function fetchHtmlFromWeb(string $setNo): string
+    {
         $url = self::WEB_BASE_URL . urlencode($setNo);
 
         try {
-            $html = '';
             if ($this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
                 $response = $this->executeWithRateLimitRetry(
                     fn (): \Symfony\Contracts\HttpClient\ResponseInterface => $this->httpClient->request('GET', $url, [
@@ -289,38 +352,29 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
                             'url' => $url,
                         ]);
                     }
-                    return [];
+                    return '';
                 }
 
-                $html = $response->getContent(false);
-            } else {
-                $content = $this->fetchUrlWithRateLimitRetry(
-                    $url,
-                    [
-                        'timeout' => 10,
-                        'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    ],
-                    'Brickset web page',
-                    $this->logger
-                );
-
-                if ($content === null || $content === '') {
-                    return [];
-                }
-                $html = $content;
+                return $response->getContent(false);
             }
 
-            if ($html === '') {
-                return [];
-            }
+            $content = $this->fetchUrlWithRateLimitRetry(
+                $url,
+                [
+                    'timeout' => 10,
+                    'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                ],
+                'Brickset web page',
+                $this->logger
+            );
 
-            return $this->parsePricesFromHtml($html);
+            return $content ?? '';
         } catch (Throwable $e) {
             $this->logger->warning('Failed to scrape price from Brickset web page', [
                 'set' => $setNo,
                 'error' => $e->getMessage(),
             ]);
-            return [];
+            return '';
         }
     }
 
@@ -390,6 +444,250 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
         }
 
         return $prices;
+    }
+
+    /**
+     * Parse detailed prices from Brickset HTML:
+     * - MSRP (LEGO Store) in USD, GBP, EUR, CAD
+     * - Current Value (Brickset Market Value: New, Used)
+     * - BrickLink (Buy This Set: New, Used)
+     *
+     * @return list<array{
+     *     amount: float,
+     *     currency: string,
+     *     retailer: \App\Enum\Retailer,
+     *     provider: \App\Enum\PriceSourceProvider,
+     *     condition: string,
+     *     url: string,
+     *     imageUrl?: string|null,
+     * }>
+     */
+    public function parseDetailedPricesFromHtml(string $html, string $setNo): array
+    {
+        $crawler = new Crawler($html);
+        $detailed = [];
+        $imageUrl = $this->parseImageUrlFromHtml($html);
+
+        // 1. MSRP (LEGO Store)
+        $rrpPrices = $this->parsePricesFromHtml($html);
+        foreach ($rrpPrices as $curr => $val) {
+            $detailed[] = [
+                'amount' => $val,
+                'currency' => $curr,
+                'retailer' => \App\Enum\Retailer::LEGO_STORE,
+                'provider' => \App\Enum\PriceSourceProvider::BRICKSET,
+                'condition' => 'msrp',
+                'url' => self::WEB_BASE_URL . urlencode($setNo),
+                'imageUrl' => $imageUrl,
+            ];
+        }
+
+        // 2. Current Market Value: New / Used
+        $dtNodes = $crawler->filter('dt');
+        $currentValueText = '';
+        foreach ($dtNodes as $dtNode) {
+            if (stripos($dtNode->textContent, 'current value') !== false) {
+                $next = $dtNode->nextSibling;
+                while ($next instanceof \DOMNode && $next->nodeName !== 'dd') {
+                    $next = $next->nextSibling;
+                }
+                if ($next instanceof \DOMNode) {
+                    $currentValueText = $next->textContent;
+                    break;
+                }
+            }
+        }
+
+        if ($currentValueText !== '') {
+            // New: ~Fr223 or New: ~$240
+            if (preg_match('/New:\s*([^,\n\r<]+)/i', $currentValueText, $newMatch)) {
+                $parsed = $this->parseCurrencyAndAmount($newMatch[1]);
+                if ($parsed !== null) {
+                    $detailed[] = [
+                        'amount' => $parsed['amount'],
+                        'currency' => $parsed['currency'],
+                        'retailer' => \App\Enum\Retailer::OTHER,
+                        'provider' => \App\Enum\PriceSourceProvider::BRICKSET,
+                        'condition' => 'new',
+                        'url' => self::WEB_BASE_URL . urlencode($setNo),
+                        'imageUrl' => $imageUrl,
+                    ];
+                }
+            }
+            // Used: ~Fr63 or Used: ~$65
+            if (preg_match('/Used:\s*([^,\n\r<]+)/i', $currentValueText, $usedMatch)) {
+                $parsed = $this->parseCurrencyAndAmount($usedMatch[1]);
+                if ($parsed !== null) {
+                    $detailed[] = [
+                        'amount' => $parsed['amount'],
+                        'currency' => $parsed['currency'],
+                        'retailer' => \App\Enum\Retailer::OTHER,
+                        'provider' => \App\Enum\PriceSourceProvider::BRICKSET,
+                        'condition' => 'used',
+                        'url' => self::WEB_BASE_URL . urlencode($setNo),
+                        'imageUrl' => $imageUrl,
+                    ];
+                }
+            }
+        }
+
+        // 3. BrickLink Block (Buy this set: New ~Fr208, Used ~Fr74)
+        $bricklinkBoxText = '';
+        $blNodes = $crawler->filter('aside, div, table, section');
+        foreach ($blNodes as $node) {
+            $t = $node->textContent;
+            if (stripos($t, 'bricklink') !== false && (stripos($t, 'buy this set') !== false || stripos($t, 'switzerland') !== false || stripos($t, 'european union') !== false)) {
+                $bricklinkBoxText = $t;
+                break;
+            }
+        }
+
+        // Fallback: check entire HTML if not matched in container
+        if ($bricklinkBoxText === '' && (stripos($html, 'bricklink') !== false && stripos($html, 'buy this set') !== false)) {
+            $bricklinkBoxText = $html;
+        }
+
+        if ($bricklinkBoxText !== '') {
+            $blUrl = 'https://www.bricklink.com/v2/catalog/catalogitem.page?S=' . urlencode($setNo);
+
+            // Buy this set: New ~Fr208, Used ~Fr74
+            if (preg_match('/(?:BUY THIS SET|Bricklink)[^:]*:\s*(?:New\s*[:~]?\s*([^,\n\r<]+))?(?:,\s*)?(?:Used\s*[:~]?\s*([^,\n\r<]+))?/i', $bricklinkBoxText, $blMatch)) {
+                if (isset($blMatch[1]) && ($blMatch[1] !== '' && $blMatch[1] !== '0')) {
+                    $parsed = $this->parseCurrencyAndAmount($blMatch[1]);
+                    if ($parsed !== null) {
+                        $detailed[] = [
+                            'amount' => $parsed['amount'],
+                            'currency' => $parsed['currency'],
+                            'retailer' => \App\Enum\Retailer::BRICKLINK,
+                            'provider' => \App\Enum\PriceSourceProvider::BRICKSET,
+                            'condition' => 'new',
+                            'url' => $blUrl,
+                            'imageUrl' => $imageUrl,
+                        ];
+                    }
+                }
+                if (isset($blMatch[2]) && ($blMatch[2] !== '' && $blMatch[2] !== '0')) {
+                    $parsed = $this->parseCurrencyAndAmount($blMatch[2]);
+                    if ($parsed !== null) {
+                        $detailed[] = [
+                            'amount' => $parsed['amount'],
+                            'currency' => $parsed['currency'],
+                            'retailer' => \App\Enum\Retailer::BRICKLINK,
+                            'provider' => \App\Enum\PriceSourceProvider::BRICKSET,
+                            'condition' => 'used',
+                            'url' => $blUrl,
+                            'imageUrl' => $imageUrl,
+                        ];
+                    }
+                }
+            } elseif (preg_match('/New\s*(?:~|Fr\.?|\$|£|€)\s*[\d]+(?:[.,]\d+)?/i', $bricklinkBoxText, $directNew) && preg_match('/Used\s*(?:~|Fr\.?|\$|£|€)\s*[\d]+(?:[.,]\d+)?/i', $bricklinkBoxText, $directUsed)) {
+                $parsedNew = $this->parseCurrencyAndAmount($directNew[0]);
+                $parsedUsed = $this->parseCurrencyAndAmount($directUsed[0]);
+                if ($parsedNew !== null) {
+                    $detailed[] = [
+                        'amount' => $parsedNew['amount'],
+                        'currency' => $parsedNew['currency'],
+                        'retailer' => \App\Enum\Retailer::BRICKLINK,
+                        'provider' => \App\Enum\PriceSourceProvider::BRICKSET,
+                        'condition' => 'new',
+                        'url' => $blUrl,
+                        'imageUrl' => $imageUrl,
+                    ];
+                }
+                if ($parsedUsed !== null) {
+                    $detailed[] = [
+                        'amount' => $parsedUsed['amount'],
+                        'currency' => $parsedUsed['currency'],
+                        'retailer' => \App\Enum\Retailer::BRICKLINK,
+                        'provider' => \App\Enum\PriceSourceProvider::BRICKSET,
+                        'condition' => 'used',
+                        'url' => $blUrl,
+                        'imageUrl' => $imageUrl,
+                    ];
+                }
+            }
+        }
+
+        return $detailed;
+    }
+
+    /**
+     * Parse currency and decimal amount from text like "~Fr223", "~Fr79.80", "$29.99", "£26.99", "29.99€", "€29,99"
+     *
+     * @return array{currency: string, amount: float}|null
+     */
+    public function parseCurrencyAndAmount(string $text): ?array
+    {
+        $text = trim($text);
+        if ($text === '' || stripos($text, 'n/a') !== false) {
+            return null;
+        }
+
+        $currency = null;
+        $amountStr = null;
+
+        // 1. Swiss Francs: Fr, Fr., CHF (common on Brickset for CH locale)
+        if (preg_match('/(?:~?\s*Fr\.?|CHF)\s*([\d]+(?:[.,]\d+)?)/i', $text, $m)) {
+            $currency = 'CHF';
+            $amountStr = $m[1];
+        } elseif (preg_match('/([\d]+(?:[.,]\d+)?)\s*(?:Fr\.?|CHF)/i', $text, $m)) {
+            $currency = 'CHF';
+            $amountStr = $m[1];
+        }
+        // 2. CAD: CAD / CA$ (must check before generic $)
+        elseif (preg_match('/(?:CA\$|CAD)\s*([\d]+(?:[.,]\d+)?)/i', $text, $m) || preg_match('/([\d]+(?:[.,]\d+)?)\s*CAD/i', $text, $m)) {
+            $currency = 'CAD';
+            $amountStr = $m[1];
+        }
+        // 3. USD: $
+        elseif (preg_match('/\$\s*([\d]+(?:[.,]\d+)?)/', $text, $m)) {
+            $currency = 'USD';
+            $amountStr = $m[1];
+        }
+        // 4. GBP: £
+        elseif (preg_match('/(?:£|\x{00A3})\s*([\d]+(?:[.,]\d+)?)/u', $text, $m)) {
+            $currency = 'GBP';
+            $amountStr = $m[1];
+        }
+        // 5. EUR: €
+        elseif (preg_match('/(?:€|\x{20AC})\s*([\d]+(?:[.,]\d+)?)/u', $text, $m) || preg_match('/([\d]+(?:[.,]\d+)?)\s*(?:€|\x{20AC})/u', $text, $m)) {
+            $currency = 'EUR';
+            $amountStr = $m[1];
+        } else {
+            return null;
+        }
+
+        $cleanAmount = (float) str_replace(',', '.', $amountStr);
+        if ($cleanAmount <= 0) {
+            return null;
+        }
+
+        return [
+            'currency' => $currency,
+            'amount' => $cleanAmount,
+        ];
+    }
+
+    public function parseImageUrlFromHtml(string $html): ?string
+    {
+        $crawler = new Crawler($html);
+        $ogImage = $crawler->filter('meta[property="og:image"]');
+        if ($ogImage->count() > 0) {
+            $url = trim((string) $ogImage->attr('content'));
+            if ($url !== '' && filter_var($url, FILTER_VALIDATE_URL)) {
+                return $url;
+            }
+        }
+
+        $imgNode = $crawler->filter('a.image img, #set-image, img[src*="images.brickset.com/sets/images/"]');
+        if ($imgNode->count() > 0) {
+            $src = trim((string) $imgNode->attr('src'));
+            if ($src !== '') {
+                return $src;
+            }
+        }
+
+        return null;
     }
 
     private function normalizeSetNum(string $setNum): string

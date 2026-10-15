@@ -11,6 +11,9 @@
             </div>
         </div>
         <div class="d-flex gap-2">
+            <a href="{{ path('set_detail', {'id': set.id}) }}" class="btn btn-sm btn-primary">
+                {{ 'set.view_set_page'|trans|default('Set-Seite öffnen') }} →
+            </a>
             {% set externalUrl = set.source == 'rebrickable' ? ('https://rebrickable.com/sets/' ~ set.no) : ('https://www.bricklink.com/v2/catalog/catalogitem.page?S=' ~ set.no) %}
             <a href="{{ externalUrl }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
                 {{ 'set.view_on_rebrickable'|trans }} ↗
@@ -26,6 +29,11 @@
                 <span class="fw-bold fs-5 text-dark font-monospace">
                     {{ bestPrice ? bestPrice.formattedPrice : '—' }}
                 </span>
+                {% if bestPrice and bestPrice.currency != currentCurrency %}
+                    <span class="d-block text-secondary small font-monospace mt-1">
+                        ~{{ currentCurrency }} {{ convert_price(bestPrice.decimalPrice, bestPrice.currency, currentCurrency)|number_format(2) }}
+                    </span>
+                {% endif %}
             </div>
         </div>
         <div class="col-6 col-md-3">
@@ -34,6 +42,11 @@
                 <span class="fw-bold fs-5 text-success-emphasis font-monospace">
                     {{ lowestPrice ? lowestPrice.formattedPrice : '—' }}
                 </span>
+                {% if lowestPrice and lowestPrice.currency != currentCurrency %}
+                    <span class="d-block text-success-emphasis small font-monospace mt-1">
+                        ~{{ currentCurrency }} {{ convert_price(lowestPrice.decimalPrice, lowestPrice.currency, currentCurrency)|number_format(2) }}
+                    </span>
+                {% endif %}
             </div>
         </div>
         <div class="col-6 col-md-3">
@@ -42,6 +55,11 @@
                 <span class="fw-bold fs-5 text-secondary font-monospace">
                     {{ highestPrice ? highestPrice.formattedPrice : '—' }}
                 </span>
+                {% if highestPrice and highestPrice.currency != currentCurrency %}
+                    <span class="d-block text-secondary small font-monospace mt-1">
+                        ~{{ currentCurrency }} {{ convert_price(highestPrice.decimalPrice, highestPrice.currency, currentCurrency)|number_format(2) }}
+                    </span>
+                {% endif %}
             </div>
         </div>
         <div class="col-6 col-md-3">
@@ -52,7 +70,7 @@
                         -{{ savingsDelta.savingsPercent }}%
                     </span>
                     <span class="d-block text-secondary small font-monospace mt-1">
-                        ({{ lowestPrice.currency }} {{ savingsDelta.savingsAmount|number_format(2) }})
+                        ({{ currentCurrency }} {{ savingsDelta.savingsAmount|number_format(2) }})
                     </span>
                 {% else %}
                     <span class="text-secondary font-monospace small">No delta</span>
@@ -64,14 +82,43 @@
     <!-- Trend Chart Visualization (SVG) -->
     {% if prices|length > 1 %}
         {% set chronologicalPrices = set.pricesSortedByDate('ASC') %}
-        {% set minP = lowestPrice ? lowestPrice.decimalPrice : 0 %}
-        {% set maxP = highestPrice ? highestPrice.decimalPrice : 100 %}
-        {% set pRange = (maxP - minP) > 0 ? (maxP - minP) : 1 %}
-        {% set count = chronologicalPrices|length %}
         
+        {# Calculate min and max normalized to currentCurrency to prevent cross-currency distortion #}
+        {% set minNorm = null %}
+        {% set maxNorm = null %}
+        {% set firstDate = null %}
+        {% set lastDate = null %}
+        {% set normList = [] %}
+        
+        {% for p in chronologicalPrices %}
+            {% set cVal = convert_price(p.decimalPrice, p.currency, currentCurrency) %}
+            {% if minNorm is null or cVal < minNorm %}
+                {% set minNorm = cVal %}
+            {% endif %}
+            {% if maxNorm is null or cVal > maxNorm %}
+                {% set maxNorm = cVal %}
+            {% endif %}
+            {% if firstDate is null %}
+                {% set firstDate = p.recordedAt|date('Y-m-d') %}
+            {% endif %}
+            {% set lastDate = p.recordedAt|date('Y-m-d') %}
+            {% set normList = normList|merge([{
+                'p': p,
+                'val': cVal
+            }]) %}
+        {% endfor %}
+
+        {% if maxNorm == minNorm %}
+            {% set minNorm = (minNorm * 0.9)|round(2) %}
+            {% set maxNorm = (maxNorm * 1.1)|round(2) %}
+        {% endif %}
+        {% set pRange = (maxNorm - minNorm) > 0 ? (maxNorm - minNorm) : 1 %}
+        {% set count = normList|length %}
+        {% set isSameDay = firstDate == lastDate %}
+
         <div class="card mb-4 border shadow-sm">
             <div class="card-header bg-transparent py-2 d-flex justify-content-between align-items-center">
-                <span class="fw-semibold small">📈 {{ 'set.price_trend'|trans }}</span>
+                <span class="fw-semibold small">📈 {{ 'set.price_trend'|trans }} ({{ currentCurrency }})</span>
                 <span class="text-secondary small">{{ 'set.data_points'|trans({'%count%': count}) }}</span>
             </div>
             <div class="card-body p-2 p-sm-3">
@@ -86,17 +133,17 @@
 
                         <!-- Horizontal Grid Lines -->
                         <line x1="40" y1="20" x2="500" y2="20" stroke="#dee2e6" stroke-dasharray="3,3" />
-                        <text x="35" y="24" text-anchor="end" font-size="10" fill="#6c757d" font-family="monospace">{{ maxP|number_format(0) }}</text>
+                        <text x="35" y="24" text-anchor="end" font-size="10" fill="#6c757d" font-family="monospace">{{ currentCurrency }} {{ maxNorm|number_format(0) }}</text>
 
                         <line x1="40" y1="110" x2="500" y2="110" stroke="#dee2e6" stroke-dasharray="3,3" />
-                        <text x="35" y="114" text-anchor="end" font-size="10" fill="#6c757d" font-family="monospace">{{ minP|number_format(0) }}</text>
+                        <text x="35" y="114" text-anchor="end" font-size="10" fill="#6c757d" font-family="monospace">{{ currentCurrency }} {{ minNorm|number_format(0) }}</text>
 
                         <!-- Plot Points -->
                         {% set points = '' %}
                         {% set areaPoints = '40,110 ' %}
-                        {% for i, p in chronologicalPrices %}
+                        {% for i, item in normList %}
                             {% set x = count > 1 ? (40 + (i / (count - 1)) * 460) : 270 %}
-                            {% set normY = (p.decimalPrice - minP) / pRange %}
+                            {% set normY = (item.val - minNorm) / pRange %}
                             {% set y = 110 - (normY * 90) %}
                             {% set points = points ~ x ~ ',' ~ y ~ ' ' %}
                             {% set areaPoints = areaPoints ~ x ~ ',' ~ y ~ ' ' %}
@@ -110,16 +157,21 @@
                         <polyline fill="none" stroke="#0d6efd" stroke-width="2.5" points="{{ points }}" stroke-linejoin="round" stroke-linecap="round" />
 
                         <!-- Data Point Markers -->
-                        {% for i, p in chronologicalPrices %}
+                        {% for i, item in normList %}
+                            {% set p = item.p %}
                             {% set x = count > 1 ? (40 + (i / (count - 1)) * 460) : 270 %}
-                            {% set normY = (p.decimalPrice - minP) / pRange %}
+                            {% set normY = (item.val - minNorm) / pRange %}
                             {% set y = 110 - (normY * 90) %}
                             {% set isLowest = lowestPrice and p.id == lowestPrice.id %}
                             <circle cx="{{ x }}" cy="{{ y }}" r="{{ isLowest ? 5 : 3.5 }}" fill="{{ isLowest ? '#198754' : '#0d6efd' }}" stroke="#ffffff" stroke-width="1.5">
-                                <title>{{ p.retailer.label }}: {{ p.formattedPrice }} ({{ p.recordedAt|date('Y-m-d') }})</title>
+                                <title>{{ p.retailer.label }}{% if p.conditionLabel %} ({{ p.conditionLabel }}){% endif %}: {{ currentCurrency }} {{ item.val|number_format(2) }}{% if p.currency != currentCurrency %} ({{ p.formattedPrice }}){% endif %} ({{ p.recordedAt|date('Y-m-d H:i') }})</title>
                             </circle>
                             <text x="{{ x }}" y="130" text-anchor="middle" font-size="9" fill="#888888" font-family="monospace">
-                                {{ p.recordedAt|date('M j') }}
+                                {% if isSameDay %}
+                                    {{ p.retailer.label|slice(0, 8) }}
+                                {% else %}
+                                    {{ p.recordedAt|date('M j') }}
+                                {% endif %}
                             </text>
                         {% endfor %}
                     </svg>
@@ -140,6 +192,8 @@
                 <thead class="table-light small">
                     <tr>
                         <th class="ps-3 py-2">{{ 'set.retailer'|trans }}</th>
+                        <th class="py-2">{{ 'set.condition'|trans|default('Zustand') }}</th>
+                        <th class="py-2 text-end">Originalpreis</th>
                         <th class="py-2 text-end">{{ 'table.price'|trans({'%currency%': currentCurrency}) }}</th>
                         <th class="py-2 text-center">{{ 'set.status'|trans }}</th>
                         <th class="py-2 d-none d-sm-table-cell">{{ 'set.provider'|trans }}</th>
@@ -148,18 +202,29 @@
                 </thead>
                 <tbody class="small font-monospace">
                     {% for p in prices %}
+                        {% set normVal = convert_price(p.decimalPrice, p.currency, currentCurrency) %}
                         <tr>
                             <td class="ps-3">
-                                {% if p.url %}
-                                    <a href="{{ p.url }}" target="_blank" rel="noopener" class="fw-semibold text-decoration-none">
-                                        {{ p.retailer.label }} ↗
-                                    </a>
+                                <a href="{{ p.retailerUrl }}" target="_blank" rel="noopener" class="fw-semibold text-decoration-none">
+                                    {{ p.retailer.label }} ↗
+                                </a>
+                            </td>
+                            <td>
+                                {% if p.itemCondition == 'msrp' %}
+                                    <span class="badge bg-secondary-subtle text-secondary-emphasis border">UVP / MSRP</span>
+                                {% elseif p.itemCondition == 'new' %}
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Neu</span>
+                                {% elseif p.itemCondition == 'used' %}
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Gebraucht</span>
                                 {% else %}
-                                    <span class="fw-semibold">{{ p.retailer.label }}</span>
+                                    <span class="text-secondary">—</span>
                                 {% endif %}
                             </td>
-                            <td class="text-end fw-bold">
+                            <td class="text-end text-body-secondary">
                                 {{ p.formattedPrice }}
+                            </td>
+                            <td class="text-end fw-bold">
+                                {{ currentCurrency }} {{ normVal|number_format(2) }}
                                 {% if lowestPrice and p.id == lowestPrice.id %}
                                     <span class="badge text-bg-success ms-1" style="font-size: 0.65rem;">Lowest</span>
                                 {% endif %}
@@ -174,7 +239,13 @@
                                 {% endif %}
                             </td>
                             <td class="d-none d-sm-table-cell text-body-secondary">
-                                {{ p.provider.label }}
+                                {% if p.sourceUrl %}
+                                    <a href="{{ p.sourceUrl }}" target="_blank" rel="noopener" class="text-decoration-none link-secondary">
+                                        {{ p.provider.label }} ↗
+                                    </a>
+                                {% else %}
+                                    {{ p.provider.label }}
+                                {% endif %}
                                 {% if p.submittedBy %}
                                     <span class="badge bg-light text-secondary border ms-1">by {{ p.submittedBy.userIdentifier|split('@')[0] }}</span>
                                 {% endif %}

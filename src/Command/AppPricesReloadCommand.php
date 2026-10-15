@@ -202,19 +202,42 @@ class AppPricesReloadCommand extends Command
                     }
                 } elseif ($this->loader instanceof \App\Service\BricksetPriceLoaderService) {
                     try {
-                        $multiPrices = $this->loader->loadPricesForSet($setNo);
-                        if ($multiPrices !== []) {
-                            foreach ($multiPrices as $currCode => $val) {
+                        $detailedPrices = $this->loader->loadDetailedPricesForSet($setNo);
+                        if ($detailedPrices !== []) {
+                            $oneDayAgo = (new \DateTimeImmutable())->modify('-24 hours');
+                            foreach ($detailedPrices as $dp) {
+                                $amountCents = (int) round($dp['amount'] * 100);
+                                $currCode = $dp['currency'];
+                                $retailerEnum = $dp['retailer'];
+                                $condition = $dp['condition'] ?? 'msrp';
+
+                                $existing = $this->em->getRepository(SetPrice::class)->findOneBy([
+                                    'set' => $set,
+                                    'retailer' => $retailerEnum,
+                                    'amount' => $amountCents,
+                                    'currency' => $currCode,
+                                    'itemCondition' => $condition,
+                                ]);
+
+                                if ($existing instanceof SetPrice && $existing->getRecordedAt() > $oneDayAgo) {
+                                    continue;
+                                }
+
                                 $setPrice = new SetPrice(
                                     set: $set,
-                                    amount: (int) round($val * 100),
+                                    amount: $amountCents,
                                     currency: $currCode,
-                                    retailer: Retailer::LEGO_STORE,
-                                    provider: PriceSourceProvider::BRICKSET
+                                    retailer: $retailerEnum,
+                                    provider: $dp['provider'] ?? PriceSourceProvider::BRICKSET,
+                                    itemCondition: $condition
                                 );
-                                $setPrice->setUrl('https://brickset.com/sets/' . urlencode($setNo));
+                                $setPrice->setUrl($dp['url'] ?? ('https://brickset.com/sets/' . urlencode($setNo)));
                                 $set->addPrice($setPrice);
                                 $this->em->persist($setPrice);
+
+                                if (($set->getImageUrl() === null || $set->getImageUrl() === '') && !empty($dp['imageUrl'])) {
+                                    $set->setImageUrl($dp['imageUrl']);
+                                }
                             }
                             $set->updateCachedBestPrice($this->exchangeRateService);
                             $this->em->persist($set);
