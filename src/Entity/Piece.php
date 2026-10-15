@@ -11,7 +11,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'piece_count_idx', columns: ['count'])]
 #[ORM\Index(name: 'piece_sort_idx', columns: ['category', 'type'])]
 #[ORM\Index(name: 'piece_set_idx', columns: ['set_id'])]
+#[ORM\Index(name: 'idx_piece_set_color_cat', columns: ['set_id', 'color', 'category'])]
 #[ORM\Entity(repositoryClass: \App\Repository\PieceRepository::class)]
+
 class Piece extends Item
 {
     #[ORM\ManyToOne(targetEntity: Set::class, inversedBy: 'pieces')]
@@ -25,7 +27,7 @@ class Piece extends Item
 
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]
     private ?int $color = null;
-    
+
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]
     private ?int $count = null;
 
@@ -76,16 +78,16 @@ class Piece extends Item
 
         return $this;
     }
-    
+
     public function getCount(): ?int
     {
         return $this->count;
     }
-    
+
     public function setCount(?int $count): static
     {
         $this->count = $count;
-        
+
         return $this;
     }
 }

@@ -48,4 +48,47 @@ class SetTest extends TestCase
         $this->assertCount(1, $set->getPieces());
         $this->assertSame(25, $set->getPieceCount());
     }
+
+    public function testHistoricalPricesAndSavingsDelta(): void
+    {
+        $set = new Set();
+        $set->setNo('10311-1');
+
+        $priceLow = new \App\Entity\SetPrice($set, 4500, 'CHF', \App\Enum\Retailer::BRACK, \App\Enum\PriceSourceProvider::USER_BOOKMARKLET);
+        $priceHigh = new \App\Entity\SetPrice($set, 6000, 'CHF', \App\Enum\Retailer::LEGO_STORE, \App\Enum\PriceSourceProvider::DIRECT_CRAWL);
+
+        $set->addPrice($priceLow);
+        $set->addPrice($priceHigh);
+
+        $lowest = $set->getHistoricalLowestPrice('CHF');
+        $highest = $set->getHistoricalHighestPrice('CHF');
+
+        $this->assertSame($priceLow, $lowest);
+        $this->assertSame($priceHigh, $highest);
+
+        $delta = $set->getHistoricalSavingsDelta('CHF');
+        $this->assertNotNull($delta);
+        $this->assertSame(15.0, $delta['savingsAmount']);
+        $this->assertEqualsWithDelta(25.0, $delta['savingsPercent'], 0.1);
+
+        // Sorting by date
+        $sortedDesc = $set->getPricesSortedByDate('DESC');
+        $this->assertCount(2, $sortedDesc);
+    }
+
+    public function testRemovePriceResetsCachedPriceWhenEmpty(): void
+    {
+        $set = new Set();
+        $set->setNo('42115-1');
+
+        $price = new \App\Entity\SetPrice($set, 35000, 'CHF', \App\Enum\Retailer::GALAXUS, \App\Enum\PriceSourceProvider::USER_BOOKMARKLET);
+        $set->addPrice($price);
+
+        $this->assertSame(350.0, $set->getPrice());
+        $this->assertSame('CHF', $set->getPriceCurrency());
+
+        $set->removePrice($price);
+        $this->assertNull($set->getPrice());
+        $this->assertNull($set->getPriceCurrency());
+    }
 }

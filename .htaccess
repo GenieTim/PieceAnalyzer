@@ -11,6 +11,9 @@ RewriteRule ^composer\.(lock|json)$ / [F,L]
 RewriteRule ^symfony.lock$ / [F,L]
 RewriteRule ^\.(.*)$ / [F,L]
 RewriteRule ^bin/(.*)?$ / [F,L]
+RewriteRule ^var/(.*)?$ / [F,L]
+RewriteRule ^data/(.*)?$ / [F,L]
+RewriteRule ^tests/(.*)?$ / [F,L]
 
 # Determine the RewriteBase automatically and set it as environment variable.
 # If you are using Apache aliases to do mass virtual hosting or installed the

@@ -28,7 +28,7 @@ home:
   hero_title: "Finde die preiswertesten LEGO Sets für jedes Teil"
   hero_desc: "Filtere offizielle LEGO Set-Inventare nach Teilekategorie und Farbe, und sortiere jedes gefundene Set nach Stückpreiseffizienz, um die rentabelsten Teilepakete zu entdecken."
   btn_explore: "Sets entdecken & filtern"
-  btn_import: "Set-Bereich importieren"
+  btn_browse: "Alle Sets durchsuchen"
   how_works_badge: "So funktioniert die Bewertung"
   how_works_title: "Gezieltes Preis-pro-Teil-Ranking"
   step1_title: "Elementkriterien auswählen"
@@ -163,23 +163,6 @@ set:
   filter_by_part_btn: "Sets mit diesem Teil ↗"
   filter_by_part_title: "Alle Sets im Katalog anzeigen, die dieses Teil in dieser Farbe enthalten"
   color_prefix: "Farbe #%id%"
-
-# Import Set Range
-import:
-  meta_title: "Set-Bereich importieren"
-  title: "LEGO® Sets nach Nummernintervall importieren"
-  desc: "Set-Metadaten und Teilelisten von Rebrickable & BrickLink über einen fortlaufenden Bereich synchronisieren."
-  how_works_title: "So funktioniert der Bereichsimport:"
-  how_works_desc: "Gib eine Start- und End-Setnummer ein (z.B. %start% bis %end%), um passende Set-Inventare und Preise in die Datenbank zu laden."
-  start_set_number: "Start-Setnummer"
-  start_set_placeholder: "z.B. 10000"
-  start_set_help: "Erste LEGO Setnummer im zu importierenden Bereich."
-  end_set_number: "End-Setnummer"
-  end_set_placeholder: "z.B. 10050"
-  end_set_help: "Letzte LEGO Setnummer im Bereich (bis 1.000.000)."
-  submit: "Set-Bereich importieren"
-  back_to_explorer: "Zurück zur Set-Übersicht"
-  limit_exceeded: "Setnummer überschreitet das unterstützte Limit"
 
 # Auth & Account
 auth:

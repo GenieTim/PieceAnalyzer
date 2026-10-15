@@ -13,14 +13,6 @@ parameters:
     env(ERROR_EMAIL_FROM): "errors@piece-analyzer.be-we.ch"
     rebrickable_api_key: "%env(REBRICKABLE_API_KEY)%"
     brickset_api_key: "%env(BRICKSET_API_KEY)%"
-    
-    bricklink:
-        consumer:
-            key: "%env(CONSUMER_KEY)%"
-            secret: "%env(CONSUMER_SECRET)%"
-        token:
-            value: "%env(TOKEN_VALUE)%"
-            secret: "%env(TOKEN_SECRET)%"
 
 services:
     # default configuration for services in *this* file
@@ -36,7 +28,7 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: "../src/*"
-        exclude: "../src/{Entity,Migrations,Tests,Kernel.php}"
+        exclude: "../src/{Entity,Tests,Kernel.php}"
 
     # controllers are imported separately to make sure services can be injected
     # as action arguments even if you don't extend any base controller class
@@ -44,12 +36,9 @@ services:
         resource: "../src/Controller"
         tags: ["controller.service_arguments"]
 
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
-
-    App\Service\BricklinkLegoLoaderService:
-        arguments:
-            $credentials: "%bricklink%"
 
     App\Service\CsvLegoLoaderService:
         arguments:

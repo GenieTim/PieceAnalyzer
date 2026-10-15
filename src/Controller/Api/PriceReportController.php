@@ -38,39 +38,48 @@ class PriceReportController extends AbstractController
         /** @var array<string, mixed> $data */
         $data = json_decode((string) $request->getContent(), true) ?? [];
 
-        // 1. Authenticate user: session or Bearer API token
-        $user = $this->getUser();
-        if (!$user instanceof User) {
-            $authHeader = $request->headers->get('Authorization');
-            $token = '';
-            if (is_string($authHeader) && preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
-                $token = $matches[1];
-            } elseif (isset($data['token']) && is_string($data['token'])) {
-                $token = $data['token'];
-            }
+        // 1. Authenticate user: Bearer API token or payload token (disallow naked session cookie to prevent CSRF)
+        $authHeader = $request->headers->get('Authorization');
+        $token = '';
+        if (is_string($authHeader) && preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
+            $token = $matches[1];
+        } elseif (isset($data['token']) && is_string($data['token'])) {
+            $token = $data['token'];
+        }
 
-            if ($token !== '') {
-                $user = $em->getRepository(User::class)->findOneBy(['apiToken' => $token]);
-            }
+        $user = null;
+        if ($token !== '') {
+            $user = $em->getRepository(User::class)->findOneBy(['apiToken' => $token]);
         }
 
         if (!$user instanceof User) {
-            return $this->jsonError('Unauthorized. Valid contributor API token or login session required.', 401, $request);
+            // Rate limit unauthenticated attempts by IP to prevent token brute forcing & DoS
+            $clientIp = $request->getClientIp() ?? 'unknown';
+            $this->priceReportLimiter->create('ip_unauth_' . $clientIp)->consume();
+            return $this->jsonError('Unauthorized. Valid contributor API token required.', 401, $request);
         }
 
         if ($user->isApiTokenExpired()) {
             return $this->jsonError('Contributor API token has expired. Please regenerate your token in your profile.', 401, $request);
         }
 
-        // 2. Enforce Rate Limiting (10 requests / minute per user)
+
+        if (!$user->isEmailVerified()) {
+            return $this->jsonError('Email address must be verified before reporting prices.', 403, $request);
+        }
+
+        // 3. Enforce User Rate Limiting (10 requests / minute per user)
         $limiter = $this->priceReportLimiter->create($user->getUserIdentifier());
         if (!$limiter->consume()->isAccepted()) {
             return $this->jsonError('Rate limit exceeded (max 10 price reports per minute). Please wait.', 429, $request);
         }
 
-        $isBatch = isset($data['items']) && is_array($data['items']);
+
+        $payloadData = $data;
+        unset($payloadData['token']);
+        $isBatch = isset($payloadData['items']) && is_array($payloadData['items']);
         /** @var list<array<string, mixed>> $rawItems */
-        $rawItems = $isBatch ? $data['items'] : [$data];
+        $rawItems = $isBatch ? $payloadData['items'] : (empty($payloadData) ? [] : [$payloadData]);
 
         if (empty($rawItems)) {
             return $this->jsonError('No price report data provided.', 400, $request);

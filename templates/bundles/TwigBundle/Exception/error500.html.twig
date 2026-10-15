@@ -1,0 +1,24 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}500 - Assembly Malfunction{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="mb-4">
+                <span class="display-1" aria-hidden="true">⚙️</span>
+            </div>
+            <h1 class="display-5 fw-bold text-dark mb-3">500 - Assembly Malfunction</h1>
+            <p class="lead text-body-secondary mb-4">
+                Something went wrong while assembling this page. Our master builders have been notified and are looking into the issue.
+            </p>
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                <a href="{{ path('index') }}" class="btn btn-primary px-4 py-2 fw-semibold">
+                    🏠 Return Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

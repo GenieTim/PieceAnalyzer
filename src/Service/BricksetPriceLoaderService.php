@@ -633,24 +633,20 @@ class BricksetPriceLoaderService implements PriceLoaderServiceInterface
         } elseif (preg_match('/([\d]+(?:[.,]\d+)?)\s*(?:Fr\.?|CHF)/i', $text, $m)) {
             $currency = 'CHF';
             $amountStr = $m[1];
-        }
-        // 2. CAD: CAD / CA$ (must check before generic $)
-        elseif (preg_match('/(?:CA\$|CAD)\s*([\d]+(?:[.,]\d+)?)/i', $text, $m) || preg_match('/([\d]+(?:[.,]\d+)?)\s*CAD/i', $text, $m)) {
+        } elseif (preg_match('/(?:CA\$|CAD)\s*([\d]+(?:[.,]\d+)?)/i', $text, $m) || preg_match('/([\d]+(?:[.,]\d+)?)\s*CAD/i', $text, $m)) {
+            // CAD: CAD / CA$ (must check before generic $)
             $currency = 'CAD';
             $amountStr = $m[1];
-        }
-        // 3. USD: $
-        elseif (preg_match('/\$\s*([\d]+(?:[.,]\d+)?)/', $text, $m)) {
+        } elseif (preg_match('/\$\s*([\d]+(?:[.,]\d+)?)/', $text, $m)) {
+            // USD: $
             $currency = 'USD';
             $amountStr = $m[1];
-        }
-        // 4. GBP: £
-        elseif (preg_match('/(?:£|\x{00A3})\s*([\d]+(?:[.,]\d+)?)/u', $text, $m)) {
+        } elseif (preg_match('/(?:£|\x{00A3})\s*([\d]+(?:[.,]\d+)?)/u', $text, $m)) {
+            // GBP: £
             $currency = 'GBP';
             $amountStr = $m[1];
-        }
-        // 5. EUR: €
-        elseif (preg_match('/(?:€|\x{20AC})\s*([\d]+(?:[.,]\d+)?)/u', $text, $m) || preg_match('/([\d]+(?:[.,]\d+)?)\s*(?:€|\x{20AC})/u', $text, $m)) {
+        } elseif (preg_match('/(?:€|\x{20AC})\s*([\d]+(?:[.,]\d+)?)/u', $text, $m) || preg_match('/([\d]+(?:[.,]\d+)?)\s*(?:€|\x{20AC})/u', $text, $m)) {
+            // EUR: €
             $currency = 'EUR';
             $amountStr = $m[1];
         } else {

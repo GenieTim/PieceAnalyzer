@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Entity\Set;
 use App\Entity\SetPrice;
+use App\Entity\User;
 use App\Enum\PriceVerificationStatus;
 use App\Enum\Retailer;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,9 +29,25 @@ class PriceModerationController extends AbstractController
         $priceRepo = $em->getRepository(SetPrice::class);
 
         // Counts for status badges
-        $unverifiedCount = $priceRepo->count(['status' => PriceVerificationStatus::UNVERIFIED]);
-        $verifiedCount = $priceRepo->count(['status' => PriceVerificationStatus::VERIFIED]);
-        $rejectedCount = $priceRepo->count(['status' => PriceVerificationStatus::REJECTED]);
+        /** @var list<array{status: PriceVerificationStatus|string, cnt: int|string}> $rawCounts */
+        $rawCounts = $priceRepo->createQueryBuilder('sp')
+            ->select('sp.status, COUNT(sp.id) as cnt')
+            ->groupBy('sp.status')
+            ->getQuery()
+            ->getArrayResult();
+
+        $countsByStatus = [];
+        foreach ($rawCounts as $row) {
+            $statusKey = $row['status'] instanceof PriceVerificationStatus
+                ? $row['status']->value
+                : (string) $row['status'];
+            $countsByStatus[$statusKey] = (int) $row['cnt'];
+        }
+
+        $unverifiedCount = $countsByStatus[PriceVerificationStatus::UNVERIFIED->value] ?? 0;
+        $verifiedCount = $countsByStatus[PriceVerificationStatus::VERIFIED->value] ?? 0;
+        $rejectedCount = $countsByStatus[PriceVerificationStatus::REJECTED->value] ?? 0;
+
 
         $qb = $priceRepo->createQueryBuilder('sp')
             ->leftJoin('sp.set', 's')
@@ -193,12 +210,12 @@ class PriceModerationController extends AbstractController
         $affectedSets = [];
 
         foreach ($grouped as $group) {
-            // Check if reports are from 2 or more distinct contributors
+            // Check if reports are from 2 or more distinct verified contributors
             $submitterIds = [];
             foreach ($group as $p) {
-                $subId = $p->getSubmittedBy()?->getId();
-                if ($subId !== null) {
-                    $submitterIds[$subId] = true;
+                $user = $p->getSubmittedBy();
+                if ($user instanceof User && $user->isVerifiedContributor() && $user->getId() !== null) {
+                    $submitterIds[$user->getId()] = true;
                 }
             }
 

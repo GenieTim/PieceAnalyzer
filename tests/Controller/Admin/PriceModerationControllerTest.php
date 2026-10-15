@@ -170,4 +170,214 @@ class PriceModerationControllerTest extends WebTestCase
         $reloaded = $em->find(SetPrice::class, $price->getId());
         $this->assertSame(PriceVerificationStatus::REJECTED, $reloaded?->getStatus());
     }
+
+    public function testAutoVerifyMatchingWithVerifiedContributorConsensus(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $this->cleanDatabase($em);
+
+        $admin = new User('admin@example.com', 'password');
+        $admin->setRoles(['ROLE_ADMIN']);
+        $em->persist($admin);
+
+        $user1 = new User('verified1@example.com', 'password');
+        $user1->setIsVerifiedContributor(true);
+        $user1->setIsEmailVerified(true);
+        $em->persist($user1);
+
+        $user2 = new User('verified2@example.com', 'password');
+        $user2->setIsVerifiedContributor(true);
+        $user2->setIsEmailVerified(true);
+        $em->persist($user2);
+
+        $set = new Set();
+        $set->setNo('75192-1');
+        $set->setName('Millennium Falcon');
+        $em->persist($set);
+
+        $price1 = new SetPrice(set: $set, amount: 69990, currency: 'CHF', retailer: Retailer::GALAXUS);
+        $price1->setStatus(PriceVerificationStatus::UNVERIFIED);
+        $price1->setSubmittedBy($user1);
+        $em->persist($price1);
+
+        $price2 = new SetPrice(set: $set, amount: 69990, currency: 'CHF', retailer: Retailer::GALAXUS);
+        $price2->setStatus(PriceVerificationStatus::UNVERIFIED);
+        $price2->setSubmittedBy($user2);
+        $em->persist($price2);
+
+        $em->flush();
+
+        $client->loginUser($admin);
+        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/admin/prices/moderation');
+        $token = $crawler->filter('form[action$="auto-verify-matching"] input[name="_token"]')->attr('value');
+
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/admin/prices/moderation/auto-verify-matching', [
+            '_token' => $token,
+        ]);
+
+        $this->assertResponseRedirects('/en/admin/prices/moderation');
+
+        $em->clear();
+        $p1 = $em->find(SetPrice::class, $price1->getId());
+        $p2 = $em->find(SetPrice::class, $price2->getId());
+        $s = $em->find(Set::class, $set->getId());
+
+        $this->assertSame(PriceVerificationStatus::VERIFIED, $p1?->getStatus());
+        $this->assertSame(PriceVerificationStatus::VERIFIED, $p2?->getStatus());
+        $this->assertSame(699.9, $s?->getPrice());
+    }
+
+    public function testAutoVerifyMatchingRejectsDuplicateSameContributor(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $this->cleanDatabase($em);
+
+        $admin = new User('admin@example.com', 'password');
+        $admin->setRoles(['ROLE_ADMIN']);
+        $em->persist($admin);
+
+        $user1 = new User('verified1@example.com', 'password');
+        $user1->setIsVerifiedContributor(true);
+        $user1->setIsEmailVerified(true);
+        $em->persist($user1);
+
+        $set = new Set();
+        $set->setNo('75192-1');
+        $set->setName('Millennium Falcon');
+        $em->persist($set);
+
+        // Same user submitting twice
+        $price1 = new SetPrice(set: $set, amount: 69990, currency: 'CHF', retailer: Retailer::GALAXUS);
+        $price1->setStatus(PriceVerificationStatus::UNVERIFIED);
+        $price1->setSubmittedBy($user1);
+        $em->persist($price1);
+
+        $price2 = new SetPrice(set: $set, amount: 69990, currency: 'CHF', retailer: Retailer::GALAXUS);
+        $price2->setStatus(PriceVerificationStatus::UNVERIFIED);
+        $price2->setSubmittedBy($user1);
+        $em->persist($price2);
+
+        $em->flush();
+
+        $client->loginUser($admin);
+        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/admin/prices/moderation');
+        $token = $crawler->filter('form[action$="auto-verify-matching"] input[name="_token"]')->attr('value');
+
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/admin/prices/moderation/auto-verify-matching', [
+            '_token' => $token,
+        ]);
+
+        $this->assertResponseRedirects('/en/admin/prices/moderation');
+
+        $em->clear();
+        $p1 = $em->find(SetPrice::class, $price1->getId());
+        $p2 = $em->find(SetPrice::class, $price2->getId());
+        $s = $em->find(Set::class, $set->getId());
+
+        $this->assertSame(PriceVerificationStatus::UNVERIFIED, $p1?->getStatus());
+        $this->assertSame(PriceVerificationStatus::UNVERIFIED, $p2?->getStatus());
+        $this->assertNull($s?->getPrice());
+    }
+
+    public function testAutoVerifyMatchingRejectsUnverifiedContributors(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $this->cleanDatabase($em);
+
+        $admin = new User('admin@example.com', 'password');
+        $admin->setRoles(['ROLE_ADMIN']);
+        $em->persist($admin);
+
+        // 2 distinct users, but NOT verified contributors
+        $user1 = new User('unverified1@example.com', 'password');
+        $user1->setIsVerifiedContributor(false);
+        $user1->setIsEmailVerified(true);
+        $em->persist($user1);
+
+        $user2 = new User('unverified2@example.com', 'password');
+        $user2->setIsVerifiedContributor(false);
+        $user2->setIsEmailVerified(true);
+        $em->persist($user2);
+
+        $set = new Set();
+        $set->setNo('75192-1');
+        $set->setName('Millennium Falcon');
+        $em->persist($set);
+
+        $price1 = new SetPrice(set: $set, amount: 69990, currency: 'CHF', retailer: Retailer::GALAXUS);
+        $price1->setStatus(PriceVerificationStatus::UNVERIFIED);
+        $price1->setSubmittedBy($user1);
+        $em->persist($price1);
+
+        $price2 = new SetPrice(set: $set, amount: 69990, currency: 'CHF', retailer: Retailer::GALAXUS);
+        $price2->setStatus(PriceVerificationStatus::UNVERIFIED);
+        $price2->setSubmittedBy($user2);
+        $em->persist($price2);
+
+        $em->flush();
+
+        $client->loginUser($admin);
+        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/admin/prices/moderation');
+        $token = $crawler->filter('form[action$="auto-verify-matching"] input[name="_token"]')->attr('value');
+
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/admin/prices/moderation/auto-verify-matching', [
+            '_token' => $token,
+        ]);
+
+        $this->assertResponseRedirects('/en/admin/prices/moderation');
+
+        $em->clear();
+        $p1 = $em->find(SetPrice::class, $price1->getId());
+        $p2 = $em->find(SetPrice::class, $price2->getId());
+        $s = $em->find(Set::class, $set->getId());
+
+        $this->assertSame(PriceVerificationStatus::UNVERIFIED, $p1?->getStatus());
+        $this->assertSame(PriceVerificationStatus::UNVERIFIED, $p2?->getStatus());
+        $this->assertNull($s?->getPrice());
+    }
+
+    public function testAutoVerifyMatchingCsrfProtection(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $this->cleanDatabase($em);
+
+        $admin = new User('admin@example.com', 'password');
+        $admin->setRoles(['ROLE_ADMIN']);
+        $em->persist($admin);
+        $em->flush();
+
+        $client->loginUser($admin);
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/admin/prices/moderation/auto-verify-matching', [
+            '_token' => 'invalid-token',
+        ]);
+
+        $this->assertResponseRedirects('/en/admin/prices/moderation');
+        $client->followRedirect();
+        $this->assertSelectorTextContains('.alert', 'Invalid security token.');
+    }
+
+    public function testAutoVerifyMatchingNonAdminRejection(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $this->cleanDatabase($em);
+
+        // 1. Unauthenticated request -> redirects to login
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/admin/prices/moderation/auto-verify-matching');
+        $this->assertResponseRedirects('/en/login');
+
+        // 2. Regular user (ROLE_USER) -> 403 Forbidden
+        $user = new User('regular@example.com', 'password');
+        $user->setRoles(['ROLE_USER']);
+        $em->persist($user);
+        $em->flush();
+
+        $client->loginUser($user);
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/admin/prices/moderation/auto-verify-matching');
+        $this->assertResponseStatusCodeSame(403);
+    }
 }

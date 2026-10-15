@@ -20,6 +20,9 @@ use Money\Money;
 #[ORM\Index(name: 'idx_set_price_submitted_by', columns: ['submitted_by_id'])]
 #[ORM\Index(name: 'idx_set_price_currency', columns: ['currency'])]
 #[ORM\Index(name: 'idx_set_price_status', columns: ['status'])]
+#[ORM\Index(name: 'idx_set_price_dedup', columns: ['set_id', 'retailer', 'currency', 'amount'])]
+#[ORM\Index(name: 'idx_set_price_status_retailer_recorded', columns: ['status', 'retailer', 'recorded_at'])]
+#[ORM\Index(name: 'idx_set_price_user_status', columns: ['submitted_by_id', 'status'])]
 class SetPrice
 {
     #[ORM\Id]
@@ -280,4 +283,3 @@ class SetPrice
         };
     }
 }
-

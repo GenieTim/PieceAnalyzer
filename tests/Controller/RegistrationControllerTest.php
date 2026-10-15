@@ -12,6 +12,20 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RegistrationControllerTest extends WebTestCase
 {
+    #[\Override]
+    protected function tearDown(): void
+    {
+        if (static::$booted) {
+            try {
+                /** @var \Symfony\Component\RateLimiter\RateLimiterFactory $factory */
+                $factory = static::getContainer()->get('limiter.registration');
+                $factory->create('127.0.0.1')->reset();
+            } catch (\Throwable) {
+            }
+        }
+        parent::tearDown();
+    }
+
     public function testRegisterPageRenders(): void
     {
         $client = static::createClient();
@@ -170,5 +184,72 @@ class RegistrationControllerTest extends WebTestCase
         $this->assertResponseRedirects('/en/resend-verification');
         $client->followRedirect();
         $this->assertSelectorTextContains('.alert-danger', 'Invalid security token');
+    }
+
+    public function testRegisterEndpointRateLimiting(): void
+    {
+        $ip = '192.168.1.' . mt_rand(10, 250);
+        $client = static::createClient([], ['REMOTE_ADDR' => $ip]);
+
+        /** @var \Symfony\Component\RateLimiter\RateLimiterFactory $factory */
+        $factory = static::getContainer()->get('limiter.registration');
+        $factory->create($ip)->reset();
+
+        // First 3 requests consume all 3 tokens allowed by the sliding window
+        for ($i = 1; $i <= 3; $i++) {
+            $client->request(Request::METHOD_POST, '/en/register', [
+                'registration_form' => [
+                    'email' => "rate_limit_{$i}@example.com",
+                    'plainPassword' => ['first' => 'Pass123!', 'second' => 'Mismatch!'],
+                ],
+            ]);
+            $this->assertNotSame(Response::HTTP_TOO_MANY_REQUESTS, $client->getResponse()->getStatusCode());
+        }
+
+        // 4th request must be rejected with 429
+        $client->request(Request::METHOD_POST, '/en/register', [
+            'registration_form' => [
+                'email' => 'rate_limit_4@example.com',
+                'plainPassword' => ['first' => 'Pass123!', 'second' => 'Pass123!'],
+            ],
+        ]);
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertSelectorTextContains('.alert-danger', 'Too many registration attempts. Please try again later.');
+
+        $factory->create($ip)->reset();
+    }
+
+    public function testResendVerificationRateLimiting(): void
+    {
+        $ip = '192.168.2.' . mt_rand(10, 250);
+        $client = static::createClient([], ['REMOTE_ADDR' => $ip]);
+
+        /** @var \Symfony\Component\RateLimiter\RateLimiterFactory $factory */
+        $factory = static::getContainer()->get('limiter.registration');
+        $factory->create($ip)->reset();
+
+        // First 3 requests consume all 3 tokens
+        for ($i = 1; $i <= 3; $i++) {
+            $client->request(Request::METHOD_POST, '/en/resend-verification', [
+                'email' => "resend_rate_{$i}@example.com",
+                '_token' => 'dummy',
+            ]);
+            $this->assertResponseRedirects('/en/resend-verification');
+            $client->followRedirect();
+            $this->assertSelectorTextContains('.alert-danger', 'Invalid security token');
+        }
+
+        // 4th request must be rejected with rate limit flash
+        $client->request(Request::METHOD_POST, '/en/resend-verification', [
+            'email' => 'resend_rate_4@example.com',
+            '_token' => 'dummy',
+        ]);
+
+        $this->assertResponseRedirects('/en/resend-verification');
+        $client->followRedirect();
+        $this->assertSelectorTextContains('.alert-danger', 'Too many verification requests. Please try again later.');
+
+        $factory->create($ip)->reset();
     }
 }

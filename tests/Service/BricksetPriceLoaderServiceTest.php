@@ -381,5 +381,3 @@ HTML;
         $this->assertSame('https://images.brickset.com/sets/images/2263-1.jpg', $detailed[0]['imageUrl']);
     }
 }
-
-

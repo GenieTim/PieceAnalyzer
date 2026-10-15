@@ -176,7 +176,7 @@ Transition the piece-analyzer price system from synchronous single-source scrapi
 - [ ] Store SHA-256 hashed API tokens in database (`api_token_hash`) rather than plaintext tokens, providing one-time display on generation.
 - [ ] Store hashed email verification tokens (`email_verification_token_hash`) with short-lived expiration timestamps.
 - [ ] Refactor API authentication to use Symfony `AccessTokenHandlerInterface` and firewall authenticator rather than manual `Authorization: Bearer` extraction in `PriceReportController`.
-- [ ] Moderation consensus rule: Require that auto-verifying consensus reports come from verified contributors (`isVerifiedContributor=true`) rather than arbitrary accounts to prevent Sybil attacks.
+- [x] Moderation consensus rule: Require that auto-verifying consensus reports come from verified contributors (`isVerifiedContributor=true`) rather than arbitrary accounts to prevent Sybil attacks.
 
 ### 2. Performance & Database Optimization
 - [ ] Eliminate Set Explorer N+1 queries by caching `pieceCount` integer column directly on `lego_set` table (updated during CSV import) instead of lazy-loading the `pieces` collection.
@@ -187,3 +187,83 @@ Transition the piece-analyzer price system from synchronous single-source scrapi
 - [ ] Convert `PriceReportController` request payload parsing to Symfony `#[MapRequestPayload]` with a typed DTO and Symfony Validator constraints.
 - [ ] Refactor `RegistrationController` inline HTML string concatenation to modern Twig `TemplatedEmail` templates.
 - [ ] Convert `ListController` filter criteria handling into a typed `SetFilterCriteria` DTO.
+
+---
+
+## Phase 13: Comprehensive Codebase Review Roadmap (October 2026 Review)
+
+### Completed Immediate Implementations
+- [x] **Test Isolation & Integrity**: Configured dedicated test database `var/test.db` in `phpunit.xml.dist` and `.env.test`, auto-initialized via `tests/bootstrap.php`, eliminating test runs mutating the dev database.
+- [x] **Security: Host Header Hardening**: Hardened default `TRUSTED_HOSTS` in `docker-compose.yaml` to prevent verification token hijacking.
+- [x] **Security: Role-Based Controller Hardening**: Added explicit `#[IsGranted('ROLE_ADMIN')]` to `LoadController::refresh` and `loadPrices`, and `#[IsGranted('ROLE_USER')]` to `BookmarkletController`.
+- [x] **Security: Unverified Contributor Rejection**: Enforced `isEmailVerified()` check in `PriceReportController` (returns 403 Forbidden).
+- [x] **Security: CSRF & API Protection**: Disallowed session-only auth without Bearer tokens on `POST /api/prices/report` and added IP-based rate limiting for unauthenticated/failed requests.
+- [x] **Security: Reverse Tabnabbing / Phishing Defense**: Added `rel="noopener noreferrer"` to all external outbound merchant and retailer links.
+- [x] **Security: Directory Access Restriction**: Hardened `.htaccess` rules denying direct web access to `var/`, `data/`, and `tests/`.
+- [x] **Performance: Database Composite Indexes**: Added composite indexes to `SetPrice` (dedup `['set_id', 'retailer', 'currency', 'amount']`, moderation `['status', 'retailer', 'recorded_at']`, user `['submitted_by_id', 'status']`) and `Piece` (`['set_id', 'color', 'category']`).
+- [x] **Performance: Moderation Count Aggregation**: Replaced 3 separate count queries in `PriceModerationController` with a single grouped query.
+- [x] **Performance: Webpack Encore Production Cache**: Enabled `cache: true` in `config/packages/prod/webpack_encore.yaml`.
+- [x] **Performance: Messenger Async Retries**: Configured exponential backoff retry strategy in `messenger.yaml`.
+- [x] **Test Comprehensiveness**: Added unit test suites for `User` entity (`UserTest`), `Retailer` and `Currency` enums (`RetailerTest`, `CurrencyTest`), `UserChecker` (`UserCheckerTest`), price calculations on `Set` (`SetTest`), and resolved ambiguous test assertions.
+- [x] **Code Quality & Tooling**: Removed obsolete files (`bin/.phpunit`, `config/reference.php`, `nbproject/`, `src/Migrations/`, duplicate `docker-compose.yml`), fixed PSR-12 violations with PHPCS (0 errors remaining), and validated PHPStan level 8 (0 errors across 64 files).
+
+---
+
+### Architectural & Major Backlog
+
+#### 1. Architecture & Domain Decoupling
+- [ ] **Extract Price Domain Services**:
+  - Create `App\Service\PriceIngestionService` to centralize price validation, bounds checking, 24-hour deduplication, and persistence across `PriceReportController`, `FetchSetPriceMessageHandler`, and scrapers.
+  - Create `App\Service\PriceModerationService` to manage status changes, consensus matching, and set best-price cache invalidation.
+- [ ] **Decouple Financial Calculations from `Set` Entity**:
+  - Extract `findExtremumPrice()`, `getHistoricalLowestPrice()`, `getHistoricalHighestPrice()`, and `getHistoricalSavingsDelta()` into a dedicated domain service (`App\Service\SetPriceCalculator` or extend `ExchangeRateService`).
+  - Remove hardcoded exchange rates (`EUR => 0.96`, etc.) and service parameter dependencies from `src/Entity/Set.php`.
+- [ ] **Migrate to Versioned Doctrine Migrations**:
+  - Generate baseline migration (`doctrine:migrations:diff`).
+  - Update `docker/docker-entrypoint.sh` to run `doctrine:migrations:migrate --no-interaction` instead of hazardous `doctrine:schema:update --force`.
+- [x] **Clean Up Legacy Scraper Services**:
+  - Remove deprecated `BricklinkLegoLoaderService` and unused BrickLink consumer keys/secrets from `services.yaml` and `.env.example`.
+- [ ] **Upgrade PHPStan to 2.x**:
+  - Upgrade `phpstan/phpstan` to `^2.2` and configure `objectManagerLoader` for full entity inference with `phpstan-doctrine`.
+
+#### 2. Efficiency & Scalability
+- [ ] **Persistent `piece_count` Column (Eliminate 50 N+1 Queries)**:
+  - Add integer column `lego_set.piece_count` (`Set::$pieceCount`) populated directly during CSV sync from `sets.csv` (`num_parts`).
+  - Provide recalculation console command (`app:data:recalculate-piece-counts`).
+  - Avoid lazy-loading the entire `$pieces` collection on `/filter` Set Explorer listing.
+- [ ] **Batch Loading of Prices in Set Explorer**:
+  - Execute a single batch DQL query (`SELECT sp FROM App\Entity\SetPrice sp WHERE sp.set IN (:activePageIds)`) after KnpPaginator resolves active IDs, reducing SQL queries per page from 102+ to 2–3.
+- [ ] **Memory Optimization in `CsvLegoLoaderService`**:
+  - Replace `findAll()` / `findBy(['price' => null])` in `loadPrices()` with cursor iteration (`$query->toIterable()`) with batch flush and clear every 50–100 records.
+  - Prevent detached entity exceptions by caching integer entity IDs rather than entity references across `$em->clear()`.
+- [ ] **Distributed Cache for `ProviderResilienceManager`**:
+  - Replace in-memory array state with Symfony Cache (`cache.app` / Redis / filesystem) so circuit breaker trips and AIMD pacing delays are shared across web requests and CLI messenger workers.
+- [ ] **Cache Static CSV Choice Lookups**:
+  - Memoize parsed categories and colors in `FilterFormType` and `ListController` using `cache.app` (invalidated on CSV sync).
+- [ ] **Decouple Synchronous Console Commands from Web Requests**:
+  - Convert `LoadController::refresh` (`/files`) and `loadPrices` (`/price/brickpicker`) to dispatch asynchronous Messenger tasks rather than blocking HTTP execution.
+
+#### 3. Security Hardening
+- [ ] **Token Hashing & Expiry Overhaul**:
+  - Store SHA-256 hashed API tokens (`hash('sha256', $token)`) in database.
+  - Implement Symfony `AccessTokenHandlerInterface` for native firewall authentication on `/api/prices/report`.
+- [x] **Abuse Prevention & Rate Limiting**:
+  - Add rate limiting on `/register` and `/resend-verification` (e.g. max 3 requests / 5 minutes per IP) to prevent mailer spam.
+- [ ] **Content Security Policy (CSP) Hardening**:
+  - Eliminate `'unsafe-inline'` from `script-src` in `nelmio_security.yaml` by migrating the remaining 4 inline `onclick` handlers in bookmarklet and profile templates to Stimulus/assets.
+- [x] **Custom Branded Error Templates**:
+  - Implement `templates/bundles/TwigBundle/Exception/error404.html.twig` and `error500.html.twig`.
+
+#### 4. Test Comprehensiveness & Quality
+- [ ] **Install `dama/doctrine-test-bundle`**:
+  - Wrap every integration test in an automatic database transaction rollback.
+  - Remove destructive `cleanDatabase()` raw DQL purges from `ItemPricesControllerTest`, `SetDetailControllerTest`, `PriceModerationControllerTest`, `ProfileControllerTest`, and `AppUserAdminCommandsTest`.
+- [x] **Moderation Consensus Test Suite**:
+  - Add integration tests for `POST /admin/prices/moderation/auto-verify-matching` (testing >= 2 verified contributor consensus, duplicate submitter rejection, and cache updates).
+- [x] **Reporting API Edge Case Suite**:
+  - Add tests for batch limits (> 100 items), empty payloads, and lower sanity bounds rejection (< 2.00 CHF on large sets).
+- [ ] **`CsvLegoLoaderService` Pipeline Test Suite**:
+  - Add integration tests for `loadSets()`, `loadPieces()`, and inventory reconciliation using mock CSV fixtures in `tests/fixtures/csv/`.
+- [ ] **High-Fidelity Integration Tests for `SetRepository`**:
+  - Replace mock-everything tests in `SetRepositoryTest` with real query execution against the test database, validating multi-currency sorting and part filtering.
+

@@ -28,7 +28,7 @@ home:
   hero_title: "Find the Best-Value LEGO Sets for Any Piece"
   hero_desc: "Filter official LEGO set inventories by part category and element color, then rank every matching set by unit price efficiency to discover the most cost-effective part packs."
   btn_explore: "Explore & Filter Sets"
-  btn_import: "Import Set Range"
+  btn_browse: "Browse All Sets"
   how_works_badge: "How Valuation Works"
   how_works_title: "Targeted Price-per-Piece Ranking"
   step1_title: "Select Element Criteria"
@@ -163,23 +163,6 @@ set:
   filter_by_part_btn: "Sets with this part ↗"
   filter_by_part_title: "View all sets in catalog containing this part in this color"
   color_prefix: "Color #%id%"
-
-# Import Set Range
-import:
-  meta_title: "Import Set Range"
-  title: "Import LEGO® Sets by Number Range"
-  desc: "Synchronize set metadata and piece inventories from Rebrickable & BrickLink across a sequential range of set numbers."
-  how_works_title: "How range import works:"
-  how_works_desc: "Enter a starting and ending LEGO® set number (for example, %start% to %end%) to fetch matching set inventories and pricing into the analyzer database."
-  start_set_number: "Start Set Number"
-  start_set_placeholder: "e.g. 10000"
-  start_set_help: "First LEGO set number in the range to import."
-  end_set_number: "End Set Number"
-  end_set_placeholder: "e.g. 10050"
-  end_set_help: "Last LEGO set number in the range (up to 1,000,000)."
-  submit: "Import Set Range"
-  back_to_explorer: "Back to Set Explorer"
-  limit_exceeded: "Set number exceeds supported limit"
 
 # Auth & Account
 auth:

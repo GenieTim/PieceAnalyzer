@@ -16,11 +16,16 @@ use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class RegistrationController extends AbstractController
 {
+    public function __construct(private readonly RateLimiterFactory $registrationLimiter)
+    {
+    }
+
     #[Route('/register', name: 'app_register', methods: ['GET', 'POST'])]
     public function register(
         Request $request,
@@ -34,6 +39,18 @@ class RegistrationController extends AbstractController
         }
 
         $form = $this->createForm(RegistrationFormType::class);
+
+        if ($request->isMethod('POST')) {
+            $limiter = $this->registrationLimiter->create($request->getClientIp() ?? '127.0.0.1');
+            if (!$limiter->consume()->isAccepted()) {
+                $this->addFlash('danger', 'Too many registration attempts. Please try again later.');
+
+                return $this->render('registration/register.html.twig', [
+                    'registrationForm' => $form->createView(),
+                ], new Response(status: Response::HTTP_TOO_MANY_REQUESTS));
+            }
+        }
+
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -136,6 +153,13 @@ class RegistrationController extends AbstractController
         LoggerInterface $logger
     ): Response {
         if ($request->isMethod('POST')) {
+            $limiter = $this->registrationLimiter->create($request->getClientIp() ?? '127.0.0.1');
+            if (!$limiter->consume()->isAccepted()) {
+                $this->addFlash('danger', 'Too many verification requests. Please try again later.');
+
+                return $this->redirectToRoute('app_resend_verification');
+            }
+
             if (!$this->isCsrfTokenValid('resend_verification', (string) $request->request->get('_token'))) {
                 $this->addFlash('danger', 'Invalid security token. Please try again.');
                 return $this->redirectToRoute('app_resend_verification');

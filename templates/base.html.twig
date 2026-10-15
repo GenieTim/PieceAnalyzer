@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ app.request.locale|default('en') }}">
+<html lang="{{ app.request ? app.request.locale : 'en' }}">
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -90,10 +90,10 @@
 						<div class="col-12 col-md-4 text-center text-md-start">
 							<span class="fw-semibold text-white">Piece Analyzer</span>
 							<span class="text-secondary small d-block">{{ 'footer.copyright'|trans({'%year%': "now"|date("Y")}) }}</span>
-							{% set currentLocale = app.request.locale|default('en') %}
+							{% set currentLocale = app.request ? app.request.locale : 'en' %}
 							{% set currentRoute = app.current_route|default('index') %}
 							{% set routeParams = app.current_route_parameters|default({}) %}
-							{% set queryParams = app.request.query.all %}
+							{% set queryParams = app.request ? app.request.query.all : {} %}
 							<div class="d-inline-flex align-items-center gap-2 mt-2 small text-secondary">
 								<span>🌐</span>
 								<a href="{{ path(currentRoute, routeParams|merge(queryParams)|merge({'_locale': 'en'})) }}" class="link-secondary text-decoration-none{% if currentLocale == 'en' %} text-white fw-semibold{% endif %}">English</a>

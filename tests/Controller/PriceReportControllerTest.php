@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
+use App\Entity\Piece;
 use App\Entity\Set;
 use App\Entity\SetPrice;
 use App\Entity\User;
@@ -104,8 +105,10 @@ class PriceReportControllerTest extends WebTestCase
         // Create a verified contributor test user
         $user = new User($email, 'password');
         $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
         $user->setIsVerifiedContributor(true);
         $this->em->persist($user);
+
 
         // Create a test set
         $setNo = '99999_' . $suffix;
@@ -176,8 +179,10 @@ class PriceReportControllerTest extends WebTestCase
         // Create an unverified user
         $user = new User($email, 'password');
         $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
         $user->setIsVerifiedContributor(false);
         $this->em->persist($user);
+
 
         // Create a test set without canonical price
         $setNo = '88888_' . $suffix;
@@ -239,7 +244,9 @@ class PriceReportControllerTest extends WebTestCase
 
         $user = new User($email, 'password');
         $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
         $this->em->persist($user);
+
         $this->em->flush();
 
         // 1. Missing setNo
@@ -329,7 +336,9 @@ class PriceReportControllerTest extends WebTestCase
 
         $user = new User($email, 'password');
         $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
         $this->em->persist($user);
+
 
         $set = new Set();
         $set->setNo('XSS_' . $suffix . '-1');
@@ -377,7 +386,9 @@ class PriceReportControllerTest extends WebTestCase
 
         $user = new User($email, 'password');
         $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
         $this->em->persist($user);
+
 
         $set = new Set();
         $set->setNo('SPOOF_' . $suffix . '-1');
@@ -425,7 +436,9 @@ class PriceReportControllerTest extends WebTestCase
 
         $user = new User($email, 'password');
         $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
         $this->em->persist($user);
+
 
         $set = new Set();
         $set->setNo('BOUND_' . $suffix . '-1');
@@ -471,7 +484,9 @@ class PriceReportControllerTest extends WebTestCase
         $user = new User('batch_tester_' . $suffix . '@example.com', 'password');
         $token = 'batch_token_' . bin2hex(random_bytes(16));
         $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
         $this->em->persist($user);
+
 
         $set1 = new Set();
         $set1->setNo('BATCH_1_' . $suffix . '-1');
@@ -546,7 +561,9 @@ class PriceReportControllerTest extends WebTestCase
         $user = new User('toppreise_tester_' . $suffix . '@example.com', 'password');
         $token = 'toppreise_token_' . bin2hex(random_bytes(16));
         $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
         $this->em->persist($user);
+
 
         $set = new Set();
         $set->setNo('TOP_TEST_' . $suffix . '-1');
@@ -585,7 +602,225 @@ class PriceReportControllerTest extends WebTestCase
         } finally {
             $this->em->remove($set);
             $this->em->remove($user);
+        }
+    }
+
+    public function testUnverifiedEmailReturns403(): void
+    {
+        $client = static::createClient();
+        $this->em = static::getContainer()->get(EntityManagerInterface::class);
+        $email = 'unverified_' . bin2hex(random_bytes(4)) . '@example.com';
+        $token = 'unverified_token_' . bin2hex(random_bytes(8));
+
+        $user = new User($email, 'pass');
+        $user->setApiToken($token);
+        $user->setIsEmailVerified(false);
+        $this->em->persist($user);
+        $this->em->flush();
+
+        try {
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode([
+                    'setNo' => '10294',
+                    'retailer' => 'galaxus',
+                    'amountCents' => 5000,
+                ])
+            );
+
+            $this->assertResponseStatusCodeSame(403);
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertFalse($data['success']);
+            $this->assertStringContainsString('verified', strtolower($data['error'] ?? ''));
+        } finally {
+            $this->em->remove($user);
             $this->em->flush();
+        }
+    }
+
+    public function testBatchLimitExceeded(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $email = 'batch_limit_' . $suffix . '@example.com';
+        $user = new User($email, 'password');
+        $token = 'batch_limit_token_' . bin2hex(random_bytes(16));
+        $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
+        $em->persist($user);
+        $em->flush();
+
+        try {
+            $items = [];
+            for ($i = 0; $i < 101; $i++) {
+                $items[] = [
+                    'setNo' => '10294',
+                    'retailer' => 'galaxus',
+                    'amountCents' => 5000,
+                ];
+            }
+
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode(['items' => $items])
+            );
+
+            $this->assertResponseStatusCodeSame(400);
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertFalse($data['success']);
+            $this->assertSame('Batch exceeds maximum limit of 100 items per request.', $data['error']);
+        } finally {
+            $cleanEm = static::getContainer()->get(EntityManagerInterface::class);
+            $u = $cleanEm->getRepository(User::class)->findOneBy(['email' => $email]);
+            if ($u !== null) {
+                $cleanEm->remove($u);
+                $cleanEm->flush();
+            }
+        }
+    }
+
+    public function testEmptyPayload(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $email = 'empty_payload_' . $suffix . '@example.com';
+        $user = new User($email, 'password');
+        $token = 'empty_token_' . bin2hex(random_bytes(16));
+        $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
+        $em->persist($user);
+        $em->flush();
+
+        try {
+            // 1. Empty JSON array payload []
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode([])
+            );
+
+            $this->assertResponseStatusCodeSame(400);
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertFalse($data['success']);
+            $this->assertSame('No price report data provided.', $data['error']);
+
+            // 2. Empty items array payload {'items': []}
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode(['items' => []])
+            );
+
+            $this->assertResponseStatusCodeSame(400);
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertFalse($data['success']);
+            $this->assertSame('No price report data provided.', $data['error']);
+        } finally {
+            $cleanEm = static::getContainer()->get(EntityManagerInterface::class);
+            $u = $cleanEm->getRepository(User::class)->findOneBy(['email' => $email]);
+            if ($u !== null) {
+                $cleanEm->remove($u);
+                $cleanEm->flush();
+            }
+        }
+    }
+
+    public function testLowerSanityBoundRejectionForLargeSet(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $email = 'sanity_' . $suffix . '@example.com';
+        $user = new User($email, 'password');
+        $token = 'sanity_token_' . bin2hex(random_bytes(16));
+        $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
+        $em->persist($user);
+
+        $setNo = 'SANITY_' . $suffix;
+        $set = new Set();
+        $set->setNo($setNo . '-1');
+        $set->setName('Large Sanity Test Set');
+        $em->persist($set);
+
+        $piece = new Piece();
+        $piece->setNo('P_' . $suffix);
+        $piece->setName('Test Part');
+        $piece->setCategory(1);
+        $piece->setColor(1);
+        $piece->setCount(100);
+        $set->addPiece($piece);
+        $em->persist($piece);
+
+        $em->flush();
+
+        try {
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode([
+                    'setNo' => $setNo,
+                    'retailer' => 'galaxus',
+                    'amountCents' => 100,
+                    'currency' => 'CHF',
+                ])
+            );
+
+            $this->assertResponseStatusCodeSame(422);
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertFalse($data['success']);
+            $this->assertSame('Price is unreasonably low for this set size.', $data['error']);
+        } finally {
+            $cleanEm = static::getContainer()->get(EntityManagerInterface::class);
+            $s = $cleanEm->getRepository(Set::class)->findOneBy(['no' => $setNo . '-1']);
+            if ($s !== null) {
+                foreach ($s->getPieces() as $p) {
+                    $cleanEm->remove($p);
+                }
+                $cleanEm->remove($s);
+            }
+            $u = $cleanEm->getRepository(User::class)->findOneBy(['email' => $email]);
+            if ($u !== null) {
+                $cleanEm->remove($u);
+            }
+            $cleanEm->flush();
         }
     }
 

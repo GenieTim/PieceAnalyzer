@@ -28,7 +28,7 @@ home:
   hero_title: "Trouvez les sets LEGO au meilleur rapport qualité-prix pour chaque pièce"
   hero_desc: "Filtrez les inventaires officiels de sets LEGO par catégorie de pièces et couleur, puis classez chaque set correspondant par rentabilité unitaire pour découvrir les packs de pièces les plus économiques."
   btn_explore: "Explorer & filtrer les sets"
-  btn_import: "Importer une plage de sets"
+  btn_browse: "Parcourir tous les sets"
   how_works_badge: "Comment fonctionne l'évaluation"
   how_works_title: "Classement ciblé par prix unitaire"
   step1_title: "Sélectionnez vos critères de pièces"
@@ -163,23 +163,6 @@ set:
   filter_by_part_btn: "Sets avec cette pièce ↗"
   filter_by_part_title: "Voir tous les sets du catalogue contenant cette pièce dans cette couleur"
   color_prefix: "Couleur #%id%"
-
-# Import Set Range
-import:
-  meta_title: "Importer une plage de sets"
-  title: "Importer des sets LEGO® par plage de numéros"
-  desc: "Synchronisez les métadonnées de sets et inventaires de pièces depuis Rebrickable & BrickLink sur une série séquentielle."
-  how_works_title: "Fonctionnement de l'import par plage :"
-  how_works_desc: "Entrez un numéro de début et de fin de set LEGO® (par exemple, de %start% à %end%) pour importer les inventaires et prix correspondants dans la base de données."
-  start_set_number: "Numéro de set de début"
-  start_set_placeholder: "ex. 10000"
-  start_set_help: "Premier numéro de set LEGO de la plage à importer."
-  end_set_number: "Numéro de set de fin"
-  end_set_placeholder: "ex. 10050"
-  end_set_help: "Dernier numéro de set LEGO de la plage (jusqu'à 1 000 000)."
-  submit: "Importer la plage de sets"
-  back_to_explorer: "Retour à l'explorateur de sets"
-  limit_exceeded: "Le numéro de set dépasse la limite autorisée"
 
 # Auth & Account
 auth:

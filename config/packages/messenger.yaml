@@ -8,6 +8,11 @@ framework:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
                     auto_setup: true
+                retry_strategy:
+                    max_retries: 2
+                    delay: 10000
+                    multiplier: 3
+                    max_delay: 60000
             failed: 'doctrine://default?queue_name=failed'
             sync: 'sync://'
 

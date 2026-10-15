@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}404 - Missing Brick{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="mb-4">
+                <span class="display-1" aria-hidden="true">🧱</span>
+            </div>
+            <h1 class="display-5 fw-bold text-dark mb-3">404 - Missing Brick</h1>
+            <p class="lead text-body-secondary mb-4">
+                The set or piece you were looking for seems to have rolled under the sofa.
+            </p>
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                <a href="{{ path('filter_items') }}" class="btn btn-primary px-4 py-2 fw-semibold">
+                    🔍 Explore Sets
+                </a>
+                <a href="{{ path('index') }}" class="btn btn-outline-secondary px-4 py-2 fw-semibold">
+                    🏠 Return Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

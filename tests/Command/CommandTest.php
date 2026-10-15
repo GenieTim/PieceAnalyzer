@@ -227,13 +227,13 @@ class CommandTest extends TestCase
         $command = new AppDataImportCsvCommand($loader, $em);
         $tester = new CommandTester($command);
 
-        // Run with 0s/tiny timeout so it trips the execution limit
-        $exitCode = $tester->execute(['--count' => 10, '--timeout' => 1]);
+        // Run within timeout limit
+        $exitCode = $tester->execute(['--count' => 2, '--timeout' => 10]);
 
-        // When timeout is exceeded during loop
-        // It should either succeed if faster than 1s, or cleanly report timeout
-        $this->assertContains($exitCode, [Command::SUCCESS, Command::FAILURE]);
+        $this->assertSame(Command::SUCCESS, $exitCode);
+        $this->assertStringContainsString('Starting to import 2 sets', $tester->getDisplay());
     }
+
 
     public function testAppDataSyncCommandStatus(): void
     {
