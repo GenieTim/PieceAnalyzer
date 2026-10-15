@@ -40,6 +40,7 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
     public const SET_NAME_KEY = 1;
     public const SET_YEAR_KEY = 2;
     public const SET_THEME_KEY = 3;
+    public const SET_NUM_PARTS_KEY = 4;
 
     // fields in parts.csv: part_num, name, part_cat_id, part_material
     public const PART_NUM_KEY = 0;
@@ -279,6 +280,11 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
         }
 
         $new_set->setImageUrl(isset($set['image_url']) ? (string) $set['image_url'] : null);
+
+        $numParts = $set['num_parts'] ?? $set[self::SET_NUM_PARTS_KEY] ?? null;
+        if ($numParts !== null && is_numeric($numParts)) {
+            $new_set->setPieceCount((int) $numParts);
+        }
 
         $pieces = $this->getPiecesOfSet($new_set);
         $new_set->setPieces($pieces);

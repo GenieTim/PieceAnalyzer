@@ -38,6 +38,9 @@ class Set extends Item
     #[ORM\OneToMany(targetEntity: Piece::class, mappedBy: 'set', cascade: ['all'], orphanRemoval: true)]
     private Collection $pieces;
 
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true)]
+    private ?int $pieceCount = null;
+
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]
     private int $source = 0;
 
@@ -390,6 +393,7 @@ class Set extends Item
     public function setPieces(Collection $pieces): static
     {
         $this->pieces = $pieces;
+        $this->pieceCount = null;
 
         return $this;
     }
@@ -399,6 +403,7 @@ class Set extends Item
         if (!$this->pieces->contains($p)) {
             $this->pieces->add($p);
             $p->setSet($this);
+            $this->pieceCount = null;
         }
 
         return $this;
@@ -408,6 +413,7 @@ class Set extends Item
     {
         if ($this->pieces->removeElement($p) && $p->getSet() === $this) {
             $p->setSet(null);
+            $this->pieceCount = null;
         }
 
         return $this;
@@ -463,11 +469,27 @@ class Set extends Item
 
     public function getPieceCount(): int
     {
+        if ($this->pieceCount !== null && $this->pieceCount > 0) {
+            return $this->pieceCount;
+        }
+
         $count = 0;
         foreach ($this->pieces as $piece) {
             $count += (int) $piece->getCount();
         }
+
+        if ($count > 0 && $this->pieceCount === null) {
+            $this->pieceCount = $count;
+        }
+
         return $count;
+    }
+
+    public function setPieceCount(?int $pieceCount): static
+    {
+        $this->pieceCount = $pieceCount;
+
+        return $this;
     }
 
     /**

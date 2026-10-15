@@ -179,13 +179,13 @@ Transition the piece-analyzer price system from synchronous single-source scrapi
 - [x] Moderation consensus rule: Require that auto-verifying consensus reports come from verified contributors (`isVerifiedContributor=true`) rather than arbitrary accounts to prevent Sybil attacks.
 
 ### 2. Performance & Database Optimization
-- [ ] Eliminate Set Explorer N+1 queries by caching `pieceCount` integer column directly on `lego_set` table (updated during CSV import) instead of lazy-loading the `pieces` collection.
-- [ ] Eager load prices for the current page of sets in `ListController` using `LEFT JOIN FETCH` or batch relation loading.
+- [x] Eliminate Set Explorer N+1 queries by caching `pieceCount` integer column directly on `lego_set` table (updated during CSV import) instead of lazy-loading the `pieces` collection.
+- [x] Eager load prices for the current page of sets in `ListController` using `LEFT JOIN FETCH` or batch relation loading.
 - [x] Wire `ProviderResilienceManager` into `BricksetPriceLoaderService` and `BrickPickerPriceLoaderService` via `RateLimitRetryTrait` and constructor injection.
 
 ### 3. Modern Symfony & Architecture
 - [ ] Convert `PriceReportController` request payload parsing to Symfony `#[MapRequestPayload]` with a typed DTO and Symfony Validator constraints.
-- [ ] Refactor `RegistrationController` inline HTML string concatenation to modern Twig `TemplatedEmail` templates.
+- [x] Refactor `RegistrationController` inline HTML string concatenation to modern Twig `TemplatedEmail` templates.
 - [ ] Convert `ListController` filter criteria handling into a typed `SetFilterCriteria` DTO.
 
 ---
@@ -227,11 +227,11 @@ Transition the piece-analyzer price system from synchronous single-source scrapi
   - Upgrade `phpstan/phpstan` to `^2.2` and configure `objectManagerLoader` for full entity inference with `phpstan-doctrine`.
 
 #### 2. Efficiency & Scalability
-- [ ] **Persistent `piece_count` Column (Eliminate 50 N+1 Queries)**:
+- [x] **Persistent `piece_count` Column (Eliminate 50 N+1 Queries)**:
   - Add integer column `lego_set.piece_count` (`Set::$pieceCount`) populated directly during CSV sync from `sets.csv` (`num_parts`).
   - Provide recalculation console command (`app:data:recalculate-piece-counts`).
   - Avoid lazy-loading the entire `$pieces` collection on `/filter` Set Explorer listing.
-- [ ] **Batch Loading of Prices in Set Explorer**:
+- [x] **Batch Loading of Prices in Set Explorer**:
   - Execute a single batch DQL query (`SELECT sp FROM App\Entity\SetPrice sp WHERE sp.set IN (:activePageIds)`) after KnpPaginator resolves active IDs, reducing SQL queries per page from 102+ to 2–3.
 - [ ] **Memory Optimization in `CsvLegoLoaderService`**:
   - Replace `findAll()` / `findBy(['price' => null])` in `loadPrices()` with cursor iteration (`$query->toIterable()`) with batch flush and clear every 50–100 records.

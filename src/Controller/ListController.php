@@ -69,6 +69,8 @@ class ListController extends AbstractController
             ['wrap-queries' => true]
         );
 
+        $setRepo->batchLoadPrices($pagination->getItems());
+
         return $this->render('list/list_all.html.twig', [
             'pagination' => $pagination,
             'form' => $form->createView(),

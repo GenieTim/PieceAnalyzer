@@ -8,13 +8,13 @@ use App\Entity\User;
 use App\Form\RegistrationFormType;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
-use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
@@ -80,27 +80,16 @@ class RegistrationController extends AbstractController
             $fromAddress = (string) ($_ENV['ADMIN_EMAIL'] ?? 'noreply@piece-analyzer.local');
 
             try {
-                $emailMessage = (new Email())
+                $emailMessage = (new TemplatedEmail())
                     ->from(new Address($fromAddress, 'Piece Analyzer'))
                     ->to($user->getEmail())
                     ->subject('Please Confirm Your Email Address — Piece Analyzer')
-                    ->html(sprintf(
-                        '<div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">' .
-                        '<h2 style="color: #212529;">Welcome to Piece Analyzer!</h2>' .
-                        '<p>Thank you for creating an account. Please click the button below to confirm your email address and activate your account:</p>' .
-                        '<p style="margin: 24px 0;"><a href="%s" style="background-color: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Confirm Email Address</a></p>' .
-                        '<p style="color: #6c757d; font-size: 0.9em;">This link will expire in 24 hours. If you did not create an account, you can safely ignore this email.</p>' .
-                        '<hr style="border: 0; border-top: 1px solid #dee2e6; margin: 24px 0;">' .
-                        '<p style="color: #adb5bd; font-size: 0.8em;">Piece Analyzer</p>' .
-                        '</div>',
-                        htmlspecialchars($verifyUrl, ENT_QUOTES, 'UTF-8')
-                    ))
-                    ->text(sprintf(
-                        "Welcome to Piece Analyzer!\n\n" .
-                        "Please verify your email address by visiting the link below:\n%s\n\n" .
-                        "This link will expire in 24 hours.\n",
-                        $verifyUrl
-                    ));
+                    ->htmlTemplate('emails/registration_verification.html.twig')
+                    ->textTemplate('emails/registration_verification.txt.twig')
+                    ->context([
+                        'verifyUrl' => $verifyUrl,
+                        'user' => $user,
+                    ]);
 
                 $mailer->send($emailMessage);
             } catch (\Throwable $e) {
@@ -176,19 +165,16 @@ class RegistrationController extends AbstractController
                 $fromAddress = (string) ($_ENV['ADMIN_EMAIL'] ?? 'noreply@piece-analyzer.local');
 
                 try {
-                    $emailMessage = (new Email())
+                    $emailMessage = (new TemplatedEmail())
                         ->from(new Address($fromAddress, 'Piece Analyzer'))
                         ->to($user->getEmail())
                         ->subject('Confirm Your Email Address — Piece Analyzer')
-                        ->html(sprintf(
-                            '<div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">' .
-                            '<h2>Email Verification Request</h2>' .
-                            '<p>Please confirm your email address by clicking the link below:</p>' .
-                            '<p><a href="%s" style="background-color: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Confirm Email Address</a></p>' .
-                            '<p style="color: #6c757d; font-size: 0.9em;">This link will expire in 24 hours.</p>' .
-                            '</div>',
-                            htmlspecialchars($verifyUrl, ENT_QUOTES, 'UTF-8')
-                        ));
+                        ->htmlTemplate('emails/resend_verification.html.twig')
+                        ->textTemplate('emails/resend_verification.txt.twig')
+                        ->context([
+                            'verifyUrl' => $verifyUrl,
+                            'user' => $user,
+                        ]);
 
                     $mailer->send($emailMessage);
                 } catch (\Throwable $e) {

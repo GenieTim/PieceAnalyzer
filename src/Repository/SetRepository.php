@@ -152,4 +152,29 @@ class SetRepository extends ServiceEntityRepository
         }
         return $qb->getQuery();
     }
+
+    /**
+     * Batch load all SetPrice entities for a given list of sets to prevent N+1 queries during listing.
+     *
+     * @param iterable<mixed> $sets
+     */
+    public function batchLoadPrices(iterable $sets): void
+    {
+        $setIds = [];
+        foreach ($sets as $set) {
+            if ($set instanceof Set && $set->getId() !== null) {
+                $setIds[] = $set->getId();
+            }
+        }
+
+        if ($setIds === []) {
+            return;
+        }
+
+        $this->getEntityManager()->createQuery(
+            'SELECT sp FROM App\Entity\SetPrice sp WHERE sp.set IN (:setIds) ORDER BY sp.recordedAt DESC'
+        )
+        ->setParameter('setIds', $setIds)
+        ->getResult();
+    }
 }
