@@ -25,6 +25,7 @@
         "symfony/console": "^7.4|^8.0",
         "symfony/css-selector": "^7.4|^8.0",
         "symfony/debug-bundle": "^7.4|^8.0",
+        "symfony/doctrine-messenger": "7.4.*",
         "symfony/dom-crawler": "^7.4|^8.0",
         "symfony/dotenv": "^7.4|^8.0",
         "symfony/expression-language": "^7.4|^8.0",
