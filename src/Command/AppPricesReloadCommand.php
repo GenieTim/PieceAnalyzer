@@ -32,7 +32,9 @@ class AppPricesReloadCommand extends Command
         protected readonly LoggerInterface $logger,
         protected readonly ?BrickPickerPriceLoaderService $fallbackLoader = null,
         protected readonly ?TaskStatusService $statusService = null,
-        protected readonly ?MessageBusInterface $bus = null
+        protected readonly ?MessageBusInterface $bus = null,
+        protected readonly ?\App\Service\PriceSourceRegistry $sourceRegistry = null,
+        protected readonly ?\App\Service\ExchangeRateService $exchangeRateService = null
     ) {
         parent::__construct();
     }
@@ -42,6 +44,9 @@ class AppPricesReloadCommand extends Command
     {
         $this
             ->addOption('all', null, InputOption::VALUE_NONE, 'Reload prices for all items.')
+            ->addOption('source', 's', InputOption::VALUE_REQUIRED, 'Data source(s) to reload (brickset, brickpicker, scraper, all)', 'brickset')
+            ->addOption('retailer', 'r', InputOption::VALUE_REQUIRED, 'Target retailer(s) when scraping (galaxus, brack, amazon_de, toppreise, lego_store, all)', 'all')
+            ->addOption('driver', null, InputOption::VALUE_REQUIRED, 'Browser engine driver (auto, camoufox, playwright, service)', 'auto')
             ->addOption('timeout', 't', InputOption::VALUE_REQUIRED, 'Maximum execution time in seconds (0 = unlimited)', '3600')
             ->addOption('limit', null, InputOption::VALUE_REQUIRED, 'Limit the number of sets to update prices for', '0')
             ->addOption('delay', 'd', InputOption::VALUE_REQUIRED, 'Delay between sets in milliseconds (0 = no delay)', '0')
@@ -156,7 +161,32 @@ class AppPricesReloadCommand extends Command
                 $setNo = (string) $set->getNo();
                 $foundPrices = false;
 
-                if ($this->loader instanceof \App\Service\BricksetPriceLoaderService) {
+                $sourceOpt = (string) $input->getOption('source');
+                if ($this->sourceRegistry instanceof \App\Service\PriceSourceRegistry && ($sourceOpt === 'all' || str_contains($sourceOpt, 'scraper'))) {
+                    $sources = array_map('trim', explode(',', $sourceOpt));
+                    $retailerOpt = (string) $input->getOption('retailer');
+                    $retailers = null;
+                    if ($retailerOpt !== 'all') {
+                        $retailers = [];
+                        foreach (explode(',', $retailerOpt) as $r) {
+                            $trimmed = trim($r);
+                            if ($trimmed === 'toppreise') {
+                                $retailers[] = Retailer::OTHER;
+                            } elseif (($case = Retailer::tryFrom($trimmed)) instanceof \App\Enum\Retailer) {
+                                $retailers[] = $case;
+                            }
+                        }
+                    }
+
+                    $res = $this->sourceRegistry->reloadPricesForSet($set, $sources, $retailers, [
+                        'driver' => (string) $input->getOption('driver'),
+                    ]);
+
+                    if ($res['pricesFound'] > 0) {
+                        $foundPrices = true;
+                        ++$updated;
+                    }
+                } elseif ($this->loader instanceof \App\Service\BricksetPriceLoaderService) {
                     try {
                         $multiPrices = $this->loader->loadPricesForSet($setNo);
                         if ($multiPrices !== []) {
@@ -172,6 +202,7 @@ class AppPricesReloadCommand extends Command
                                 $set->addPrice($setPrice);
                                 $this->em->persist($setPrice);
                             }
+                            $set->updateCachedBestPrice($this->exchangeRateService);
                             $this->em->persist($set);
                             $foundPrices = true;
                             ++$updated;
@@ -191,6 +222,7 @@ class AppPricesReloadCommand extends Command
                                 provider: PriceSourceProvider::BRICKSET
                             );
                             $set->addPrice($setPrice);
+                            $set->updateCachedBestPrice($this->exchangeRateService);
                             $this->em->persist($setPrice);
                             $this->em->persist($set);
                             $foundPrices = true;
@@ -222,6 +254,7 @@ class AppPricesReloadCommand extends Command
                                 );
                                 $setPrice->setUrl('https://www.brickpicker.com/bpms/set.cfm?set=' . urlencode($setNo));
                                 $set->addPrice($setPrice);
+                                $set->updateCachedBestPrice($this->exchangeRateService);
                                 $this->em->persist($setPrice);
                                 $this->em->persist($set);
                                 $foundPrices = true;

@@ -11,6 +11,8 @@ use App\Enum\Retailer;
 use App\Message\FetchSetPriceMessage;
 use App\Service\BrickPickerPriceLoaderService;
 use App\Service\BricksetPriceLoaderService;
+use App\Service\ExchangeRateService;
+use App\Service\Scraper\HeadlessScraperService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -22,6 +24,8 @@ class FetchSetPriceMessageHandler
         private readonly EntityManagerInterface $em,
         private readonly BricksetPriceLoaderService $bricksetLoader,
         private readonly BrickPickerPriceLoaderService $brickPickerLoader,
+        private readonly HeadlessScraperService $headlessScraper,
+        private readonly ExchangeRateService $exchangeRateService,
         private readonly LoggerInterface $logger
     ) {
     }
@@ -36,8 +40,26 @@ class FetchSetPriceMessageHandler
 
         $setNo = (string) $set->getNo();
         $provider = $message->provider;
+        $retailer = $message->retailer;
 
-        // Try Brickset (reliable MSRP in multi-currency: EUR, USD, GBP)
+        // 1. If a specific retailer was targeted for headless scrape:
+        if ($retailer instanceof Retailer) {
+            try {
+                $items = $this->headlessScraper->scrapeSet($set, $retailer);
+                if ($items !== []) {
+                    $this->headlessScraper->ingestExtractedItems($items);
+                    return;
+                }
+            } catch (\Throwable $e) {
+                $this->logger->warning('Retailer scraper error in async worker', [
+                    'set' => $setNo,
+                    'retailer' => $retailer->value,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // 2. Try Brickset (reliable MSRP in multi-currency: EUR, USD, GBP)
         if (!$provider instanceof \App\Enum\PriceSourceProvider || $provider === PriceSourceProvider::BRICKSET) {
             try {
                 $prices = $this->bricksetLoader->loadPricesForSet($setNo);
@@ -54,6 +76,8 @@ class FetchSetPriceMessageHandler
                         $set->addPrice($setPrice);
                         $this->em->persist($setPrice);
                     }
+                    $set->updateCachedBestPrice($this->exchangeRateService);
+                    $this->em->persist($set);
                     $this->em->flush();
                     return;
                 }
@@ -62,7 +86,7 @@ class FetchSetPriceMessageHandler
             }
         }
 
-        // Fallback or explicit BrickPicker
+        // 3. Fallback or explicit BrickPicker
         if (!$provider instanceof \App\Enum\PriceSourceProvider || $provider === PriceSourceProvider::BRICKPICKER) {
             try {
                 $decimalPrice = $this->brickPickerLoader->loadPriceForSet($setNo);
@@ -76,7 +100,9 @@ class FetchSetPriceMessageHandler
                     );
                     $setPrice->setUrl('https://www.brickpicker.com/bpms/set.cfm?set=' . urlencode($setNo));
                     $set->addPrice($setPrice);
+                    $set->updateCachedBestPrice($this->exchangeRateService);
                     $this->em->persist($setPrice);
+                    $this->em->persist($set);
                     $this->em->flush();
                 }
             } catch (\Throwable $e) {

@@ -238,6 +238,7 @@ if (require.main === module) {
     let targetUrl = '';
     let apiUrl = process.env.PIECE_ANALYZER_API_URL || 'http://localhost/api/prices/report';
     let apiToken = process.env.PIECE_ANALYZER_API_TOKEN || '';
+    let outputJson = false;
     const scraperOptions = {
         scroll: true,
         maxScrollSteps: 25,
@@ -252,6 +253,7 @@ if (require.main === module) {
         if (args[i] === '--url' && args[i + 1]) targetUrl = args[++i];
         else if (args[i] === '--api' && args[i + 1]) apiUrl = args[++i];
         else if (args[i] === '--token' && args[i + 1]) apiToken = args[++i];
+        else if (args[i] === '--json') outputJson = true;
         else if (args[i] === '--no-scroll') scraperOptions.scroll = false;
         else if (args[i] === '--max-steps' && args[i + 1]) scraperOptions.maxScrollSteps = parseInt(args[++i], 10);
         else if (args[i] === '--step-distance' && args[i + 1]) scraperOptions.stepDistance = parseInt(args[++i], 10);
@@ -262,8 +264,9 @@ if (require.main === module) {
     }
 
     if (!targetUrl) {
-        console.log('Usage: node scripts/camoufox-scraper.js --url <URL> [--api <API_URL>] [--token <API_TOKEN>] [options]');
+        console.log('Usage: node scripts/camoufox-scraper.js --url <URL> [--api <API_URL>] [--token <API_TOKEN>] [--json] [options]');
         console.log('Options:');
+        console.log('  --json                Output extracted items as raw JSON to stdout');
         console.log('  --no-scroll           Disable stepped scrolling');
         console.log('  --max-steps <N>       Maximum scroll steps (default: 25)');
         console.log('  --step-distance <PX>  Pixels per scroll step (default: 650)');
@@ -274,8 +277,18 @@ if (require.main === module) {
         process.exit(0);
     }
 
+    // When outputting JSON to stdout, mute stdout console logs by routing to stderr
+    if (outputJson) {
+        console.log = (...a) => console.error(...a);
+    }
+
     scrapeWithCamoufoxOrPlaywright(targetUrl, apiUrl, apiToken, scraperOptions)
-        .then(() => process.exit(0))
+        .then((items) => {
+            if (outputJson) {
+                process.stdout.write(JSON.stringify(items || []));
+            }
+            process.exit(0);
+        })
         .catch(err => {
             console.error('[Scraper] Fatal error:', err.message);
             process.exit(1);

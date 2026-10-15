@@ -231,6 +231,7 @@ def main():
     parser.add_argument("--url", required=True, help="Target URL to scrape")
     parser.add_argument("--api", default=os.getenv("PIECE_ANALYZER_API_URL", "http://localhost/api/prices/report"), help="API report endpoint")
     parser.add_argument("--token", default=os.getenv("PIECE_ANALYZER_API_TOKEN", ""), help="API Bearer token")
+    parser.add_argument("--json", action="store_true", help="Output extracted items as raw JSON to stdout")
     parser.add_argument("--no-scroll", action="store_true", help="Disable stepped scrolling")
     parser.add_argument("--max-steps", type=int, default=25, help="Max scroll steps")
     parser.add_argument("--step-distance", type=int, default=650, help="Step distance in pixels")
@@ -240,10 +241,10 @@ def main():
     parser.add_argument("--headful", action="store_true", help="Run in visible browser mode")
 
     args = parser.parse_args()
-    scrape_url(
+    items = scrape_url(
         args.url,
-        api_url=args.api,
-        api_token=args.token,
+        api_url=args.api if not args.json else None,
+        api_token=args.token if not args.json else None,
         options={
             "scroll": not args.no_scroll,
             "max_steps": args.max_steps,
@@ -254,6 +255,8 @@ def main():
             "headless": not args.headful
         }
     )
+    if args.json:
+        sys.stdout.write(json.dumps(items or []))
 
 
 if __name__ == "__main__":

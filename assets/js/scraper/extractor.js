@@ -458,7 +458,7 @@
             const priceEl = leaf.querySelector('[data-test="product-leaf-price"]');
 
             const href = link ? link.getAttribute('href') : '';
-            const title = titleEl ? (titleEl.textContent || titleEl.innerText || '').trim() : '';
+            const title = titleEl ? (titleEl.textContent || titleEl.innerText || '').replace(/\s+/g, ' ').trim() : '';
             const priceText = priceEl ? (priceEl.textContent || priceEl.innerText || '').trim() : '';
 
             const setNo = extractSetNumber(href) || extractSetNumber(title);
@@ -589,22 +589,32 @@
      */
     function extractAmazon(doc, url = '') {
         const items = [];
-        const isDe = url.includes('amazon.de') || (doc.location && doc.location.hostname.includes('amazon.de'));
+        const isDe = url.includes('amazon.de') || (doc.location && doc.location.hostname && doc.location.hostname.includes('amazon.de'));
         const defaultCurrency = isDe ? 'EUR' : 'USD';
         const retailer = isDe ? 'amazon_de' : 'amazon_com';
 
         // 1. Main Product
-        const titleEl = doc.querySelector('#productTitle, h1');
+        const titleEl = doc.querySelector('#productTitle, h1#title, #title') ||
+                        (function() {
+                            const h1s = doc.querySelectorAll('h1');
+                            for (let i = 0; i < h1s.length; i++) {
+                                const t = (h1s[i].textContent || h1s[i].innerText || '').trim();
+                                if (extractSetNumber(t)) return h1s[i];
+                            }
+                            return null;
+                        })() ||
+                        doc.querySelector('h1');
         const titleText = (titleEl ? (titleEl.textContent || titleEl.innerText) : '') || doc.title || '';
         const setNo = extractSetNumber(titleText) || extractSetNumber(url);
 
-        const priceEl = doc.querySelector('.a-price .a-offscreen, #corePrice_feature_div .a-offscreen, #corePriceDisplay_desktop_feature_div .a-offscreen, .productPrice');
+        const priceEl = doc.querySelector('.a-price .a-offscreen, #corePrice_feature_div .a-offscreen, #corePriceDisplay_desktop_feature_div .a-offscreen, #apex_desktop .a-price .a-offscreen, .productPrice');
         if (setNo && priceEl) {
-            const parsed = parsePrice(priceEl.textContent || priceEl.innerText || '', defaultCurrency);
+            const rawPrice = (priceEl.textContent || priceEl.innerText || '').trim();
+            const parsed = parsePrice(rawPrice, defaultCurrency);
             if (parsed) {
                 items.push({
                     setNo: setNo,
-                    title: titleText.trim(),
+                    title: titleText.replace(/\s+/g, ' ').trim(),
                     amountCents: parsed.amountCents,
                     price: parsed.price,
                     currency: parsed.currency,
@@ -616,22 +626,49 @@
             }
         }
 
-        // 2. Similar products / Carousel
-        const carouselItems = doc.querySelectorAll('.a-carousel-card, [data-component-type="s-search-result"]');
-        for (let i = 0; i < carouselItems.length; i++) {
-            const card = carouselItems[i];
-            const link = card.querySelector('h2 a, a[href*="/dp/"]');
-            const cardTitle = link ? (link.textContent || link.innerText || '').trim() : '';
-            const cardSet = extractSetNumber(cardTitle);
+        // 2. Similar products / Carousel / Search results
+        const cards = doc.querySelectorAll('.a-carousel-card, [data-component-type="s-search-result"]');
+        for (let i = 0; i < cards.length; i++) {
+            const card = cards[i];
+
+            // Title: check h2 first (standard on Amazon search results), then links
+            const h2 = card.querySelector('h2');
+            let cardTitle = h2 ? (h2.textContent || h2.innerText || '').trim() : '';
+
+            const links = card.querySelectorAll('a[href*="/dp/"], a[href*="%2Fdp%2F"], a[href*="/gp/product/"], a.a-link-normal');
+            let href = '';
+            for (let j = 0; j < links.length; j++) {
+                const linkHref = links[j].getAttribute('href') || '';
+                if (linkHref.includes('/dp/') || linkHref.includes('%2Fdp%2F') || linkHref.includes('/gp/product/')) {
+                    if (!href) href = linkHref;
+                    if (!cardTitle) {
+                        const candidate = (links[j].textContent || links[j].innerText || '').trim();
+                        if (extractSetNumber(candidate)) {
+                            cardTitle = candidate;
+                            href = linkHref;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Clean title of any embedded CSS block text if present
+            if (cardTitle.includes('{') && cardTitle.includes('}')) {
+                cardTitle = cardTitle.replace(/\{[^}]*\}/g, ' ').replace(/[^{}]*\{/g, ' ').trim();
+            }
+
+            const cardSet = extractSetNumber(cardTitle) || extractSetNumber(href);
             const cardPriceEl = card.querySelector('.a-price .a-offscreen, .a-color-price');
             if (cardSet && cardPriceEl) {
-                const parsed = parsePrice(cardPriceEl.textContent || cardPriceEl.innerText || '', defaultCurrency);
+                const rawPrice = (cardPriceEl.textContent || cardPriceEl.innerText || '').trim();
+                const parsed = parsePrice(rawPrice, defaultCurrency);
                 if (parsed) {
-                    let href = link ? link.getAttribute('href') : '';
-                    if (href && href.startsWith('/')) href = (isDe ? 'https://www.amazon.de' : 'https://www.amazon.com') + href;
+                    if (href && href.startsWith('/')) {
+                        href = (isDe ? 'https://www.amazon.de' : 'https://www.amazon.com') + href;
+                    }
                     items.push({
                         setNo: cardSet,
-                        title: cardTitle,
+                        title: cardTitle.replace(/\s+/g, ' ').trim(),
                         amountCents: parsed.amountCents,
                         price: parsed.price,
                         currency: parsed.currency,
@@ -644,7 +681,7 @@
             }
         }
 
-        return items;
+        return deduplicateItems(items);
     }
 
     /**

@@ -9,6 +9,7 @@ const {
     extractBrack,
     extractLego,
     extractGalaxus,
+    extractAmazon,
     extractAll
 } = require('../../assets/js/scraper/extractor');
 
@@ -155,6 +156,21 @@ test('LEGO.com: Home page extracts product leaf tiles across featured carousels'
     assert.ok(items.some(it => it.setNo === '60510' && it.amountCents === 2990), 'City Adventskalender 60510 correctly identified');
 });
 
+test('LEGO.com: Search results page extracts 22 catalog sets with prices and Swiss Francs (CHF)', () => {
+    const doc = loadFixture('tests/fixtures/bookmarklet/html/lego.com/search_results.htm');
+    const items = extractLego(doc, 'https://www.lego.com/de-ch/search?q=lego');
+
+    assert.equal(items.length, 22, 'Must extract all 22 priced sets from the hydrated search results');
+    assert.ok(items.every(it => it.retailer === 'lego_store'));
+    assert.ok(items.every(it => it.currency === 'CHF'));
+
+    assert.ok(items.some(it => it.setNo === '42232' && it.amountCents === 49900));
+    assert.ok(items.some(it => it.setNo === '42173' && it.amountCents === 5990));
+    assert.ok(items.some(it => it.setNo === '10295' && it.amountCents === 17900));
+    assert.ok(items.some(it => it.setNo === '10337' && it.amountCents === 18900));
+    assert.ok(items.some(it => it.setNo === '77262' && it.amountCents === 3290));
+});
+
 test('Galaxus.ch: Single Set page extracts main set #40809 and 18 related products from recommendations', () => {
     const doc = loadFixture('tests/fixtures/bookmarklet/html/galaxus.ch/one_set.html');
     const items = extractGalaxus(doc, 'https://www.galaxus.ch/de/s5/product/lego-weihnachtliches-lebkuchenhaus-40809-lego-iconic-lego-65234203');
@@ -193,6 +209,37 @@ test('Galaxus.ch: Search page extracts 31 catalog items from the hydrated search
     assert.ok(items.some(it => it.setNo === '10311' && it.amountCents === 3390));
 });
 
+test('Amazon.de: Single Product page extracts main product 31389 and carousel sets', () => {
+    const doc = loadFixture('tests/fixtures/bookmarklet/html/amazon.de/one_product.html');
+    const items = extractAmazon(doc, 'https://www.amazon.de/dp/B0DJ26QG3W');
+
+    assert.ok(items.length >= 18, 'Must extract main product + carousel recommendations');
+    const main = items.find(it => it.setNo === '31389');
+    assert.ok(main, 'Main set 31389 must be present');
+    assert.equal(main.amountCents, 5476);
+    assert.equal(main.price, 54.76);
+    assert.equal(main.currency, 'CHF');
+    assert.equal(main.retailer, 'amazon_de');
+
+    // Verify recommendations
+    assert.ok(items.some(it => it.setNo === '43305' && it.amountCents === 3019));
+    assert.ok(items.some(it => it.setNo === '40811' && it.amountCents === 1092));
+    assert.ok(items.some(it => it.setNo === '31381' && it.amountCents === 1943));
+});
+
+test('Amazon.de: Search results page extracts 50+ sets with prices and currencies', () => {
+    const doc = loadFixture('tests/fixtures/bookmarklet/html/amazon.de/search.html');
+    const items = extractAmazon(doc, 'https://www.amazon.de/s?k=lego');
+
+    assert.ok(items.length >= 50, 'Must extract at least 50 product cards from the Amazon search results');
+    assert.ok(items.every(it => it.retailer === 'amazon_de'));
+
+    assert.ok(items.some(it => it.setNo === '72154' && it.amountCents === 16564));
+    assert.ok(items.some(it => it.setNo === '11379' && it.amountCents === 8704));
+    assert.ok(items.some(it => it.setNo === '76345' && it.amountCents === 3380));
+    assert.ok(items.some(it => it.setNo === '42232' && it.amountCents === 28988));
+});
+
 test('Universal extractAll dispatcher correctly routes and deduplicates', () => {
     const toppreiseDoc = loadFixture('tests/fixtures/bookmarklet/html/toppreise.ch/one_set.html');
     const toppreiseItems = extractAll(toppreiseDoc, 'https://www.toppreise.ch/preisvergleich/Lego/set-40809');
@@ -221,4 +268,16 @@ test('Universal extractAll dispatcher correctly routes and deduplicates', () => 
     const legoDoc = loadFixture('tests/fixtures/bookmarklet/html/lego.com/one_set.html');
     const legoItems = extractAll(legoDoc, 'https://www.lego.com/de-ch/product/porsche-911-10295');
     assert.equal(legoItems.length, 20); // 20 unique sets
+
+    const legoSearchDoc = loadFixture('tests/fixtures/bookmarklet/html/lego.com/search_results.htm');
+    const legoSearchItems = extractAll(legoSearchDoc, 'https://www.lego.com/de-ch/search?q=lego');
+    assert.equal(legoSearchItems.length, 22);
+
+    const amazonOneDoc = loadFixture('tests/fixtures/bookmarklet/html/amazon.de/one_product.html');
+    const amazonOneItems = extractAll(amazonOneDoc, 'https://www.amazon.de/dp/B0DJ26QG3W');
+    assert.ok(amazonOneItems.length >= 18);
+
+    const amazonSearchDoc = loadFixture('tests/fixtures/bookmarklet/html/amazon.de/search.html');
+    const amazonSearchItems = extractAll(amazonSearchDoc, 'https://www.amazon.de/s?k=lego');
+    assert.ok(amazonSearchItems.length >= 50);
 });

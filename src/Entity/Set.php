@@ -125,17 +125,19 @@ class Set extends Item
     }
 
     /**
-     * Find extremum (lowest or highest) price matching criteria.
+     * Find extremum (lowest or highest) price matching criteria with multi-currency awareness.
      */
     private function findExtremumPrice(
         bool $findLowest = true,
         ?string $currency = null,
         bool $verifiedOnly = false,
-        ?User $submittedBy = null
+        ?User $submittedBy = null,
+        ?\App\Service\ExchangeRateService $exchangeRateService = null
     ): ?SetPrice {
-        $result = null;
         $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
 
+        // Collect valid candidates
+        $candidates = [];
         foreach ($this->prices as $p) {
             if ($verifiedOnly && $p->getStatus() !== PriceVerificationStatus::VERIFIED) {
                 continue;
@@ -146,16 +148,71 @@ class Set extends Item
             if ($submittedBy instanceof User && $p->getSubmittedBy()?->getId() !== $submittedBy->getId()) {
                 continue;
             }
-            if ($targetCurrency !== null && $p->getCurrency() !== $targetCurrency) {
-                continue;
+            $candidates[] = $p;
+        }
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        // 1. If a specific target currency is requested, prefer exact match in that currency
+        if ($targetCurrency !== null) {
+            $sameCurrPrices = array_values(array_filter(
+                $candidates,
+                static fn(SetPrice $p): bool => $p->getCurrency() === $targetCurrency
+            ));
+
+            if ($sameCurrPrices !== []) {
+                $bestSame = null;
+                foreach ($sameCurrPrices as $p) {
+                    if ($bestSame === null) {
+                        $bestSame = $p;
+                    } elseif ($findLowest && $p->getDecimalPrice() < $bestSame->getDecimalPrice()) {
+                        $bestSame = $p;
+                    } elseif (!$findLowest && $p->getDecimalPrice() > $bestSame->getDecimalPrice()) {
+                        $bestSame = $p;
+                    }
+                }
+                return $bestSame;
+            }
+        }
+
+        // 2. Normalized multi-currency comparison using target or base currency (CHF)
+        $refCurrency = $targetCurrency ?? 'CHF';
+        $result = null;
+        $bestNormalizedVal = null;
+
+        foreach ($candidates as $p) {
+            $curr = $p->getCurrency();
+            $decimal = $p->getDecimalPrice();
+
+            if ($exchangeRateService instanceof \App\Service\ExchangeRateService) {
+                $normVal = $exchangeRateService->convert($decimal, $curr, $refCurrency);
+            } else {
+                // Built-in reference conversion when ExchangeRateService is not injected directly into entity
+                $chfVal = match ($curr) {
+                    'EUR' => $decimal * 0.96,
+                    'USD' => $decimal * 0.90,
+                    'GBP' => $decimal * 1.15,
+                    default => $decimal,
+                };
+                $normVal = match ($refCurrency) {
+                    'EUR' => $chfVal / 0.96,
+                    'USD' => $chfVal / 0.90,
+                    'GBP' => $chfVal / 1.15,
+                    default => $chfVal,
+                };
             }
 
-            if ($result === null) {
+            if ($result === null || $bestNormalizedVal === null) {
                 $result = $p;
-            } elseif ($findLowest && $p->getDecimalPrice() < $result->getDecimalPrice()) {
+                $bestNormalizedVal = $normVal;
+            } elseif ($findLowest && $normVal < $bestNormalizedVal) {
                 $result = $p;
-            } elseif (!$findLowest && $p->getDecimalPrice() > $result->getDecimalPrice()) {
+                $bestNormalizedVal = $normVal;
+            } elseif (!$findLowest && $normVal > $bestNormalizedVal) {
                 $result = $p;
+                $bestNormalizedVal = $normVal;
             }
         }
 
@@ -163,39 +220,60 @@ class Set extends Item
     }
 
     /**
-     * Get the best (lowest) recorded price, optionally filtered by currency.
+     * Get the best (lowest) recorded price, optionally filtered or normalized by currency.
      */
-    public function getBestPrice(?string $currency = null): ?SetPrice
+    public function getBestPrice(?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?SetPrice
     {
-        return $this->findExtremumPrice(findLowest: true, currency: $currency, verifiedOnly: true);
+        return $this->findExtremumPrice(
+            findLowest: true,
+            currency: $currency,
+            verifiedOnly: true,
+            exchangeRateService: $exchangeRateService
+        );
     }
 
     /**
      * Get the price submitted by a specific user (if any, excluding rejected).
      */
-    public function getUserPrice(?User $user, ?string $currency = null): ?SetPrice
+    public function getUserPrice(?User $user, ?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?SetPrice
     {
         if (!$user instanceof User || $user->getId() === null) {
             return null;
         }
 
-        return $this->findExtremumPrice(findLowest: true, currency: $currency, verifiedOnly: false, submittedBy: $user);
+        return $this->findExtremumPrice(
+            findLowest: true,
+            currency: $currency,
+            verifiedOnly: false,
+            submittedBy: $user,
+            exchangeRateService: $exchangeRateService
+        );
     }
 
     /**
      * Get the lowest historical price recorded across all non-rejected prices.
      */
-    public function getHistoricalLowestPrice(?string $currency = null): ?SetPrice
+    public function getHistoricalLowestPrice(?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?SetPrice
     {
-        return $this->findExtremumPrice(findLowest: true, currency: $currency, verifiedOnly: false);
+        return $this->findExtremumPrice(
+            findLowest: true,
+            currency: $currency,
+            verifiedOnly: false,
+            exchangeRateService: $exchangeRateService
+        );
     }
 
     /**
      * Get the highest historical price recorded across all non-rejected prices (e.g. MSRP baseline).
      */
-    public function getHistoricalHighestPrice(?string $currency = null): ?SetPrice
+    public function getHistoricalHighestPrice(?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?SetPrice
     {
-        return $this->findExtremumPrice(findLowest: false, currency: $currency, verifiedOnly: false);
+        return $this->findExtremumPrice(
+            findLowest: false,
+            currency: $currency,
+            verifiedOnly: false,
+            exchangeRateService: $exchangeRateService
+        );
     }
 
     /**
@@ -261,9 +339,9 @@ class Set extends Item
     /**
      * Automatically update cached best price and currency from existing SetPrice collection.
      */
-    public function updateCachedBestPrice(): static
+    public function updateCachedBestPrice(?\App\Service\ExchangeRateService $exchangeRateService = null): static
     {
-        $best = $this->getBestPrice();
+        $best = $this->getBestPrice(exchangeRateService: $exchangeRateService);
         if ($best instanceof \App\Entity\SetPrice) {
             $this->price = $best->getDecimalPrice();
             $this->priceCurrency = $best->getCurrency();

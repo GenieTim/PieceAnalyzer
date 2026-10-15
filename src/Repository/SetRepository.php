@@ -50,11 +50,18 @@ class SetRepository extends ServiceEntityRepository
             ELSE (s.price * $chfRate)
         END)";
 
+        $normUserPrice = "(CASE
+            WHEN sp.currency = 'EUR' THEN ((sp.amount / 100.0) * $eurRate)
+            WHEN sp.currency = 'USD' THEN ((sp.amount / 100.0) * $usdRate)
+            WHEN sp.currency = 'GBP' THEN ((sp.amount / 100.0) * $gbpRate)
+            ELSE ((sp.amount / 100.0) * $chfRate)
+        END)";
+
         if ($currentUser instanceof User && $currentUser->getId() !== null) {
             $qb->leftJoin('s.prices', 'sp', 'WITH', 'sp.submittedBy = :currentUser AND sp.status != :rejectedStatus');
             $distinctPriceFactor = '(CASE WHEN COUNT(DISTINCT sp.id) > 0 THEN COUNT(DISTINCT sp.id) ELSE 1 END)';
             $qb->addSelect("(SUM(p.count) / $distinctPriceFactor) AS HIDDEN pieceCount");
-            $pricePerPieceExpr = "((COALESCE(MIN(sp.amount) / 100.0, $normPrice)) "
+            $pricePerPieceExpr = "((COALESCE(MIN($normUserPrice), $normPrice)) "
                 . "/ (SUM(p.count) / $distinctPriceFactor)) AS HIDDEN pricePerPiece";
             $qb->addSelect($pricePerPieceExpr);
             $unpricedExpr = '(CASE WHEN (s.price IS NULL OR s.price = 0) AND MIN(sp.amount) IS NULL '
