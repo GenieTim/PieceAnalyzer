@@ -43,20 +43,20 @@ class RegistrationFormType extends AbstractType
             ->add('plainPassword', RepeatedType::class, [
                 'type' => PasswordType::class,
                 'first_options' => [
-                    'label' => 'Password',
+                    'label' => 'auth.password',
                     'attr' => [
                         'autocomplete' => 'new-password',
                         'placeholder' => 'Minimum 8 characters',
                     ],
                 ],
                 'second_options' => [
-                    'label' => 'Confirm Password',
+                    'label' => 'auth.password_repeat',
                     'attr' => [
                         'autocomplete' => 'new-password',
                         'placeholder' => 'Repeat your password',
                     ],
                 ],
-                'invalid_message' => 'The password fields must match.',
+                'invalid_message' => 'auth.password_match_error',
                 'mapped' => false,
                 'constraints' => [
                     new NotBlank([

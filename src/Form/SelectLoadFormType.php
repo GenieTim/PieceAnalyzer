@@ -17,29 +17,29 @@ class SelectLoadFormType extends AbstractType
     {
         $builder
             ->add('from', IntegerType::class, [
-                'label' => 'Start Set Number',
-                'attr' => ['placeholder' => 'e.g. 10000', 'min' => 1],
-                'help' => 'First LEGO set number in the range to import.',
+                'label' => 'import.start_set_number',
+                'attr' => ['placeholder' => 'import.start_set_placeholder', 'min' => 1],
+                'help' => 'import.start_set_help',
                 'constraints' => [
                     new Assert\NotNull(),
                     new Assert\Positive(),
                 ],
             ])
             ->add('to', IntegerType::class, [
-                'label' => 'End Set Number',
-                'attr' => ['placeholder' => 'e.g. 10050', 'min' => 1, 'max' => 1000000],
-                'help' => 'Last LEGO set number in the range (up to 1,000,000).',
+                'label' => 'import.end_set_number',
+                'attr' => ['placeholder' => 'import.end_set_placeholder', 'min' => 1, 'max' => 1000000],
+                'help' => 'import.end_set_help',
                 'constraints' => [
                     new Assert\NotNull(),
                     new Assert\Positive(),
                     new Assert\LessThanOrEqual([
                         'value' => 1000000,
-                        'message' => 'Set number exceeds supported limit',
+                        'message' => 'import.limit_exceeded',
                     ]),
                 ],
             ])
             ->add('save', SubmitType::class, [
-                'label' => 'Import Set Range',
+                'label' => 'import.submit',
                 'attr' => ['class' => 'btn-primary w-100'],
             ])
         ;

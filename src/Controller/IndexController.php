@@ -14,7 +14,7 @@ class IndexController extends AbstractController
 {
     public function root(Request $request): RedirectResponse
     {
-        $preferredLocale = $request->getPreferredLanguage(['en', 'de']) ?? 'en';
+        $preferredLocale = $request->getPreferredLanguage(['en', 'de', 'fr']) ?? 'en';
         return $this->redirectToRoute('index', ['_locale' => $preferredLocale], Response::HTTP_FOUND);
     }
 

@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Create Account — Piece Analyzer{% endblock %}
+{% block title %}{{ 'auth.register_title'|trans }} — Piece Analyzer{% endblock %}
 
 {% block content %}
 <div class="container py-4">
@@ -35,7 +35,7 @@
 
                         <div class="mb-3">
                             {{ form_row(registrationForm.plainPassword.second, {
-                                'label': 'auth.password'|trans ~ ' (Repeat)',
+                                'label': 'auth.password_repeat'|trans,
                                 'label_attr': {'class': 'form-label small fw-semibold'},
                                 'attr': {'class': 'form-control'}
                             }) }}

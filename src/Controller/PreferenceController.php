@@ -37,7 +37,7 @@ class PreferenceController extends AbstractController
     public function setLocale(string $locale, Request $request): RedirectResponse
     {
         $targetLocale = strtolower(trim($locale));
-        if (in_array($targetLocale, ['en', 'de'], true)) {
+        if (in_array($targetLocale, ['en', 'de', 'fr'], true)) {
             $session = $request->hasSession() ? $request->getSession() : null;
             if ($session instanceof \Symfony\Component\HttpFoundation\Session\SessionInterface) {
                 $session->set('_locale', $targetLocale);
@@ -55,8 +55,8 @@ class PreferenceController extends AbstractController
             $parsedPath = is_string($rawPath) ? $rawPath : '/';
             $parsedQuery = parse_url($referer, PHP_URL_QUERY);
 
-            $newPath = preg_replace('#^/(en|de)(/|$)#', '/' . $targetLocale . '$2', $parsedPath);
-            if ($newPath === null || ($newPath === $parsedPath && !preg_match('#^/(en|de)(/|$)#', $parsedPath))) {
+            $newPath = preg_replace('#^/(en|de|fr)(/|$)#', '/' . $targetLocale . '$2', $parsedPath);
+            if ($newPath === null || ($newPath === $parsedPath && !preg_match('#^/(en|de|fr)(/|$)#', $parsedPath))) {
                 $newPath = '/' . $targetLocale . (str_starts_with($parsedPath, '/') ? $parsedPath : '/' . $parsedPath);
             }
 

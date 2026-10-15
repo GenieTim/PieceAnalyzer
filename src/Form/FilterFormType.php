@@ -80,7 +80,7 @@ class FilterFormType extends AbstractType
             }
         }
         asort($choices);
-        $this->colorChoices = ['All Colors' => 0] + $choices;
+        $this->colorChoices = ['filter.all_colors' => 0] + $choices;
 
         return $this->colorChoices;
     }
@@ -102,7 +102,7 @@ class FilterFormType extends AbstractType
             }
         }
         asort($choices);
-        $this->categoryChoices = ['All Categories' => 0] + $choices;
+        $this->categoryChoices = ['filter.all_categories' => 0] + $choices;
 
         return $this->categoryChoices;
     }

@@ -6,14 +6,16 @@
                 {{ form_row(form.part, {
                     'label': form.part.vars.label|trans,
                     'row_attr': {'class': 'mb-0'},
-                    'label_attr': {'class': 'form-label fw-medium small text-secondary mb-1'}
+                    'label_attr': {'class': 'form-label fw-medium small text-secondary mb-1'},
+                    'attr': {'placeholder': 'filter.part_placeholder'|trans}
                 }) }}
             </div>
             <div class="col-6 col-md-2">
                 {{ form_row(form.minYear, {
                     'label': form.minYear.vars.label|trans,
                     'row_attr': {'class': 'mb-0'},
-                    'label_attr': {'class': 'form-label fw-medium small text-secondary mb-1'}
+                    'label_attr': {'class': 'form-label fw-medium small text-secondary mb-1'},
+                    'attr': {'placeholder': 'filter.year_placeholder'|trans}
                 }) }}
             </div>
             <div class="col-6 col-md-2">

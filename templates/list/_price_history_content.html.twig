@@ -12,7 +12,7 @@
         </div>
         <div class="d-flex gap-2">
             <a href="{{ path('set_detail', {'id': set.id}) }}" class="btn btn-sm btn-primary">
-                {{ 'set.view_set_page'|trans|default('Set-Seite öffnen') }} →
+                {{ 'set.view_set_page'|trans }} →
             </a>
             {% set externalUrl = set.source == 'rebrickable' ? ('https://rebrickable.com/sets/' ~ set.no) : ('https://www.bricklink.com/v2/catalog/catalogitem.page?S=' ~ set.no) %}
             <a href="{{ externalUrl }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
@@ -73,7 +73,7 @@
                         ({{ currentCurrency }} {{ savingsDelta.savingsAmount|number_format(2) }})
                     </span>
                 {% else %}
-                    <span class="text-secondary font-monospace small">No delta</span>
+                    <span class="text-secondary font-monospace small">{{ 'set.no_delta'|trans }}</span>
                 {% endif %}
             </div>
         </div>
@@ -192,8 +192,8 @@
                 <thead class="table-light small">
                     <tr>
                         <th class="ps-3 py-2">{{ 'set.retailer'|trans }}</th>
-                        <th class="py-2">{{ 'set.condition'|trans|default('Zustand') }}</th>
-                        <th class="py-2 text-end">Originalpreis</th>
+                        <th class="py-2">{{ 'set.condition'|trans }}</th>
+                        <th class="py-2 text-end">{{ 'set.original_price'|trans }}</th>
                         <th class="py-2 text-end">{{ 'table.price'|trans({'%currency%': currentCurrency}) }}</th>
                         <th class="py-2 text-center">{{ 'set.status'|trans }}</th>
                         <th class="py-2 d-none d-sm-table-cell">{{ 'set.provider'|trans }}</th>
@@ -211,11 +211,11 @@
                             </td>
                             <td>
                                 {% if p.itemCondition == 'msrp' %}
-                                    <span class="badge bg-secondary-subtle text-secondary-emphasis border">UVP / MSRP</span>
+                                    <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ 'set.condition_msrp'|trans }}</span>
                                 {% elseif p.itemCondition == 'new' %}
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Neu</span>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ 'set.condition_new'|trans }}</span>
                                 {% elseif p.itemCondition == 'used' %}
-                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Gebraucht</span>
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ 'set.condition_used'|trans }}</span>
                                 {% else %}
                                     <span class="text-secondary">—</span>
                                 {% endif %}
@@ -226,16 +226,16 @@
                             <td class="text-end fw-bold">
                                 {{ currentCurrency }} {{ normVal|number_format(2) }}
                                 {% if lowestPrice and p.id == lowestPrice.id %}
-                                    <span class="badge text-bg-success ms-1" style="font-size: 0.65rem;">Lowest</span>
+                                    <span class="badge text-bg-success ms-1" style="font-size: 0.65rem;">{{ 'set.lowest'|trans }}</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">
                                 {% if p.status.value == 'verified' %}
-                                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Verified</span>
+                                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">{{ 'set.status_verified'|trans }}</span>
                                 {% elseif p.status.value == 'unverified' %}
-                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Unverified</span>
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ 'set.status_unverified'|trans }}</span>
                                 {% else %}
-                                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Rejected</span>
+                                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">{{ 'set.status_rejected'|trans }}</span>
                                 {% endif %}
                             </td>
                             <td class="d-none d-sm-table-cell text-body-secondary">
@@ -247,7 +247,7 @@
                                     {{ p.provider.label }}
                                 {% endif %}
                                 {% if p.submittedBy %}
-                                    <span class="badge bg-light text-secondary border ms-1">by {{ p.submittedBy.userIdentifier|split('@')[0] }}</span>
+                                    <span class="badge bg-light text-secondary border ms-1">{{ 'set.by_user'|trans({'%user%': p.submittedBy.userIdentifier|split('@')[0]}) }}</span>
                                 {% endif %}
                             </td>
                             <td class="text-end pe-3 text-body-secondary">

@@ -1,19 +1,19 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Community Price Moderation Queue{% endblock %}
+{% block title %}{{ 'moderation.meta_title'|trans }} — Piece Analyzer{% endblock %}
 
 {% block content %}
 <div class="container py-4">
     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div>
-            <h2 class="fw-bold mb-1">🛡️ Price Moderation Queue</h2>
-            <p class="text-secondary small mb-0">Review, verify, or reject community and bookmarklet price submissions.</p>
+            <h2 class="fw-bold mb-1">{{ 'moderation.title'|trans }}</h2>
+            <p class="text-secondary small mb-0">{{ 'moderation.subtitle'|trans }}</p>
         </div>
         <div>
             <form action="{{ path('admin_price_auto_verify_matching') }}" method="post" class="d-inline">
                 <input type="hidden" name="_token" value="{{ csrf_token('auto_verify_matching') }}">
                 <button type="submit" class="btn btn-outline-primary btn-sm shadow-sm">
-                    ⚡ Auto-Verify Consensus Prices
+                    {{ 'moderation.auto_verify_consensus'|trans }}
                 </button>
             </form>
         </div>
@@ -26,34 +26,34 @@
                 <ul class="nav nav-pills small">
                     <li class="nav-item">
                         <a class="nav-link py-1 px-3 {% if currentStatus == 'unverified' %}active{% endif %}" href="{{ path('admin_price_moderation', {'status': 'unverified', 'retailer': currentRetailer}) }}">
-                            Pending Unverified
+                            {{ 'moderation.pending_unverified'|trans }}
                             <span class="badge {% if currentStatus == 'unverified' %}bg-white text-primary{% else %}bg-warning text-dark{% endif %} ms-1">{{ unverifiedCount }}</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link py-1 px-3 {% if currentStatus == 'verified' %}active{% endif %}" href="{{ path('admin_price_moderation', {'status': 'verified', 'retailer': currentRetailer}) }}">
-                            Verified
+                            {{ 'moderation.verified'|trans }}
                             <span class="badge {% if currentStatus == 'verified' %}bg-white text-primary{% else %}bg-success{% endif %} ms-1">{{ verifiedCount }}</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link py-1 px-3 {% if currentStatus == 'rejected' %}active{% endif %}" href="{{ path('admin_price_moderation', {'status': 'rejected', 'retailer': currentRetailer}) }}">
-                            Rejected
+                            {{ 'moderation.rejected'|trans }}
                             <span class="badge {% if currentStatus == 'rejected' %}bg-white text-primary{% else %}bg-danger{% endif %} ms-1">{{ rejectedCount }}</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link py-1 px-3 {% if currentStatus == 'all' %}active{% endif %}" href="{{ path('admin_price_moderation', {'status': 'all', 'retailer': currentRetailer}) }}">
-                            All Reports
+                            {{ 'moderation.all_reports'|trans }}
                         </a>
                     </li>
                 </ul>
 
                 <!-- Retailer Filter -->
                 <div class="d-flex align-items-center gap-2">
-                    <label for="retailerFilterSelect" class="form-label small mb-0 text-secondary">Retailer:</label>
+                    <label for="retailerFilterSelect" class="form-label small mb-0 text-secondary">{{ 'moderation.retailer_label'|trans }}</label>
                     <select id="retailerFilterSelect" class="form-select form-select-sm" onchange="location = this.value;" style="min-width: 140px;">
-                        <option value="{{ path('admin_price_moderation', {'status': currentStatus}) }}">All Retailers</option>
+                        <option value="{{ path('admin_price_moderation', {'status': currentStatus}) }}">{{ 'moderation.all_retailers'|trans }}</option>
                         {% for r in retailers %}
                             <option value="{{ path('admin_price_moderation', {'status': currentStatus, 'retailer': r.value}) }}" {% if currentRetailer == r.value %}selected{% endif %}>
                                 {{ r.label }}
@@ -71,22 +71,22 @@
             {% if prices is empty %}
                 <div class="text-center py-5">
                     <span class="fs-1 d-block mb-2">🎉</span>
-                    <h5 class="fw-bold">No submissions found</h5>
-                    <p class="text-secondary small mb-0">There are no price reports matching your current filter selection.</p>
+                    <h5 class="fw-bold">{{ 'moderation.no_submissions_title'|trans }}</h5>
+                    <p class="text-secondary small mb-0">{{ 'moderation.no_submissions_desc'|trans }}</p>
                 </div>
             {% else %}
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light small">
                             <tr>
-                                <th class="ps-3 py-3">Set</th>
-                                <th class="py-3">Retailer</th>
-                                <th class="py-3 text-end">Price</th>
-                                <th class="py-3">Contributor</th>
-                                <th class="py-3">Provider</th>
-                                <th class="py-3">Recorded</th>
-                                <th class="py-3 text-center">Status</th>
-                                <th class="py-3 text-end pe-3">Actions</th>
+                                <th class="ps-3 py-3">{{ 'moderation.col_set'|trans }}</th>
+                                <th class="py-3">{{ 'moderation.col_retailer'|trans }}</th>
+                                <th class="py-3 text-end">{{ 'moderation.col_price'|trans }}</th>
+                                <th class="py-3">{{ 'moderation.col_contributor'|trans }}</th>
+                                <th class="py-3">{{ 'moderation.col_provider'|trans }}</th>
+                                <th class="py-3">{{ 'moderation.col_recorded'|trans }}</th>
+                                <th class="py-3 text-center">{{ 'moderation.col_status'|trans }}</th>
+                                <th class="py-3 text-end pe-3">{{ 'moderation.col_actions'|trans }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -100,7 +100,7 @@
                                                 {{ set.name }}
                                             </a>
                                         {% else %}
-                                            <span class="text-secondary">Unknown set</span>
+                                            <span class="text-secondary">{{ 'moderation.unknown_set'|trans }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -120,11 +120,11 @@
                                             <span class="small text-body-secondary font-monospace">
                                                 {{ p.submittedBy.userIdentifier }}
                                                 {% if p.submittedBy.isVerifiedContributor %}
-                                                    <span class="badge text-bg-success" style="font-size: 0.65rem;">Trusted</span>
+                                                    <span class="badge text-bg-success" style="font-size: 0.65rem;">{{ 'moderation.trusted'|trans }}</span>
                                                 {% endif %}
                                             </span>
                                         {% else %}
-                                            <span class="small text-body-tertiary">System</span>
+                                            <span class="small text-body-tertiary">{{ 'moderation.system'|trans }}</span>
                                         {% endif %}
                                     </td>
                                     <td class="small text-secondary">
@@ -135,19 +135,19 @@
                                     </td>
                                     <td class="text-center">
                                         {% if p.status.value == 'verified' %}
-                                            <span class="badge text-bg-success">Verified</span>
+                                            <span class="badge text-bg-success">{{ 'set.status_verified'|trans }}</span>
                                         {% elseif p.status.value == 'unverified' %}
-                                            <span class="badge text-bg-warning text-dark">Unverified</span>
+                                            <span class="badge text-bg-warning text-dark">{{ 'set.status_unverified'|trans }}</span>
                                         {% else %}
-                                            <span class="badge text-bg-danger">Rejected</span>
+                                            <span class="badge text-bg-danger">{{ 'set.status_rejected'|trans }}</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-end pe-3 text-nowrap">
                                         {% if p.status.value != 'verified' %}
                                             <form action="{{ path('admin_price_approve', {'id': p.id}) }}" method="post" class="d-inline">
                                                 <input type="hidden" name="_token" value="{{ csrf_token('approve_price_' ~ p.id) }}">
-                                                <button type="submit" class="btn btn-sm btn-success py-1 px-2" title="Approve price">
-                                                    ✓ Approve
+                                                <button type="submit" class="btn btn-sm btn-success py-1 px-2" title="{{ 'moderation.btn_approve'|trans }}">
+                                                    {{ 'moderation.btn_approve'|trans }}
                                                 </button>
                                             </form>
                                         {% endif %}
@@ -155,8 +155,8 @@
                                         {% if p.status.value != 'rejected' %}
                                             <form action="{{ path('admin_price_reject', {'id': p.id}) }}" method="post" class="d-inline ms-1">
                                                 <input type="hidden" name="_token" value="{{ csrf_token('reject_price_' ~ p.id) }}">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Reject price">
-                                                    ✕ Reject
+                                                <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="{{ 'moderation.btn_reject'|trans }}">
+                                                    {{ 'moderation.btn_reject'|trans }}
                                                 </button>
                                             </form>
                                         {% endif %}

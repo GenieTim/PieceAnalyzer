@@ -99,6 +99,17 @@ class PreferenceControllerTest extends WebTestCase
         $this->assertResponseRedirects('/de/filter');
     }
 
+    public function testSetLocalePreferenceFrench(): void
+    {
+        $client = static::createClient();
+        $client->request(Request::METHOD_GET, '/en/preferences/locale/fr');
+
+        $this->assertResponseRedirects('/fr/filter');
+
+        $session = $client->getRequest()->getSession();
+        $this->assertSame('fr', $session->get('_locale'));
+    }
+
     public function testRootRedirectsBasedOnBrowserLanguageGerman(): void
     {
         $client = static::createClient();
@@ -107,6 +118,16 @@ class PreferenceControllerTest extends WebTestCase
         ]);
 
         $this->assertResponseRedirects('/de/');
+    }
+
+    public function testRootRedirectsBasedOnBrowserLanguageFrench(): void
+    {
+        $client = static::createClient();
+        $client->request(Request::METHOD_GET, '/', [], [], [
+            'HTTP_ACCEPT_LANGUAGE' => 'fr-FR,fr;q=0.9,en;q=0.8',
+        ]);
+
+        $this->assertResponseRedirects('/fr/');
     }
 
     public function testRootRedirectsBasedOnBrowserLanguageEnglish(): void
@@ -129,6 +150,10 @@ class PreferenceControllerTest extends WebTestCase
         $client->request(Request::METHOD_GET, '/en/filter');
         $this->assertResponseIsSuccessful();
         $this->assertStringContainsString('Explore Sets', (string) $client->getResponse()->getContent());
+
+        $client->request(Request::METHOD_GET, '/fr/filter');
+        $this->assertResponseIsSuccessful();
+        $this->assertStringContainsString('Explorer les sets', (string) $client->getResponse()->getContent());
     }
 
     #[\Override]

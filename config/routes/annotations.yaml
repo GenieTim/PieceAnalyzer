@@ -3,7 +3,7 @@ controllers:
     type: attribute
     prefix: /{_locale}
     requirements:
-        _locale: 'en|de'
+        _locale: 'en|de|fr'
     defaults:
         _locale: 'en'
 

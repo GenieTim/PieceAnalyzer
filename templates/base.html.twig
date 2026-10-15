@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ app.request.locale|default('en') }}">
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>{% block title %}Welcome{% endblock %} — Piece Analyzer</title>
+		<title>{% block title %}{{ 'base.welcome'|trans }}{% endblock %} — Piece Analyzer</title>
 		<link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 		<link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
 		<link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
@@ -22,7 +22,7 @@
 							<img src="{{ asset('logo.svg') }}" alt="Piece Analyzer Logo" width="30" height="30" class="d-inline-block">
 							<span>Piece Analyzer</span>
 						</a>
-						<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+						<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="{{ 'menu.toggle_navigation'|trans }}">
 							<span class="navbar-toggler-icon"></span>
 						</button>
 
@@ -75,7 +75,7 @@
 						{% set alertClass = type in ['alert', 'error', 'danger'] ? 'danger' : (type in ['success', 'warning', 'info'] ? type : 'info') %}
 						{% for message in messages %}
 							<div class="alert alert-{{ alertClass }} alert-dismissible fade show shadow-sm mb-4" role="alert">
-								{{ message }}
+								{{ message|trans }}
 								<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 							</div>
 						{% endfor %}
@@ -89,7 +89,7 @@
 					<div class="row align-items-center gy-2">
 						<div class="col-12 col-md-4 text-center text-md-start">
 							<span class="fw-semibold text-white">Piece Analyzer</span>
-							<span class="text-secondary small d-block">Copyright © Tim Bernhard, {{ "now"|date("Y") }}. All rights reserved.</span>
+							<span class="text-secondary small d-block">{{ 'footer.copyright'|trans({'%year%': "now"|date("Y")}) }}</span>
 							{% set currentLocale = app.request.locale|default('en') %}
 							{% set currentRoute = app.current_route|default('index') %}
 							{% set routeParams = app.current_route_parameters|default({}) %}
@@ -99,12 +99,13 @@
 								<a href="{{ path(currentRoute, routeParams|merge(queryParams)|merge({'_locale': 'en'})) }}" class="link-secondary text-decoration-none{% if currentLocale == 'en' %} text-white fw-semibold{% endif %}">English</a>
 								<span>·</span>
 								<a href="{{ path(currentRoute, routeParams|merge(queryParams)|merge({'_locale': 'de'})) }}" class="link-secondary text-decoration-none{% if currentLocale == 'de' %} text-white fw-semibold{% endif %}">Deutsch</a>
+								<span>·</span>
+								<a href="{{ path(currentRoute, routeParams|merge(queryParams)|merge({'_locale': 'fr'})) }}" class="link-secondary text-decoration-none{% if currentLocale == 'fr' %} text-white fw-semibold{% endif %}">Français</a>
 							</div>
 						</div>
 						<div class="col-12 col-md-8 text-center text-md-end">
 							<p class="text-secondary small mb-0">
-								This webservice is provided “AS IS” without warranty of any kind, express or implied.
-								LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize, or endorse this service.
+								{{ 'footer.disclaimer'|trans }}
 							</p>
 						</div>
 					</div>

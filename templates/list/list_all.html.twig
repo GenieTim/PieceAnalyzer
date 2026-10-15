@@ -41,9 +41,9 @@
                 <div class="small">
                     <strong>{{ 'filter.filtering_for_part'|trans }}</strong>
                     <span class="badge bg-light text-dark border font-monospace px-2 py-1 ms-1">{{ activePart }}</span>
-                    {% if activeMinYear %}<span class="badge bg-light text-dark border ms-1">Year ≥ {{ activeMinYear }}</span>{% endif %}
-                    {% if activeColor > 0 %}<span class="badge bg-light text-dark border ms-1">Color #{{ activeColor }}</span>{% endif %}
-                    {% if activeCategory > 0 %}<span class="badge bg-light text-dark border ms-1">Category #{{ activeCategory }}</span>{% endif %}
+                    {% if activeMinYear %}<span class="badge bg-light text-dark border ms-1">{{ 'table.filter_year_badge'|trans({'%year%': activeMinYear}) }}</span>{% endif %}
+                    {% if activeColor > 0 %}<span class="badge bg-light text-dark border ms-1">{{ 'table.filter_color_badge'|trans({'%color%': activeColor}) }}</span>{% endif %}
+                    {% if activeCategory > 0 %}<span class="badge bg-light text-dark border ms-1">{{ 'table.filter_category_badge'|trans({'%category%': activeCategory}) }}</span>{% endif %}
                 </div>
                 <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary py-1 px-2">{{ 'filter.clear_part_filter'|trans }}</a>
             </div>
@@ -153,7 +153,7 @@
                                 <td class="text-end font-monospace text-nowrap d-none d-sm-table-cell">
                                     {% if isTargetPartSearch %}
                                         <span class="fw-semibold text-primary">{{ targetPieces }}</span>
-                                        <div class="small text-secondary" style="font-size: 0.72rem;">{{ totalPieces | number_format }} total</div>
+                                        <div class="small text-secondary" style="font-size: 0.72rem;">{{ 'table.total'|trans({'%count%': totalPieces | number_format}) }}</div>
                                     {% else %}
                                         {{ totalPieces | number_format }}
                                     {% endif %}
@@ -168,15 +168,15 @@
                                         {% endif %}
                                         {% if userPrice %}
                                             <a href="{{ path('set_detail', {'id': set.id}) }}#prices"
-                                               class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1 py-1 px-1 align-baseline text-decoration-none"
-                                               title="{{ 'table.your_price'|trans }}">
+                                                class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1 py-1 px-1 align-baseline text-decoration-none"
+                                                title="{{ 'table.your_price'|trans }}">
                                                 {{ 'table.your_price'|trans }}
                                             </a>
                                         {% elseif set.prices|length > 0 %}
                                             <a href="{{ path('set_detail', {'id': set.id}) }}#prices"
-                                               class="btn btn-sm btn-light border-0 py-0 px-1 ms-1 text-secondary align-baseline"
-                                               title="{{ 'set.view_price_history'|trans }} ({{ set.prices|length }})"
-                                               aria-label="{{ 'set.view_price_history'|trans }}">
+                                                class="btn btn-sm btn-light border-0 py-0 px-1 ms-1 text-secondary align-baseline"
+                                                title="{{ 'set.view_price_history'|trans }} ({{ set.prices|length }})"
+                                                aria-label="{{ 'set.view_price_history'|trans }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-graph-up text-primary" viewBox="0 0 16 16">
                                                     <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/>
                                                 </svg>
@@ -190,7 +190,7 @@
                                                     {{ 'table.check_price'|trans }}
                                                 </button>
                                                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                    <li><h6 class="dropdown-header">Check Retailers</h6></li>
+                                                    <li><h6 class="dropdown-header">{{ 'table.check_retailers'|trans }}</h6></li>
                                                     <li><a class="dropdown-item small" href="https://www.galaxus.ch/en/search?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Galaxus.ch ↗</a></li>
                                                     <li><a class="dropdown-item small" href="https://www.brack.ch/search?query=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Brack.ch ↗</a></li>
                                                     <li><a class="dropdown-item small" href="https://www.toppreise.ch/s?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Toppreise.ch ↗</a></li>
@@ -211,7 +211,7 @@
                                             {{ currSymbol }}{{ unitPrice | number_format(3, '.', ',') }}
                                         </span>
                                         {% if isTargetPartSearch %}
-                                            <div class="small text-secondary font-monospace" style="font-size: 0.70rem;">/ target pc</div>
+                                            <div class="small text-secondary font-monospace" style="font-size: 0.70rem;">{{ 'table.per_target_pc'|trans }}</div>
                                         {% else %}
                                             {% set minorUnit = minor_unit(activeCurr) %}
                                             <span class="text-secondary small font-monospace ms-1 d-none d-lg-inline">
