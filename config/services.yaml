@@ -8,6 +8,9 @@ parameters:
     
     env(REBRICKABLE_API_KEY): ""
     env(BRICKSET_API_KEY): ""
+    env(MAILER_DSN): "null://null"
+    env(ADMIN_EMAIL): "admin@piece-analyzer.be-we.ch"
+    env(ERROR_EMAIL_FROM): "errors@piece-analyzer.be-we.ch"
     rebrickable_api_key: "%env(REBRICKABLE_API_KEY)%"
     brickset_api_key: "%env(BRICKSET_API_KEY)%"
     

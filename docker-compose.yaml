@@ -26,6 +26,10 @@ services:
       CONSUMER_SECRET: ${CONSUMER_SECRET:-null}
       TOKEN_VALUE: ${TOKEN_VALUE:-null}
       TOKEN_SECRET: ${TOKEN_SECRET:-null}
+      # Email notifications for critical failures
+      MAILER_DSN: ${MAILER_DSN:-null://null}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@piece-analyzer.be-we.ch}
+      ERROR_EMAIL_FROM: ${ERROR_EMAIL_FROM:-errors@piece-analyzer.be-we.ch}
       # Automatically creates database and updates schema on container start (1 = enabled, 0 = disabled)
       AUTO_DB_INIT: ${AUTO_DB_INIT:-1}
     volumes:
@@ -61,6 +65,9 @@ services:
       CONSUMER_SECRET: ${CONSUMER_SECRET:-null}
       TOKEN_VALUE: ${TOKEN_VALUE:-null}
       TOKEN_SECRET: ${TOKEN_SECRET:-null}
+      MAILER_DSN: ${MAILER_DSN:-null://null}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@piece-analyzer.be-we.ch}
+      ERROR_EMAIL_FROM: ${ERROR_EMAIL_FROM:-errors@piece-analyzer.be-we.ch}
       AUTO_DB_INIT: 0
     volumes:
       - app_data:/app/data
