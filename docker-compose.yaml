@@ -69,6 +69,8 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@piece-analyzer.be-we.ch}
       ERROR_EMAIL_FROM: ${ERROR_EMAIL_FROM:-errors@piece-analyzer.be-we.ch}
       AUTO_DB_INIT: 0
+    healthcheck:
+      disable: true
     volumes:
       - app_data:/app/data
       - app_var:/app/var
