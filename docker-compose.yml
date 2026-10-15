@@ -31,6 +31,9 @@ services:
     volumes:
       - app_data:/app/data
       - app_var:/app/var
+    networks:
+      - default
+      - coolify
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 15s
@@ -62,6 +65,9 @@ services:
     volumes:
       - app_data:/app/data
       - app_var:/app/var
+    networks:
+      - default
+      - coolify
     depends_on:
       app:
         condition: service_started
@@ -76,6 +82,8 @@ services:
     restart: unless-stopped
     environment:
       PORT: 8000
+    networks:
+      - default
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
       interval: 20s
@@ -104,3 +112,9 @@ volumes:
   app_data:
   app_var:
   # db_data:
+
+networks:
+  default:
+  coolify:
+    external: true
+
