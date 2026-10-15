@@ -100,7 +100,8 @@ jobs:
 
       - name: Test Docker Compose Startup & Healthcheck
         run: |
-          PORT=8080 docker compose up -d
+          docker network create coolify || true
+          docker compose up -d
           echo "Waiting for container to become healthy..."
           for i in $(seq 1 30); do
             STATUS=$(docker inspect --format='{{json .State.Health.Status}}' $(docker compose ps -q app) 2>/dev/null || echo '"starting"')
@@ -113,10 +114,10 @@ jobs:
           done
 
           # Smoke test HTTP endpoints and static assets
-          curl -f -I http://localhost:8080/
-          curl -f -I http://localhost:8080/filter
-          curl -f -I http://localhost:8080/build/app.js
-          curl -f -I http://localhost:8080/build/css/global.css
+          docker compose exec -T app curl -f -I http://localhost/
+          docker compose exec -T app curl -f -I http://localhost/filter
+          docker compose exec -T app curl -f -I http://localhost/build/app.js
+          docker compose exec -T app curl -f -I http://localhost/build/css/global.css
 
       - name: Cleanup
         if: always()
