@@ -11,6 +11,8 @@ class IndexControllerTest extends WebTestCase
         $client = static::createClient();
         $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/');
 
+        $this->assertResponseRedirects('/en/');
+        $client->followRedirect();
         $this->assertResponseIsSuccessful();
         $this->assertSelectorExists('nav.navbar');
     }

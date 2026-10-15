@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Explore LEGO® Sets{% endblock %}
+{% block title %}{{ 'explorer.title'|trans }}{% endblock %}
 
 {% block content %}
     <div class="container">
@@ -12,55 +12,50 @@
         {% set activeCurr = user_currency() %}
         {% set currSymbol = currency_symbol(activeCurr) %}
 
-        <div class="d-flex flex-column flex-md-row justify-between align-items-md-center gap-2 mb-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
             <div>
-                <h1 class="h2 fw-bold mb-1">Set &amp; Piece Value Explorer</h1>
-                <p class="text-body-secondary mb-0">
+                <h1 class="h3 fw-bold mb-1">{{ 'explorer.title'|trans }}</h1>
+                <p class="text-secondary small mb-0">
                     {% if isTargetPartSearch %}
-                        Finding the best-value models to buy for part <strong>"{{ activePart }}"</strong>, ranked by lowest cost per target piece.
+                        {{ 'explorer.subtitle_part'|trans({'%part%': activePart}) }}
                     {% else %}
-                        Compare LEGO® sets by piece count, retail price, and unit cost per piece.
+                        {{ 'explorer.subtitle_default'|trans }}
                     {% endif %}
                 </p>
             </div>
-            <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="text-secondary small">
                 {% if isTargetPartSearch %}
-                    <span class="badge text-bg-primary fs-6 px-3 py-2 rounded-pill shadow-sm">
-                        🎯 {{ pagination.totalItemCount | number_format }} {{ pagination.totalItemCount == 1 ? 'Model Contains Target Part' : 'Models Contain Target Part' }}
+                    <span class="badge bg-primary-subtle text-primary-emphasis fw-medium px-2 py-1">
+                        {{ 'explorer.models_contain_part'|trans({'%count%': pagination.totalItemCount}) }}
                     </span>
                 {% else %}
-                    <span class="badge text-bg-dark fs-6 px-3 py-2 rounded-pill shadow-sm">
-                        {{ pagination.totalItemCount | number_format }} {{ pagination.totalItemCount == 1 ? 'Set in Catalog' : 'Sets in Catalog' }}
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis fw-medium px-2 py-1">
+                        {{ 'explorer.sets_count'|trans({'%count%': pagination.totalItemCount}) }}
                     </span>
                 {% endif %}
             </div>
         </div>
 
         {% if isTargetPartSearch %}
-            <div class="alert alert-info border-info-subtle shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
-                <div>
-                    <span class="fs-5 me-1">🎯</span>
-                    <strong>Filtering for Part:</strong>
-                    <span class="badge bg-primary text-white font-monospace px-2 py-1 ms-1">{{ activePart }}</span>
-                    {% if activeMinYear %}<span class="badge bg-secondary text-white ms-1">Year ≥ {{ activeMinYear }}</span>{% endif %}
-                    {% if activeColor > 0 %}<span class="badge bg-secondary text-white ms-1">Color #{{ activeColor }}</span>{% endif %}
-                    {% if activeCategory > 0 %}<span class="badge bg-secondary text-white ms-1">Category #{{ activeCategory }}</span>{% endif %}
-                    <span class="d-block d-md-inline ms-md-2 small text-body-secondary mt-1 mt-md-0">
-                        Ranked by <strong>lowest price per target piece</strong> — buy the top model to get the most parts for the lowest price!
-                    </span>
+            <div class="alert alert-light border shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 px-3 mb-3">
+                <div class="small">
+                    <strong>{{ 'filter.filtering_for_part'|trans }}</strong>
+                    <span class="badge bg-light text-dark border font-monospace px-2 py-1 ms-1">{{ activePart }}</span>
+                    {% if activeMinYear %}<span class="badge bg-light text-dark border ms-1">Year ≥ {{ activeMinYear }}</span>{% endif %}
+                    {% if activeColor > 0 %}<span class="badge bg-light text-dark border ms-1">Color #{{ activeColor }}</span>{% endif %}
+                    {% if activeCategory > 0 %}<span class="badge bg-light text-dark border ms-1">Category #{{ activeCategory }}</span>{% endif %}
                 </div>
-                <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary">Clear part filter</a>
+                <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary py-1 px-2">{{ 'filter.clear_part_filter'|trans }}</a>
             </div>
         {% elseif activeMinYear %}
-            <div class="alert alert-light border shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
-                <div>
-                    <span class="fs-5 me-1">📅</span>
-                    <strong>Filtered by Release Year:</strong>
-                    <span class="badge bg-primary text-white px-2 py-1 ms-1">Released in {{ activeMinYear }} or newer</span>
-                    {% if activeColor > 0 %}<span class="badge bg-secondary text-white ms-1">Color #{{ activeColor }}</span>{% endif %}
-                    {% if activeCategory > 0 %}<span class="badge bg-secondary text-white ms-1">Category #{{ activeCategory }}</span>{% endif %}
+            <div class="alert alert-light border shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 px-3 mb-3">
+                <div class="small">
+                    <strong>{{ 'filter.filtered_by_year'|trans }}</strong>
+                    <span class="badge bg-light text-dark border px-2 py-1 ms-1">{{ 'filter.released_in_or_newer'|trans({'%year%': activeMinYear}) }}</span>
+                    {% if activeColor > 0 %}<span class="badge bg-light text-dark border ms-1">Color #{{ activeColor }}</span>{% endif %}
+                    {% if activeCategory > 0 %}<span class="badge bg-light text-dark border ms-1">Category #{{ activeCategory }}</span>{% endif %}
                 </div>
-                <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary">Clear filters</a>
+                <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary py-1 px-2">{{ 'filter.clear_filters'|trans }}</a>
             </div>
         {% endif %}
 
@@ -73,17 +68,20 @@
         <div class="card border-0 shadow-sm">
             {% if pagination.totalItemCount > 0 %}
                 <div class="card-header bg-white border-bottom py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <div class="text-body-secondary small">
-                        Showing <strong class="text-body-emphasis">{{ pagination.paginationData.firstItemNumber | number_format }}–{{ pagination.paginationData.lastItemNumber | number_format }}</strong>
-                        of <strong class="text-body-emphasis">{{ pagination.totalItemCount | number_format }}</strong> cataloged models
-                        <span class="text-muted small ms-1">(unpriced models listed last)</span>
+                    <div class="text-secondary small">
+                        {{ 'explorer.showing_models'|trans({
+                            '%first%': pagination.paginationData.firstItemNumber | number_format,
+                            '%last%': pagination.paginationData.lastItemNumber | number_format,
+                            '%total%': pagination.totalItemCount | number_format
+                        }) }}
+                        <span class="text-body-tertiary ms-1">{{ 'explorer.unpriced_notice'|trans }}</span>
                     </div>
                     {% if not isTargetPartSearch %}
-                        <div class="d-none d-md-flex align-items-center gap-2 small">
-                            <span class="text-body-secondary me-1">Value Tier:</span>
-                            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-medium">≤ {{ currSymbol }}0.075 Great</span>
-                            <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-medium">{{ currSymbol }}0.076–{{ currSymbol }}0.105 Fair</span>
-                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-medium">&gt; {{ currSymbol }}0.105 Premium</span>
+                        <div class="d-none d-md-flex align-items-center gap-3 text-secondary small">
+                            <span class="fw-medium text-body-secondary">{{ 'tier.label'|trans }}</span>
+                            <span><span class="text-success fw-bold">●</span> ≤ {{ currSymbol }}0.075 {{ 'tier.great'|trans }}</span>
+                            <span><span class="text-primary fw-bold">●</span> {{ currSymbol }}0.076–{{ currSymbol }}0.105 {{ 'tier.fair'|trans }}</span>
+                            <span><span class="text-secondary fw-bold">●</span> &gt; {{ currSymbol }}0.105 {{ 'tier.premium'|trans }}</span>
                         </div>
                     {% endif %}
                 </div>
@@ -93,30 +91,30 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light border-bottom">
                         <tr>
-                            <th scope="col" class="ps-3 py-3 d-none d-md-table-cell{% if pagination.isSorted('s.no') %} sorted{% endif %}" style="width: 130px;">
-                                {{ knp_pagination_sortable(pagination, 'Set #', 's.no') }}
+                            <th scope="col" class="ps-3 py-3 d-none d-md-table-cell{% if pagination.isSorted('s.no') %} sorted{% endif %}" style="width: 120px;">
+                                {{ knp_pagination_sortable(pagination, 'table.set_no'|trans, 's.no') }}
                             </th>
                             <th scope="col" class="ps-3 ps-md-2 py-3{% if pagination.isSorted('s.name') %} sorted{% endif %}">
-                                {{ knp_pagination_sortable(pagination, 'Set Name', 's.name') }}
+                                {{ knp_pagination_sortable(pagination, 'table.set_name'|trans, 's.name') }}
                             </th>
-                            <th scope="col" class="py-3 text-end d-none d-md-table-cell{% if pagination.isSorted('s.year') %} sorted{% endif %}" style="width: 95px;">
-                                {{ knp_pagination_sortable(pagination, 'Year', 's.year') }}
+                            <th scope="col" class="py-3 text-end d-none d-md-table-cell{% if pagination.isSorted('s.year') %} sorted{% endif %}" style="width: 85px;">
+                                {{ knp_pagination_sortable(pagination, 'table.year'|trans, 's.year') }}
                             </th>
-                            <th scope="col" class="py-3 text-end d-none d-sm-table-cell{% if pagination.isSorted('pieceCount') %} sorted{% endif %}" style="width: 135px;">
+                            <th scope="col" class="py-3 text-end d-none d-sm-table-cell{% if pagination.isSorted('pieceCount') %} sorted{% endif %}" style="width: 120px;">
                                 {% if isTargetPartSearch %}
-                                    <span title="Target part count included in model / Total set pieces">Target Pcs</span>
+                                    <span title="{{ 'table.target_desc'|trans }}">{{ 'table.target_pcs'|trans }}</span>
                                 {% else %}
-                                    {{ knp_pagination_sortable(pagination, 'Pieces', 'pieceCount') }}
+                                    {{ knp_pagination_sortable(pagination, 'table.pieces'|trans, 'pieceCount') }}
                                 {% endif %}
                             </th>
-                            <th scope="col" class="px-2 px-sm-3 py-3 text-end{% if pagination.isSorted('s.price') %} sorted{% endif %}">
-                                {{ knp_pagination_sortable(pagination, 'Price (' ~ activeCurr ~ ')', 's.price') }}
+                            <th scope="col" class="px-2 px-sm-3 py-3 text-end{% if pagination.isSorted('s.price') %} sorted{% endif %}" style="width: 150px;">
+                                {{ knp_pagination_sortable(pagination, 'table.price'|trans({'%currency%': activeCurr}), 's.price') }}
                             </th>
-                            <th scope="col" class="pe-3 ps-2 py-3 text-end{% if pagination.isSorted('pricePerPiece') %} sorted{% endif %}">
+                            <th scope="col" class="pe-3 ps-2 py-3 text-end{% if pagination.isSorted('pricePerPiece') %} sorted{% endif %}" style="width: 130px;">
                                 {% if isTargetPartSearch %}
-                                    <span title="Price per unit of the target part in this model">Cost / Target Pc</span>
+                                    <span title="{{ 'table.cost_target_desc'|trans }}">{{ 'table.cost_per_target_pc'|trans }}</span>
                                 {% else %}
-                                    {{ knp_pagination_sortable(pagination, 'Price / Pc', 'pricePerPiece') }}
+                                    {{ knp_pagination_sortable(pagination, 'table.price_per_piece'|trans, 'pricePerPiece') }}
                                 {% endif %}
                             </th>
                         </tr>
@@ -131,21 +129,21 @@
                             {% set effectivePrice = convert_price(rawPrice, rawCurr, activeCurr) %}
                             <tr>
                                 <td class="ps-3 d-none d-md-table-cell">
-                                    <span class="badge text-bg-light border font-monospace text-dark px-2 py-1">{{ set.no }}</span>
+                                    <span class="font-monospace text-body-secondary small">{{ set.no }}</span>
                                 </td>
                                 <td class="ps-3 ps-md-2">
-                                    <a href="{{ path('list_item', {'id': set.id}) }}" class="fw-semibold link-primary text-decoration-none" target="_blank" rel="noopener">
+                                    <a href="{{ path('item_prices', {'id': set.id}) }}" class="fw-semibold text-decoration-none text-body-emphasis link-primary">
                                         {{ set.name }}
                                     </a>
-                                    <div class="d-md-none mt-1 d-flex flex-wrap align-items-center gap-1 text-body-secondary small">
-                                        <span class="badge text-bg-light border font-monospace text-dark">{{ set.no }}</span>
+                                    <div class="d-md-none mt-1 d-flex flex-wrap align-items-center gap-1 text-secondary small">
+                                        <span class="font-monospace">{{ set.no }}</span>
                                         {% if set.year %}
                                             <span>· {{ set.year|date('Y') }}</span>
                                         {% endif %}
                                         {% if isTargetPartSearch %}
-                                            <span class="badge text-bg-primary font-monospace">{{ targetPieces }}x target</span>
+                                            <span class="badge bg-primary-subtle text-primary font-monospace">{{ 'table.target_badge'|trans({'%count%': targetPieces}) }}</span>
                                         {% else %}
-                                            <span class="d-sm-none font-monospace">· {{ totalPieces | number_format }} pcs</span>
+                                            <span class="d-sm-none font-monospace">· {{ totalPieces | number_format }} {{ 'table.pieces'|trans }}</span>
                                         {% endif %}
                                     </div>
                                 </td>
@@ -154,49 +152,51 @@
                                 </td>
                                 <td class="text-end font-monospace text-nowrap d-none d-sm-table-cell">
                                     {% if isTargetPartSearch %}
-                                        <span class="badge bg-primary text-white fs-6 px-2 py-1">{{ targetPieces }} pcs</span>
-                                        <div class="small text-body-secondary" style="font-size: 0.72rem;">{{ totalPieces | number_format }} total</div>
+                                        <span class="fw-semibold text-primary">{{ targetPieces }}</span>
+                                        <div class="small text-secondary" style="font-size: 0.72rem;">{{ totalPieces | number_format }} total</div>
                                     {% else %}
                                         {{ totalPieces | number_format }}
                                     {% endif %}
                                 </td>
-                                <td class="px-2 px-sm-3 text-end font-monospace fw-medium text-nowrap">
+                                <td class="px-2 px-sm-3 text-end font-monospace text-nowrap">
                                     {% if effectivePrice is not null and effectivePrice > 0 %}
-                                        <span title="{{ rawCurr != activeCurr ? ('Converted from ' ~ rawCurr ~ ' ' ~ (rawPrice|number_format(2)) ~ ' at current exchange rate') : (activeCurr ~ ' ' ~ (effectivePrice|number_format(2))) }}">
+                                        <span class="fw-medium" title="{{ rawCurr != activeCurr ? ('Converted from ' ~ rawCurr ~ ' ' ~ (rawPrice|number_format(2)) ~ ' at current exchange rate') : (activeCurr ~ ' ' ~ (effectivePrice|number_format(2))) }}">
                                             {{ currSymbol }}{{ effectivePrice | number_format(2, '.', ',') }}
                                         </span>
                                         {% if rawCurr != activeCurr %}
-                                            <span class="badge bg-light text-secondary border ms-1" style="font-size: 0.65rem;" title="Original currency: {{ rawCurr }}">~{{ rawCurr }}</span>
+                                            <span class="text-body-tertiary small ms-1" style="font-size: 0.75rem;" title="Original currency: {{ rawCurr }}">~{{ rawCurr }}</span>
                                         {% endif %}
                                         {% if userPrice %}
-                                            <a href="{{ path('item_prices', {'id': set.id}) }}"
-                                               class="badge text-bg-primary ms-1 text-decoration-none price-history-trigger"
-                                               data-bs-toggle="modal"
-                                               data-bs-target="#priceHistoryModal"
-                                               data-url="{{ path('item_prices', {'id': set.id, 'modal': 1}) }}"
-                                               title="Using your submitted price — click for full history"
-                                               style="font-size: 0.65rem; cursor: pointer;">
-                                                👤 Your price
-                                            </a>
+                                            <button type="button"
+                                                    class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1 py-1 px-1 price-history-trigger align-baseline text-decoration-none"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#priceHistoryModal"
+                                                    data-url="{{ path('item_prices', {'id': set.id, 'modal': 1}) }}"
+                                                    title="{{ 'table.your_price'|trans }}">
+                                                {{ 'table.your_price'|trans }}
+                                            </button>
                                         {% elseif set.prices|length > 0 %}
-                                            <a href="{{ path('item_prices', {'id': set.id}) }}"
-                                               class="badge bg-light text-secondary border ms-1 text-decoration-none price-history-trigger"
-                                               data-bs-toggle="modal"
-                                               data-bs-target="#priceHistoryModal"
-                                               data-url="{{ path('item_prices', {'id': set.id, 'modal': 1}) }}"
-                                               title="{{ set.prices|length }} price source(s) recorded — click for price history & trends"
-                                               style="font-size: 0.7rem; cursor: pointer;">
-                                                📊 {{ set.prices|length }}
-                                            </a>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-light border-0 py-0 px-1 ms-1 text-secondary price-history-trigger align-baseline"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#priceHistoryModal"
+                                                    data-url="{{ path('item_prices', {'id': set.id, 'modal': 1}) }}"
+                                                    title="{{ 'set.view_price_history'|trans }} ({{ set.prices|length }})"
+                                                    aria-label="{{ 'set.view_price_history'|trans }}">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-graph-up text-primary" viewBox="0 0 16 16">
+                                                    <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/>
+                                                </svg>
+                                                <span class="font-monospace text-body-secondary small ms-1" style="font-size: 0.72rem;">{{ set.prices|length }}</span>
+                                            </button>
                                         {% endif %}
                                     {% else %}
                                         {% if is_granted('ROLE_USER') %}
                                             <div class="dropdown d-inline-block">
                                                 <button class="btn btn-sm btn-outline-secondary py-0 px-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.75rem;">
-                                                    Check price
+                                                    {{ 'table.check_price'|trans }}
                                                 </button>
                                                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                    <li><h6 class="dropdown-header">Check Swiss / EU Retailers</h6></li>
+                                                    <li><h6 class="dropdown-header">Check Retailers</h6></li>
                                                     <li><a class="dropdown-item small" href="https://www.galaxus.ch/en/search?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Galaxus.ch ↗</a></li>
                                                     <li><a class="dropdown-item small" href="https://www.brack.ch/search?query=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Brack.ch ↗</a></li>
                                                     <li><a class="dropdown-item small" href="https://www.toppreise.ch/s?q=lego+{{ set.no|split('-')[0] }}" target="_blank" rel="noopener">Toppreise.ch ↗</a></li>
@@ -212,20 +212,15 @@
                                 <td class="pe-3 ps-2 text-end text-nowrap">
                                     {% if effectivePrice is not null and effectivePrice > 0 and targetPieces > 0 %}
                                         {% set unitPrice = effectivePrice / targetPieces %}
-                                        {% set tierClass = unitPrice <= 0.075
-                                            ? 'bg-success-subtle text-success-emphasis border-success-subtle'
-                                            : (unitPrice <= 0.105
-                                                ? 'bg-primary-subtle text-primary-emphasis border-primary-subtle'
-                                                : 'bg-warning-subtle text-warning-emphasis border-warning-subtle')
-                                        %}
-                                        <span class="badge {{ isTargetPartSearch ? 'bg-success-subtle text-success-emphasis border border-success-subtle' : tierClass }} font-monospace px-2 py-1">
+                                        {% set isGreat = unitPrice <= 0.075 %}
+                                        <span class="font-monospace fw-semibold {{ isGreat ? 'text-success' : 'text-body-emphasis' }}">
                                             {{ currSymbol }}{{ unitPrice | number_format(3, '.', ',') }}
                                         </span>
                                         {% if isTargetPartSearch %}
-                                            <div class="small text-body-secondary font-monospace" style="font-size: 0.70rem;">/ target pc</div>
+                                            <div class="small text-secondary font-monospace" style="font-size: 0.70rem;">/ target pc</div>
                                         {% else %}
                                             {% set minorUnit = minor_unit(activeCurr) %}
-                                            <span class="text-body-secondary small font-monospace ms-1 d-none d-lg-inline">
+                                            <span class="text-secondary small font-monospace ms-1 d-none d-lg-inline">
                                                 ({{ (unitPrice * 100) | number_format(1) }}{{ minorUnit }})
                                             </span>
                                         {% endif %}
@@ -238,16 +233,16 @@
                             <tr>
                                 <td colspan="6" class="text-center py-5">
                                     <div class="py-3">
-                                        <h2 class="h5 fw-bold text-body-emphasis mb-2">No LEGO® Sets Match Your Criteria</h2>
-                                        <p class="text-body-secondary mb-3">
+                                        <h2 class="h5 fw-bold text-body-emphasis mb-2">{{ 'explorer.no_sets_title'|trans }}</h2>
+                                        <p class="text-secondary mb-3">
                                             {% if isTargetPartSearch %}
-                                                No sets containing part <code>{{ activePart }}</code> were found. Try another part number or name.
+                                                {{ 'explorer.no_sets_part'|trans({'%part%': activePart}) }}
                                             {% else %}
-                                                No sets matching your filters were found. Try resetting your filters.
+                                                {{ 'explorer.no_sets_default'|trans }}
                                             {% endif %}
                                         </p>
                                         <div class="d-flex justify-content-center gap-2">
-                                            <a href="{{ path('filter_items') }}" class="btn btn-outline-secondary btn-sm">Reset Filters</a>
+                                            <a href="{{ path('filter_items') }}" class="btn btn-outline-secondary btn-sm">{{ 'explorer.reset_filters'|trans }}</a>
                                         </div>
                                     </div>
                                 </td>
@@ -259,10 +254,12 @@
 
             {% if pagination.totalItemCount > 0 %}
                 <div class="card-footer bg-white border-top py-3 px-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
-                    <div class="text-body-secondary small">
-                        Showing <strong class="text-body-emphasis">{{ pagination.paginationData.firstItemNumber | number_format }}</strong>
-                        to <strong class="text-body-emphasis">{{ pagination.paginationData.lastItemNumber | number_format }}</strong>
-                        of <strong class="text-body-emphasis">{{ pagination.totalItemCount | number_format }}</strong> sets
+                    <div class="text-secondary small">
+                        {{ 'explorer.showing_sets'|trans({
+                            '%first%': pagination.paginationData.firstItemNumber | number_format,
+                            '%last%': pagination.paginationData.lastItemNumber | number_format,
+                            '%total%': pagination.totalItemCount | number_format
+                        }) }}
                     </div>
                     <div class="navigation">
                         {{ knp_pagination_render(pagination) }}
@@ -275,17 +272,17 @@
     <!-- Interactive Price History Modal -->
     <div class="modal fade" id="priceHistoryModal" tabindex="-1" aria-labelledby="priceHistoryModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content shadow border-0">
-                <div class="modal-header bg-light border-bottom">
-                    <h5 class="modal-title fw-bold" id="priceHistoryModalLabel">📊 Price History & Trends</h5>
+            <div class="modal-content shadow-sm border-0">
+                <div class="modal-header bg-light border-bottom py-2 px-3">
+                    <h5 class="modal-title fw-bold fs-6 mb-0" id="priceHistoryModalLabel">{{ 'set.price_history_title'|trans }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-4" id="priceHistoryModalBody">
+                <div class="modal-body p-3 p-md-4" id="priceHistoryModalBody">
                     <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading price data...</span>
+                        <div class="spinner-border text-primary spinner-border-sm" role="status">
+                            <span class="visually-hidden">{{ 'set.loading'|trans }}</span>
                         </div>
-                        <p class="text-secondary small mt-2 mb-0">Loading price history...</p>
+                        <p class="text-secondary small mt-2 mb-0">{{ 'set.loading'|trans }}</p>
                     </div>
                 </div>
             </div>
@@ -305,7 +302,7 @@
                 var url = trigger.getAttribute('data-url');
                 if (!url) return;
 
-                modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-secondary small mt-2 mb-0">Loading price data...</p></div>';
+                modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-secondary small mt-2 mb-0">Loading price data...</p></div>';
 
                 fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                     .then(function (res) {
@@ -316,7 +313,7 @@
                         modalBody.innerHTML = html;
                     })
                     .catch(function (err) {
-                        modalBody.innerHTML = '<div class="alert alert-danger mb-0">Error loading price history: ' + err.message + '</div>';
+                        modalBody.innerHTML = '<div class="alert alert-danger mb-0 small">Error loading price history: ' + err.message + '</div>';
                     });
             });
         });

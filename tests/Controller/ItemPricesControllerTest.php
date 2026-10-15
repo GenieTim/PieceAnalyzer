@@ -64,7 +64,7 @@ class ItemPricesControllerTest extends WebTestCase
         $em->persist($price2);
         $em->flush();
 
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/item/%d/prices', $set->getId()));
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/en/item/%d/prices', $set->getId()));
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h5', 'Millennium Falcon');
         $this->assertSelectorTextContains('.price-history-container .badge', '75192-1');
@@ -94,7 +94,7 @@ class ItemPricesControllerTest extends WebTestCase
         $em->persist($price);
         $em->flush();
 
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/item/%d/prices?modal=1', $set->getId()), [], [], [
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/en/item/%d/prices?modal=1', $set->getId()), [], [], [
             'HTTP_X-Requested-With' => 'XMLHttpRequest',
         ]);
         $this->assertResponseIsSuccessful();
@@ -127,7 +127,7 @@ class ItemPricesControllerTest extends WebTestCase
         $em->persist($price);
         $em->flush();
 
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/item/%d/prices?format=json', $set->getId()));
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/en/item/%d/prices?format=json', $set->getId()));
         $this->assertResponseIsSuccessful();
         $this->assertResponseHeaderSame('content-type', 'application/json');
 
@@ -142,7 +142,7 @@ class ItemPricesControllerTest extends WebTestCase
     public function testItemPricesNotFound(): void
     {
         $client = static::createClient();
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/item/99999999/prices');
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/item/99999999/prices');
         $this->assertResponseStatusCodeSame(404);
     }
 }

@@ -13,11 +13,11 @@ class LoadControllerTest extends WebTestCase
     public function testAnonymousAccessIsRedirectedToLogin(): void
     {
         $client = static::createClient();
-        $client->request(Request::METHOD_POST, '/files');
-        $this->assertResponseRedirects('http://localhost/login');
+        $client->request(Request::METHOD_POST, '/en/files');
+        $this->assertResponseRedirects('http://localhost/en/login');
 
-        $client->request(Request::METHOD_POST, '/price/brickpicker');
-        $this->assertResponseRedirects('http://localhost/login');
+        $client->request(Request::METHOD_POST, '/en/price/brickpicker');
+        $this->assertResponseRedirects('http://localhost/en/login');
     }
 
     public function testLoadFilesPostWithoutCsrfTokenIsRejected(): void
@@ -32,9 +32,9 @@ class LoadControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($admin);
-        $client->request(Request::METHOD_POST, '/files');
+        $client->request(Request::METHOD_POST, '/en/files');
 
-        $this->assertResponseRedirects('/all');
+        $this->assertResponseRedirects('/en/all');
 
         $toRemove = $em->getRepository(\App\Entity\User::class)->findOneBy(['email' => $admin->getEmail()]);
         if ($toRemove !== null) {
@@ -55,9 +55,9 @@ class LoadControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($admin);
-        $client->request(Request::METHOD_POST, '/price/brickpicker');
+        $client->request(Request::METHOD_POST, '/en/price/brickpicker');
 
-        $this->assertResponseRedirects('/all');
+        $this->assertResponseRedirects('/en/all');
 
         $toRemove = $em->getRepository(\App\Entity\User::class)->findOneBy(['email' => $admin->getEmail()]);
         if ($toRemove !== null) {
@@ -79,10 +79,10 @@ class LoadControllerTest extends WebTestCase
 
         $client->loginUser($regularUser);
 
-        $client->request(Request::METHOD_POST, '/files');
+        $client->request(Request::METHOD_POST, '/en/files');
         $this->assertResponseStatusCodeSame(403);
 
-        $client->request(Request::METHOD_POST, '/price/brickpicker');
+        $client->request(Request::METHOD_POST, '/en/price/brickpicker');
         $this->assertResponseStatusCodeSame(403);
 
         $userToRemove = $em->getRepository(\App\Entity\User::class)->findOneBy(['email' => $regularUser->getEmail()]);

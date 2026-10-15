@@ -109,5 +109,23 @@ class FetchSetPriceMessageHandler
                 $this->logger->warning('BrickPicker fetch error in async worker', ['set' => $setNo, 'error' => $e->getMessage()]);
             }
         }
+
+        // 4. Fallback or explicit headless browser scraper (Camoufox / Retailers)
+        if ($set->getPrices()->isEmpty() || $provider === PriceSourceProvider::DIRECT_CRAWL || $provider === PriceSourceProvider::TOPPREISE) {
+            try {
+                $targetRetailers = $retailer instanceof Retailer
+                    ? [$retailer]
+                    : [Retailer::GALAXUS, Retailer::BRACK, Retailer::LEGO_STORE, Retailer::OTHER];
+                $items = $this->headlessScraper->scrapeSet($set, $targetRetailers);
+                if ($items !== []) {
+                    $this->headlessScraper->ingestExtractedItems($items);
+                }
+            } catch (\Throwable $e) {
+                $this->logger->warning('Headless scraper fallback error in async worker', [
+                    'set' => $setNo,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 }

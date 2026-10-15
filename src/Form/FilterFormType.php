@@ -30,35 +30,35 @@ class FilterFormType extends AbstractType
     {
         $builder
             ->add('part', TextType::class, [
-                'label' => 'Specific Part (# or Name)',
+                'label' => 'filter.part_label',
                 'required' => false,
                 'attr' => [
-                    'placeholder' => 'e.g. 3001, 3020, Brick 2x4',
+                    'placeholder' => '3001, 3020, Brick 2x4',
                 ],
             ])
             ->add('minYear', IntegerType::class, [
-                'label' => 'Released Since (Year)',
+                'label' => 'filter.year_label',
                 'required' => false,
                 'attr' => [
-                    'placeholder' => 'e.g. 2020',
+                    'placeholder' => '2020',
                     'min' => 1949,
                     'max' => (int) date('Y') + 1,
                 ],
             ])
             ->add('color', ChoiceType::class, [
-                'label' => 'Piece Color',
+                'label' => 'filter.color_label',
                 'choices' => $this->getCsvColorChoices(),
                 'multiple' => false,
                 'required' => false,
             ])
             ->add('category', ChoiceType::class, [
-                'label' => 'Part Category',
+                'label' => 'filter.category_label',
                 'choices' => $this->getCsvCategoryChoices(),
                 'multiple' => false,
                 'required' => false,
             ])
             ->add('search', SubmitType::class, [
-                'label' => 'Apply Filters',
+                'label' => 'filter.submit',
             ])
         ;
     }

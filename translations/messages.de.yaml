@@ -1,0 +1,105 @@
+# Navigation
+menu:
+  home: "Startseite"
+  explore_sets: "Sets entdecken"
+  bookmarklet: "Bookmarklet"
+  currency: "Währung"
+  language: "Sprache"
+  sign_in: "Anmelden"
+  register: "Registrieren"
+  sign_out: "Abmelden"
+  profile: "Profil & Einstellungen"
+  administration: "Administration"
+  price_moderation: "Preismoderation"
+
+# Explorer Page
+explorer:
+  title: "Set- & Teile-Wert-Explorer"
+  subtitle_default: "Vergleiche LEGO® Sets nach Teileanzahl, Preis und Einzelteilkosten."
+  subtitle_part: "Die besten Sets für das Teil \"%part%\", sortiert nach den geringsten Kosten pro Zielteil."
+  sets_count: "%count% Sets im Katalog"
+  models_contain_part: "%count% Sets enthalten Zielteil"
+  showing_models: "Zeige %first%–%last% von %total% katalogisierten Sets"
+  unpriced_notice: "(Sets ohne Preis am Ende aufgeführt)"
+  showing_sets: "Zeige %first% bis %last% von %total% Sets"
+  no_sets_title: "Keine LEGO® Sets für diese Kriterien gefunden"
+  no_sets_part: "Keine Sets mit Teil \"%part%\" gefunden. Versuche eine andere Teilenummer oder Bezeichnung."
+  no_sets_default: "Keine Sets für diese Filterkriterien gefunden. Bitte Filter zurücksetzen."
+  reset_filters: "Filter zurücksetzen"
+
+# Value Tiers
+tier:
+  label: "Preiskategorie:"
+  great: "Sehr gut"
+  fair: "Fair"
+  premium: "Premium"
+
+# Filter Form
+filter:
+  part_label: "Bestimmtes Teil (# oder Name)"
+  part_placeholder: "z.B. 3001, 3020, Brick 2x4"
+  year_label: "Erschienen ab (Jahr)"
+  year_placeholder: "z.B. 2020"
+  color_label: "Teilefarbe"
+  all_colors: "Alle Farben"
+  category_label: "Teilekategorie"
+  all_categories: "Alle Kategorien"
+  submit: "Filtern"
+  reset: "Zurücksetzen"
+  help_text: "Nach Teilenummer oder Name, Erscheinungsjahr, Farbe oder Kategorie filtern."
+  filtering_for_part: "Gefiltert nach Teil:"
+  filtered_by_year: "Gefiltert nach Erscheinungsjahr:"
+  released_in_or_newer: "Erschienen %year% oder neuer"
+  clear_part_filter: "Teilefilter aufheben"
+  clear_filters: "Filter aufheben"
+
+# Table Columns
+table:
+  set_no: "Set-Nr."
+  set_name: "Set-Name"
+  year: "Jahr"
+  pieces: "Teile"
+  price: "Preis (%currency%)"
+  price_per_piece: "Preis / Teil"
+  target_pcs: "Zielteile"
+  cost_per_target_pc: "Kosten / Zielteil"
+  check_price: "Preis prüfen"
+  your_price: "👤 Eigener Preis"
+  target_badge: "%count%x Zielteil"
+  target_desc: "Anzahl des Zielteils im Set / Gesamtzahl Teile"
+  cost_target_desc: "Preis pro Einheit des gesuchten Teils in diesem Set"
+
+# Price History & Single Set Page
+set:
+  price_history_title: "Preishistorie & Trends"
+  back_to_explorer: "← Zurück zur Set-Übersicht"
+  view_on_rebrickable: "Auf Rebrickable ansehen"
+  view_price_history: "Preishistorie & Trends ansehen"
+  best_price: "Bester aktueller Preis"
+  lowest_price: "Bisheriger Tiefstpreis"
+  highest_price: "Höchster Preis / UVP"
+  historical_savings: "Historische Ersparnis"
+  price_trend: "Preisentwicklung"
+  data_points: "%count% Datenpunkt(e)"
+  recorded_sources: "Erfasste Quellen (%count%)"
+  no_prices_yet: "Noch keine Preise für dieses Set erfasst."
+  retailer: "Händler"
+  status: "Status"
+  provider: "Anbieter"
+  recorded: "Erfasst am"
+  pieces_count: "%count% Teile"
+  loading: "Preishistorie wird geladen..."
+  error_loading: "Fehler beim Laden der Preishistorie"
+
+# Auth & Account
+auth:
+  sign_in_title: "Anmelden"
+  sign_in_desc: "Melde dich an für Beitrags-Tools, Einstellungen und Preiserfassung."
+  register_title: "Konto erstellen"
+  register_desc: "Registriere dich bei Piece Analyzer, um Währung anzupassen und Preise einzutragen."
+  email: "E-Mail"
+  password: "Passwort"
+  preferred_currency: "Bevorzugte Währung"
+  dont_have_account: "Noch kein Konto?"
+  already_have_account: "Bereits registriert?"
+  resend_verification: "Bestätigungs-E-Mail erneut senden"

@@ -1,6 +1,15 @@
 controllers:
     resource: ../../src/Controller/
     type: attribute
+    prefix: /{_locale}
+    requirements:
+        _locale: 'en|de'
+    defaults:
+        _locale: 'en'
+
+api_controllers:
+    resource: ../../src/Controller/Api/
+    type: attribute
 
 kernel:
     resource: ../../src/Kernel.php

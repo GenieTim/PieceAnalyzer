@@ -9,15 +9,15 @@ class ListControllerTest extends WebTestCase
     public function testListAllRedirectsToFilter(): void
     {
         $client = static::createClient();
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/all');
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/all');
 
-        $this->assertResponseRedirects('/filter');
+        $this->assertResponseRedirects('/en/filter');
     }
 
     public function testFilterPageReturnsSuccessfulResponse(): void
     {
         $client = static::createClient();
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/filter');
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/filter');
 
         $this->assertResponseIsSuccessful();
     }
@@ -25,7 +25,7 @@ class ListControllerTest extends WebTestCase
     public function testFilterWithMinYearQueryParameter(): void
     {
         $client = static::createClient();
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/filter?minYear=2020');
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/filter?minYear=2020');
 
         $this->assertResponseIsSuccessful();
         $content = (string) $client->getResponse()->getContent();
@@ -77,7 +77,7 @@ class ListControllerTest extends WebTestCase
 
         try {
             // 1. Anonymous user: sees canonical 100.00, does not see "Your price"
-            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/filter');
+            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/filter');
             $this->assertResponseIsSuccessful();
             $content = (string) $client->getResponse()->getContent();
             $this->assertStringContainsString('BYOP Test Set ' . $suffix, $content);
@@ -86,7 +86,7 @@ class ListControllerTest extends WebTestCase
 
             // 2. User A (the submitter): sees their unverified 20.00 and "Your price" badge
             $client->loginUser($userA);
-            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/filter');
+            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/filter');
             $this->assertResponseIsSuccessful();
             $contentUserA = (string) $client->getResponse()->getContent();
             $this->assertStringContainsString('BYOP Test Set ' . $suffix, $contentUserA);
@@ -95,7 +95,7 @@ class ListControllerTest extends WebTestCase
 
             // 3. User B: sees canonical 100.00, does not see "Your price"
             $client->loginUser($userB);
-            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/filter');
+            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/filter');
             $this->assertResponseIsSuccessful();
             $contentUserB = (string) $client->getResponse()->getContent();
             $this->assertStringContainsString('BYOP Test Set ' . $suffix, $contentUserB);
@@ -239,7 +239,33 @@ class ListControllerTest extends WebTestCase
             if ($uB !== null) {
                 $cleanupEm->remove($uB);
             }
-            $cleanupEm->flush();
+        }
+    }
+
+    public function testListItemRedirectsToItemPrices(): void
+    {
+        $client = static::createClient();
+        $em = $client->getContainer()->get(\Doctrine\ORM\EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $set = new \App\Entity\Set();
+        $set->setNo('ITEM_' . $suffix . '-1');
+        $set->setName('Item Test Set ' . $suffix);
+        $set->setPrice(59.99);
+        $set->setPriceCurrency('CHF');
+        $em->persist($set);
+        $em->flush();
+
+        try {
+            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/en/item/%d', $set->getId()));
+            $this->assertResponseRedirects(sprintf('/en/item/%d/prices', $set->getId()));
+        } finally {
+            $cleanupEm = $client->getContainer()->get(\Doctrine\ORM\EntityManagerInterface::class);
+            $s = $cleanupEm->getRepository(\App\Entity\Set::class)->findOneBy(['no' => 'ITEM_' . $suffix . '-1']);
+            if ($s !== null) {
+                $cleanupEm->remove($s);
+                $cleanupEm->flush();
+            }
         }
     }
 

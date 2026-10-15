@@ -34,6 +34,8 @@ if [ "$1" = "frankenphp" ] || [ "$1" = "bin/console" ] || [ "$1" = "php" ]; then
                 ;;
         esac
         php bin/console doctrine:schema:update --force --no-interaction 2>&1 || true
+        echo ">> Setting up Messenger transports..."
+        php bin/console messenger:setup-transports --no-interaction 2>&1 || true
     fi
 
     # Warm up cache if in prod and AUTO_DB_INIT is enabled

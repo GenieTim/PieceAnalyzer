@@ -14,9 +14,9 @@ class BookmarkletControllerTest extends WebTestCase
     public function testBookmarkletRequiresLogin(): void
     {
         $client = static::createClient();
-        $client->request(Request::METHOD_GET, '/bookmarklet');
+        $client->request(Request::METHOD_GET, '/en/bookmarklet');
 
-        $this->assertResponseRedirects('http://localhost/login');
+        $this->assertResponseRedirects('http://localhost/en/login');
     }
 
     public function testBookmarkletPageReturnsSuccessfulWhenLoggedIn(): void
@@ -29,7 +29,7 @@ class BookmarkletControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($user);
-        $client->request(Request::METHOD_GET, '/bookmarklet');
+        $client->request(Request::METHOD_GET, '/en/bookmarklet');
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Price Grabber Bookmarklet');
@@ -53,9 +53,9 @@ class BookmarkletControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($user);
-        $client->request(Request::METHOD_POST, '/bookmarklet/regenerate-token');
+        $client->request(Request::METHOD_POST, '/en/bookmarklet/regenerate-token');
 
-        $this->assertResponseRedirects('/bookmarklet');
+        $this->assertResponseRedirects('/en/bookmarklet');
 
         // Token must NOT have changed
         $em->clear();
@@ -80,18 +80,18 @@ class BookmarkletControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($user);
-        $crawler = $client->request(Request::METHOD_GET, '/bookmarklet');
+        $crawler = $client->request(Request::METHOD_GET, '/en/bookmarklet');
         $this->assertResponseIsSuccessful();
 
         // Extract CSRF token from rendered form
-        $csrfToken = $crawler->filter('form[action$="/bookmarklet/regenerate-token"] input[name="_token"]')->attr('value');
+        $csrfToken = $crawler->filter('form[action$="/en/bookmarklet/regenerate-token"] input[name="_token"]')->attr('value');
         $this->assertNotEmpty($csrfToken);
 
-        $client->request(Request::METHOD_POST, '/bookmarklet/regenerate-token', [
+        $client->request(Request::METHOD_POST, '/en/bookmarklet/regenerate-token', [
             '_token' => $csrfToken,
         ]);
 
-        $this->assertResponseRedirects('/bookmarklet');
+        $this->assertResponseRedirects('/en/bookmarklet');
 
         // Token MUST have changed and be a valid 64-char hex string
         $em->clear();

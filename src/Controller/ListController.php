@@ -77,16 +77,12 @@ class ListController extends AbstractController
     }
 
     /**
-     * Redirect to a vendor to see the set/item
+     * Single set page with price history and trends
      */
     #[Route(path: '/item/{id}', name: 'list_item', requirements: ['id' => '\d+'])]
     public function listItem(Item $item): RedirectResponse
     {
-        $setNo = rawurlencode((string) $item->getNo());
-        if ($item instanceof Set && $item->getSource() === Set::SOURCE_REBRICKABLE) {
-            return $this->redirect('https://rebrickable.com/sets/' . $setNo);
-        }
-        return $this->redirect('https://www.bricklink.com/v2/catalog/catalogitem.page?S=' . $setNo);
+        return $this->redirectToRoute('item_prices', ['id' => $item->getId()]);
     }
 
     /**

@@ -101,13 +101,27 @@ class AppPricesReloadCommand extends Command
         }
 
         if ($input->getOption('async') && $this->bus instanceof \Symfony\Component\Messenger\MessageBusInterface) {
+            $selectedSource = (string) $input->getOption('source');
+            $provider = match ($selectedSource) {
+                'brickset' => PriceSourceProvider::BRICKSET,
+                'brickpicker' => PriceSourceProvider::BRICKPICKER,
+                'scraper' => PriceSourceProvider::DIRECT_CRAWL,
+                default => null,
+            };
+            $selectedRetailerStr = (string) $input->getOption('retailer');
+            $retailer = Retailer::tryFrom($selectedRetailerStr);
+
             $q = $qb->getQuery();
             $unsolved_sets = $q->toIterable();
             $dispatched = 0;
             foreach ($unsolved_sets as $row) {
                 $set = is_array($row) ? $row[0] : $row;
                 if ($set instanceof Set && $set->getId() !== null) {
-                    $this->bus->dispatch(new FetchSetPriceMessage($set->getId()));
+                    $this->bus->dispatch(new FetchSetPriceMessage(
+                        setId: $set->getId(),
+                        provider: $provider,
+                        retailer: $retailer
+                    ));
                     ++$dispatched;
                 }
             }

@@ -15,7 +15,7 @@ class SecurityControllerTest extends WebTestCase
     public function testLoginPageRenders(): void
     {
         $client = static::createClient();
-        $client->request(Request::METHOD_GET, '/login');
+        $client->request(Request::METHOD_GET, '/en/login');
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Sign In');
@@ -36,20 +36,20 @@ class SecurityControllerTest extends WebTestCase
         $em->flush();
 
         try {
-            $client->request(Request::METHOD_GET, '/login');
+            $client->request(Request::METHOD_GET, '/en/login');
             $client->submitForm('Sign In', [
                 '_username' => $testEmail,
                 '_password' => 'Secret123!',
             ]);
 
-            $this->assertResponseRedirects('/');
+            $this->assertResponseRedirects('/en/');
 
             $client->followRedirect();
             $this->assertSelectorTextContains('nav', $testEmail);
 
             // Logout
-            $client->request(Request::METHOD_GET, '/logout');
-            $this->assertResponseRedirects('/');
+            $client->request(Request::METHOD_GET, '/en/logout');
+            $this->assertResponseRedirects('/en/');
         } finally {
             // Cleanup
             $cleanEm = $client->getContainer()->get(EntityManagerInterface::class);

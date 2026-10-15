@@ -1,26 +1,45 @@
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body p-3 p-md-4">
+    <div class="card-body p-3">
         {{ form_start(form) }}
-        <div class="row g-3 align-items-end">
+        <div class="row g-2 align-items-end">
             <div class="col-12 col-md-3">
-                {{ form_row(form.part, {'row_attr': {'class': 'mb-0'}, 'label_attr': {'class': 'form-label fw-semibold small text-uppercase text-body-secondary'}}) }}
+                {{ form_row(form.part, {
+                    'label': form.part.vars.label|trans,
+                    'row_attr': {'class': 'mb-0'},
+                    'label_attr': {'class': 'form-label fw-medium small text-secondary mb-1'}
+                }) }}
             </div>
             <div class="col-6 col-md-2">
-                {{ form_row(form.minYear, {'row_attr': {'class': 'mb-0'}, 'label_attr': {'class': 'form-label fw-semibold small text-uppercase text-body-secondary'}}) }}
+                {{ form_row(form.minYear, {
+                    'label': form.minYear.vars.label|trans,
+                    'row_attr': {'class': 'mb-0'},
+                    'label_attr': {'class': 'form-label fw-medium small text-secondary mb-1'}
+                }) }}
             </div>
             <div class="col-6 col-md-2">
-                {{ form_row(form.color, {'row_attr': {'class': 'mb-0'}, 'label_attr': {'class': 'form-label fw-semibold small text-uppercase text-body-secondary'}}) }}
+                {{ form_row(form.color, {
+                    'label': form.color.vars.label|trans,
+                    'row_attr': {'class': 'mb-0'},
+                    'label_attr': {'class': 'form-label fw-medium small text-secondary mb-1'}
+                }) }}
             </div>
             <div class="col-12 col-sm-6 col-md-3">
-                {{ form_row(form.category, {'row_attr': {'class': 'mb-0'}, 'label_attr': {'class': 'form-label fw-semibold small text-uppercase text-body-secondary'}}) }}
+                {{ form_row(form.category, {
+                    'label': form.category.vars.label|trans,
+                    'row_attr': {'class': 'mb-0'},
+                    'label_attr': {'class': 'form-label fw-medium small text-secondary mb-1'}
+                }) }}
             </div>
             <div class="col-12 col-sm-6 col-md-2 d-flex gap-2">
-                {{ form_widget(form.search, {'attr': {'class': 'btn btn-primary flex-grow-1 fw-semibold'}}) }}
-                <a href="{{ path('filter_items') }}" class="btn btn-outline-secondary" title="Reset all filters">Reset</a>
+                {{ form_widget(form.search, {
+                    'label': form.search.vars.label|trans,
+                    'attr': {'class': 'btn btn-primary flex-grow-1 fw-medium'}
+                }) }}
+                <a href="{{ path('filter_items') }}" class="btn btn-outline-secondary" title="{{ 'filter.reset'|trans }}">{{ 'filter.reset'|trans }}</a>
             </div>
         </div>
-        <div class="form-text small text-body-secondary mt-2">
-            💡 Filter by specific part (e.g. <code>3001</code>), release year (e.g. <code>2020</code>+), color, or category to find the best-value sets.
+        <div class="form-text small text-secondary mt-2">
+            {{ 'filter.help_text'|trans }}
         </div>
         {{ form_end(form) }}
     </div>

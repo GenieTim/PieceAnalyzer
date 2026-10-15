@@ -15,7 +15,7 @@ class RegistrationControllerTest extends WebTestCase
     public function testRegisterPageRenders(): void
     {
         $client = static::createClient();
-        $client->request(Request::METHOD_GET, '/register');
+        $client->request(Request::METHOD_GET, '/en/register');
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Create Account');
@@ -33,7 +33,7 @@ class RegistrationControllerTest extends WebTestCase
         $testPassword = 'SecurePassword123!';
 
         // 1. Submit Registration Form
-        $crawler = $client->request(Request::METHOD_GET, '/register');
+        $crawler = $client->request(Request::METHOD_GET, '/en/register');
         $buttonCrawlerNode = $crawler->selectButton('Register');
         $form = $buttonCrawlerNode->form([
             'registration_form[email]' => $testEmail,
@@ -43,7 +43,7 @@ class RegistrationControllerTest extends WebTestCase
         ]);
 
         $client->submit($form);
-        $this->assertResponseRedirects('/login');
+        $this->assertResponseRedirects('/en/login');
 
         // 2. Verify user was created in database and is UNVERIFIED
         $em->clear();
@@ -56,7 +56,7 @@ class RegistrationControllerTest extends WebTestCase
         $this->assertFalse($user->isEmailVerificationTokenExpired());
 
         // 3. Attempt to login while unverified -> Must be blocked by UserChecker
-        $client->followRedirect(); // Now on /login
+        $client->followRedirect(); // Now on /en/login
         $loginCrawler = $client->getCrawler();
         $loginForm = $loginCrawler->selectButton('Sign In')->form([
             '_username' => $testEmail,
@@ -67,15 +67,15 @@ class RegistrationControllerTest extends WebTestCase
         $this->assertSelectorTextContains('.alert-danger', 'Please verify your email address before signing in');
 
         // 4. Verify with invalid token -> Fails
-        $client->request(Request::METHOD_GET, '/verify-email/nonexistent_token_123');
-        $this->assertResponseRedirects('/login');
+        $client->request(Request::METHOD_GET, '/en/verify-email/nonexistent_token_123');
+        $this->assertResponseRedirects('/en/login');
         $client->followRedirect();
         $this->assertSelectorTextContains('.alert-danger', 'invalid or has already been used');
 
         // 5. Verify with valid token -> Succeeds
         $verificationToken = $user->getEmailVerificationToken();
-        $client->request(Request::METHOD_GET, '/verify-email/' . $verificationToken);
-        $this->assertResponseRedirects('/login');
+        $client->request(Request::METHOD_GET, '/en/verify-email/' . $verificationToken);
+        $this->assertResponseRedirects('/en/login');
 
         // Verify entity state updated in database
         $em->clear();
@@ -84,14 +84,14 @@ class RegistrationControllerTest extends WebTestCase
         $this->assertNull($verifiedUser->getEmailVerificationToken());
 
         // 6. Login now succeeds!
-        $client->followRedirect(); // On /login
+        $client->followRedirect(); // On /en/login
         $loginCrawler = $client->getCrawler();
         $loginForm = $loginCrawler->selectButton('Sign In')->form([
             '_username' => $testEmail,
             '_password' => $testPassword,
         ]);
         $client->submit($loginForm);
-        $this->assertResponseRedirects('/');
+        $this->assertResponseRedirects('/en/');
 
         // 7. Cleanup
         $em->remove($verifiedUser);
@@ -108,7 +108,7 @@ class RegistrationControllerTest extends WebTestCase
         $em->persist($user);
         $em->flush();
 
-        $crawler = $client->request(Request::METHOD_GET, '/register');
+        $crawler = $client->request(Request::METHOD_GET, '/en/register');
         $form = $crawler->selectButton('Register')->form([
             'registration_form[email]' => $existingEmail,
             'registration_form[plainPassword][first]' => 'AnotherPassword123!',
@@ -138,7 +138,7 @@ class RegistrationControllerTest extends WebTestCase
         $em->persist($user);
         $em->flush();
 
-        $crawler = $client->request(Request::METHOD_GET, '/resend-verification');
+        $crawler = $client->request(Request::METHOD_GET, '/en/resend-verification');
         $this->assertResponseIsSuccessful();
 
         $form = $crawler->selectButton('Send Verification Link')->form([
@@ -146,7 +146,7 @@ class RegistrationControllerTest extends WebTestCase
         ]);
         $client->submit($form);
 
-        $this->assertResponseRedirects('/login');
+        $this->assertResponseRedirects('/en/login');
         $client->followRedirect();
         $this->assertSelectorTextContains('.alert-info', 'new confirmation link has been sent');
 
@@ -162,12 +162,12 @@ class RegistrationControllerTest extends WebTestCase
     public function testResendVerificationRejectsInvalidCsrfToken(): void
     {
         $client = static::createClient();
-        $client->request(Request::METHOD_POST, '/resend-verification', [
+        $client->request(Request::METHOD_POST, '/en/resend-verification', [
             'email' => 'test@example.com',
             '_token' => 'invalid_csrf_token',
         ]);
 
-        $this->assertResponseRedirects('/resend-verification');
+        $this->assertResponseRedirects('/en/resend-verification');
         $client->followRedirect();
         $this->assertSelectorTextContains('.alert-danger', 'Invalid security token');
     }

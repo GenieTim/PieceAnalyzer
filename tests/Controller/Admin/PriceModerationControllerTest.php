@@ -27,9 +27,9 @@ class PriceModerationControllerTest extends WebTestCase
     public function testNonAdminIsForbiddenOrRedirected(): void
     {
         $client = static::createClient();
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/admin/prices/moderation');
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/admin/prices/moderation');
         // Unauthenticated user redirected to login
-        $this->assertResponseRedirects('/login');
+        $this->assertResponseRedirects('/en/login');
     }
 
     public function testRegularUserAccessIsDenied(): void
@@ -44,7 +44,7 @@ class PriceModerationControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($user);
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/admin/prices/moderation');
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/admin/prices/moderation');
         $this->assertResponseStatusCodeSame(403);
     }
 
@@ -75,7 +75,7 @@ class PriceModerationControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($admin);
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/admin/prices/moderation');
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/admin/prices/moderation');
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h2', 'Price Moderation Queue');
         $this->assertSelectorTextContains('.table', 'Titanic');
@@ -116,14 +116,14 @@ class PriceModerationControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($admin);
-        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/admin/prices/moderation');
+        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/admin/prices/moderation');
         $token = $crawler->filter('form[action$="' . $price1->getId() . '/approve"] input[name="_token"]')->attr('value');
 
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, sprintf('/admin/prices/moderation/%d/approve', $price1->getId()), [
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, sprintf('/en/admin/prices/moderation/%d/approve', $price1->getId()), [
             '_token' => $token,
         ]);
 
-        $this->assertResponseRedirects('/admin/prices/moderation');
+        $this->assertResponseRedirects('/en/admin/prices/moderation');
         $client->followRedirect();
 
         $em->clear();
@@ -157,14 +157,14 @@ class PriceModerationControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($admin);
-        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/admin/prices/moderation');
+        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/admin/prices/moderation');
         $token = $crawler->filter('form[action$="' . $price->getId() . '/reject"] input[name="_token"]')->attr('value');
 
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, sprintf('/admin/prices/moderation/%d/reject', $price->getId()), [
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, sprintf('/en/admin/prices/moderation/%d/reject', $price->getId()), [
             '_token' => $token,
         ]);
 
-        $this->assertResponseRedirects('/admin/prices/moderation');
+        $this->assertResponseRedirects('/en/admin/prices/moderation');
 
         $em->clear();
         $reloaded = $em->find(SetPrice::class, $price->getId());

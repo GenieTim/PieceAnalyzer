@@ -21,7 +21,7 @@ services:
       # Optional API keys and Scraper Service
       REBRICKABLE_API_KEY: ${REBRICKABLE_API_KEY:-}
       BRICKSET_API_KEY: ${BRICKSET_API_KEY:-}
-      SCRAPER_SERVICE_URL: ${SCRAPER_SERVICE_URL:-}
+      SCRAPER_SERVICE_URL: ${SCRAPER_SERVICE_URL:-http://scraper:8000}
       CONSUMER_KEY: ${CONSUMER_KEY:-null}
       CONSUMER_SECRET: ${CONSUMER_SECRET:-null}
       TOKEN_VALUE: ${TOKEN_VALUE:-null}
@@ -53,7 +53,7 @@ services:
       MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
       REBRICKABLE_API_KEY: ${REBRICKABLE_API_KEY:-}
       BRICKSET_API_KEY: ${BRICKSET_API_KEY:-}
-      SCRAPER_SERVICE_URL: ${SCRAPER_SERVICE_URL:-}
+      SCRAPER_SERVICE_URL: ${SCRAPER_SERVICE_URL:-http://scraper:8000}
       CONSUMER_KEY: ${CONSUMER_KEY:-null}
       CONSUMER_SECRET: ${CONSUMER_SECRET:-null}
       TOKEN_VALUE: ${TOKEN_VALUE:-null}
@@ -65,21 +65,22 @@ services:
     depends_on:
       app:
         condition: service_started
+      scraper:
+        condition: service_started
 
   # Stealth Headless Browser Scraper Service (Camoufox / Playwright)
-  # Uncomment in Coolify / Docker Compose to enable anti-detect headless browser price scraping.
-  # scraper:
-  #   build:
-  #     context: .
-  #     dockerfile: docker/Dockerfile.scraper
-  #   restart: unless-stopped
-  #   environment:
-  #     PORT: 8000
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
-  #     interval: 20s
-  #     timeout: 5s
-  #     retries: 3
+  scraper:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.scraper
+    restart: unless-stopped
+    environment:
+      PORT: 8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
 
   # Optional dedicated MariaDB database service.
   # Uncomment if you prefer an in-compose database instead of SQLite or a Coolify-managed database.

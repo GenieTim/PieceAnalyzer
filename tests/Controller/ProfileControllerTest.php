@@ -23,8 +23,8 @@ class ProfileControllerTest extends WebTestCase
     public function testAnonymousRedirectedToLogin(): void
     {
         $client = static::createClient();
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/profile');
-        $this->assertResponseRedirects('/login');
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/profile');
+        $this->assertResponseRedirects('/en/login');
     }
 
     public function testAuthenticatedUserCanViewProfile(): void
@@ -38,7 +38,7 @@ class ProfileControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($user);
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/profile');
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/profile');
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h2', 'User Profile & Preferences');
         $this->assertSelectorTextContains('.card', 'profileuser@example.com');
@@ -55,16 +55,16 @@ class ProfileControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($user);
-        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/profile');
-        $token = $crawler->filter('form[action$="/profile/preferences"] input[name="_token"]')->attr('value');
+        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/profile');
+        $token = $crawler->filter('form[action$="/en/profile/preferences"] input[name="_token"]')->attr('value');
 
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/profile/preferences', [
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/profile/preferences', [
             '_token' => $token,
             'currency' => 'EUR',
             'retailers' => ['galaxus', 'amazon_de'],
         ]);
 
-        $this->assertResponseRedirects('/profile');
+        $this->assertResponseRedirects('/en/profile');
 
         $em->clear();
         $updated = $em->find(User::class, $user->getId());
@@ -86,17 +86,17 @@ class ProfileControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($user);
-        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/profile');
-        $token = $crawler->filter('form[action$="/profile/password"] input[name="_token"]')->attr('value');
+        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/profile');
+        $token = $crawler->filter('form[action$="/en/profile/password"] input[name="_token"]')->attr('value');
 
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/profile/password', [
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/profile/password', [
             '_token' => $token,
             'current_password' => 'oldSecretPassword123',
             'new_password' => 'newSecretPassword456',
             'confirm_password' => 'newSecretPassword456',
         ]);
 
-        $this->assertResponseRedirects('/profile');
+        $this->assertResponseRedirects('/en/profile');
 
         $em->clear();
         $updated = $em->find(User::class, $user->getId());
@@ -118,17 +118,17 @@ class ProfileControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($user);
-        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/profile');
-        $token = $crawler->filter('form[action$="/profile/password"] input[name="_token"]')->attr('value');
+        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/profile');
+        $token = $crawler->filter('form[action$="/en/profile/password"] input[name="_token"]')->attr('value');
 
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/profile/password', [
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/profile/password', [
             '_token' => $token,
             'current_password' => 'wrongPassword',
             'new_password' => 'newSecretPassword456',
             'confirm_password' => 'newSecretPassword456',
         ]);
 
-        $this->assertResponseRedirects('/profile');
+        $this->assertResponseRedirects('/en/profile');
         $client->followRedirect();
         $this->assertSelectorTextContains('.alert-danger', 'Current password is not correct');
     }
@@ -145,14 +145,14 @@ class ProfileControllerTest extends WebTestCase
         $em->flush();
 
         $client->loginUser($user);
-        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/profile');
-        $token = $crawler->filter('form[action$="/profile/regenerate-token"] input[name="_token"]')->attr('value');
+        $crawler = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/profile');
+        $token = $crawler->filter('form[action$="/en/profile/regenerate-token"] input[name="_token"]')->attr('value');
 
-        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/profile/regenerate-token', [
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/profile/regenerate-token', [
             '_token' => $token,
         ]);
 
-        $this->assertResponseRedirects('/profile');
+        $this->assertResponseRedirects('/en/profile');
 
         $em->clear();
         $updated = $em->find(User::class, $user->getId());

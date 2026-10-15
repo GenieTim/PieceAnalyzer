@@ -1,0 +1,105 @@
+# Navigation
+menu:
+  home: "Home"
+  explore_sets: "Explore Sets"
+  bookmarklet: "Bookmarklet"
+  currency: "Currency"
+  language: "Language"
+  sign_in: "Sign In"
+  register: "Register"
+  sign_out: "Sign Out"
+  profile: "Profile & Preferences"
+  administration: "Administration"
+  price_moderation: "Price Moderation"
+
+# Explorer Page
+explorer:
+  title: "Set & Piece Value Explorer"
+  subtitle_default: "Compare LEGO® sets by piece count, retail price, and unit cost per piece."
+  subtitle_part: "Finding the best-value models to buy for part \"%part%\", ranked by lowest cost per target piece."
+  sets_count: "%count% Sets in Catalog"
+  models_contain_part: "%count% Models Contain Target Part"
+  showing_models: "Showing %first%–%last% of %total% cataloged models"
+  unpriced_notice: "(unpriced models listed last)"
+  showing_sets: "Showing %first% to %last% of %total% sets"
+  no_sets_title: "No LEGO® Sets Match Your Criteria"
+  no_sets_part: "No sets containing part \"%part%\" were found. Try another part number or name."
+  no_sets_default: "No sets matching your filters were found. Try resetting your filters."
+  reset_filters: "Reset Filters"
+
+# Value Tiers
+tier:
+  label: "Value Tier:"
+  great: "Great"
+  fair: "Fair"
+  premium: "Premium"
+
+# Filter Form
+filter:
+  part_label: "Specific Part (# or Name)"
+  part_placeholder: "e.g. 3001, 3020, Brick 2x4"
+  year_label: "Released Since (Year)"
+  year_placeholder: "e.g. 2020"
+  color_label: "Piece Color"
+  all_colors: "All Colors"
+  category_label: "Part Category"
+  all_categories: "All Categories"
+  submit: "Filter"
+  reset: "Reset"
+  help_text: "Filter by part number or name, minimum release year, color, or category."
+  filtering_for_part: "Filtering for Part:"
+  filtered_by_year: "Filtered by Release Year:"
+  released_in_or_newer: "Released in %year% or newer"
+  clear_part_filter: "Clear part filter"
+  clear_filters: "Clear filters"
+
+# Table Columns
+table:
+  set_no: "Set #"
+  set_name: "Set Name"
+  year: "Year"
+  pieces: "Pieces"
+  price: "Price (%currency%)"
+  price_per_piece: "Price / Pc"
+  target_pcs: "Target Pcs"
+  cost_per_target_pc: "Cost / Target Pc"
+  check_price: "Check price"
+  your_price: "👤 Your price"
+  target_badge: "%count%x target"
+  target_desc: "Target part count included in model / Total set pieces"
+  cost_target_desc: "Price per unit of the target part in this model"
+
+# Price History & Single Set Page
+set:
+  price_history_title: "Price History & Trends"
+  back_to_explorer: "← Back to Explore Sets"
+  view_on_rebrickable: "View on Rebrickable"
+  view_price_history: "View price history & trends"
+  best_price: "Best Current Price"
+  lowest_price: "Lowest Ever"
+  highest_price: "Highest / MSRP"
+  historical_savings: "Historical Savings"
+  price_trend: "Price Trend Over Time"
+  data_points: "%count% data point(s)"
+  recorded_sources: "Recorded Sources (%count%)"
+  no_prices_yet: "No prices recorded yet for this set."
+  retailer: "Retailer"
+  status: "Status"
+  provider: "Provider"
+  recorded: "Recorded"
+  pieces_count: "%count% pieces"
+  loading: "Loading price history..."
+  error_loading: "Error loading price history"
+
+# Auth & Account
+auth:
+  sign_in_title: "Sign In"
+  sign_in_desc: "Log in to access contributor tools, user preferences, and price reporting."
+  register_title: "Create Account"
+  register_desc: "Join Piece Analyzer to customize currency, track price history, and contribute prices."
+  email: "Email"
+  password: "Password"
+  preferred_currency: "Preferred Currency"
+  dont_have_account: "Don't have an account?"
+  already_have_account: "Already have an account?"
+  resend_verification: "Resend email verification"

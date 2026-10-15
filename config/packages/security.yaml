@@ -31,6 +31,7 @@ security:
                 max_attempts: 5
 
     access_control:
-        - { path: ^/(login|register|verify-email|resend-verification), roles: PUBLIC_ACCESS }
-        - { path: ^/(files|range|price/brickpicker|admin), roles: ROLE_ADMIN }
-        - { path: ^/(bookmarklet|profile), roles: ROLE_USER }
+        - { path: '^/api', roles: PUBLIC_ACCESS }
+        - { path: '^/([a-z]{2}/)?(login|register|verify-email|resend-verification)', roles: PUBLIC_ACCESS }
+        - { path: '^/([a-z]{2}/)?(files|range|price/brickpicker|admin)', roles: ROLE_ADMIN }
+        - { path: '^/([a-z]{2}/)?(bookmarklet|profile)', roles: ROLE_USER }

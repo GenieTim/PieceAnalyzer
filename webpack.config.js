@@ -16,11 +16,10 @@ Encore
         //
         .enableSingleRuntimeChunk()
 
-        // uncomment if you use Sass/SCSS files
+        // Enable Sass loader
         .enableSassLoader()
 
-        // uncomment for legacy applications that require $/jQuery as a global variable
-        .autoProvidejQuery()
+        // show OS notifications when builds finish/fail in dev only
 
         // show OS notifications when builds finish/fail in dev only
         .enableBuildNotifications(!Encore.isProduction())

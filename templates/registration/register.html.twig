@@ -10,15 +10,16 @@
                 <div class="card-body p-4 p-md-5">
                     <div class="text-center mb-4">
                         <span class="fs-1">🧱</span>
-                        <h1 class="h3 fw-bold mt-2 mb-1">Create Account</h1>
+                        <h1 class="h3 fw-bold mt-2 mb-1">{{ 'auth.register_title'|trans }}</h1>
                         <p class="text-body-secondary small mb-0">
-                            Join Piece Analyzer to customize currency, track price history, and contribute prices.
+                            {{ 'auth.register_desc'|trans }}
                         </p>
                     </div>
 
                     {{ form_start(registrationForm, {'attr': {'novalidate': 'novalidate'}}) }}
                         <div class="mb-3">
                             {{ form_row(registrationForm.email, {
+                                'label': 'auth.email'|trans,
                                 'label_attr': {'class': 'form-label small fw-semibold'},
                                 'attr': {'class': 'form-control'}
                             }) }}
@@ -26,6 +27,7 @@
 
                         <div class="mb-3">
                             {{ form_row(registrationForm.plainPassword.first, {
+                                'label': 'auth.password'|trans,
                                 'label_attr': {'class': 'form-label small fw-semibold'},
                                 'attr': {'class': 'form-control'}
                             }) }}
@@ -33,6 +35,7 @@
 
                         <div class="mb-3">
                             {{ form_row(registrationForm.plainPassword.second, {
+                                'label': 'auth.password'|trans ~ ' (Repeat)',
                                 'label_attr': {'class': 'form-label small fw-semibold'},
                                 'attr': {'class': 'form-control'}
                             }) }}
@@ -40,6 +43,7 @@
 
                         <div class="mb-4">
                             {{ form_row(registrationForm.preferredCurrency, {
+                                'label': 'auth.preferred_currency'|trans,
                                 'label_attr': {'class': 'form-label small fw-semibold'},
                                 'attr': {'class': 'form-select'}
                             }) }}
@@ -47,12 +51,12 @@
 
                         <div class="d-grid mb-3">
                             <button type="submit" class="btn btn-primary fw-semibold py-2">
-                                Register
+                                {{ 'menu.register'|trans }}
                             </button>
                         </div>
 
                         <div class="text-center small text-body-secondary">
-                            Already have an account? <a href="{{ path('app_login') }}" class="fw-semibold text-decoration-none">Sign In</a>
+                            {{ 'auth.already_have_account'|trans }} <a href="{{ path('app_login') }}" class="fw-semibold text-decoration-none">{{ 'menu.sign_in'|trans }}</a>
                         </div>
                     {{ form_end(registrationForm) }}
                 </div>

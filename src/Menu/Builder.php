@@ -21,9 +21,13 @@ class Builder
         $menu = $this->factory->createItem('root');
         $menu->setChildrenAttribute('class', 'navbar-nav ms-auto mb-2 mb-lg-0');
 
-        $menu->addChild('Home', ['route' => 'index']);
+        $menu->addChild('Home', [
+            'route' => 'index',
+            'label' => 'menu.home',
+        ]);
         $menu->addChild('Explore Sets', [
             'route' => 'filter_items',
+            'label' => 'menu.explore_sets',
             'extras' => [
                 'routes' => [
                     ['route' => 'filter_items'],
@@ -31,7 +35,10 @@ class Builder
                 ],
             ],
         ]);
-        $menu->addChild('Bookmarklet', ['route' => 'bookmarklet']);
+        $menu->addChild('Bookmarklet', [
+            'route' => 'bookmarklet',
+            'label' => 'menu.bookmarklet',
+        ]);
 
         return $menu;
     }

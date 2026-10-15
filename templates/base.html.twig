@@ -28,14 +28,14 @@
 
 						<div class="collapse navbar-collapse" id="mainNavbar">
 							{{ knp_menu_render('main', {'currentClass': 'active', 'template': 'other/b4_knp_menu.html.twig'}) }}
-							<div class="navbar-nav ms-lg-3 d-flex align-items-center gap-1">
+							<div class="navbar-nav ms-lg-3 d-flex align-items-center gap-2">
 								<div class="nav-item dropdown">
 									{% set currentCurr = user_currency() %}
-									<a class="nav-link dropdown-toggle text-light py-1 px-2 d-inline-flex align-items-center gap-1" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Preferred currency">
+									<a class="nav-link dropdown-toggle text-light py-1 px-2 d-inline-flex align-items-center gap-1" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'menu.currency'|trans }}">
 										<span class="font-monospace fw-semibold">{{ currentCurr }}</span>
 									</a>
 									<ul class="dropdown-menu dropdown-menu-end shadow-sm">
-										<li><h6 class="dropdown-header">Preferred Currency</h6></li>
+										<li><h6 class="dropdown-header">{{ 'menu.currency'|trans }}</h6></li>
 										<li><a class="dropdown-item small{% if currentCurr == 'CHF' %} active{% endif %}" href="{{ path('set_currency_preference', {'currency': 'CHF'}) }}">CHF (Swiss Franc)</a></li>
 										<li><a class="dropdown-item small{% if currentCurr == 'EUR' %} active{% endif %}" href="{{ path('set_currency_preference', {'currency': 'EUR'}) }}">EUR (€ Euro)</a></li>
 										<li><a class="dropdown-item small{% if currentCurr == 'USD' %} active{% endif %}" href="{{ path('set_currency_preference', {'currency': 'USD'}) }}">USD ($ Dollar)</a></li>
@@ -49,20 +49,19 @@
 											👤 {{ app.user.userIdentifier }}
 										</a>
 										<ul class="dropdown-menu dropdown-menu-end shadow-sm">
-											<li><a class="dropdown-item small" href="{{ path('app_profile') }}">⚙️ Profile & Preferences</a></li>
-											<li><a class="dropdown-item small" href="{{ path('bookmarklet') }}">📌 Price Bookmarklet</a></li>
+											<li><a class="dropdown-item small" href="{{ path('app_profile') }}">⚙️ {{ 'menu.profile'|trans }}</a></li>
+											<li><a class="dropdown-item small" href="{{ path('bookmarklet') }}">📌 {{ 'menu.bookmarklet'|trans }}</a></li>
 											{% if is_granted('ROLE_ADMIN') %}
 												<li><hr class="dropdown-divider"></li>
-												<li><h6 class="dropdown-header">Administration</h6></li>
-												<li><a class="dropdown-item small" href="{{ path('admin_price_moderation') }}">🛡️ Price Moderation</a></li>
+												<li><h6 class="dropdown-header">{{ 'menu.administration'|trans }}</h6></li>
+												<li><a class="dropdown-item small" href="{{ path('admin_price_moderation') }}">🛡️ {{ 'menu.price_moderation'|trans }}</a></li>
 											{% endif %}
 											<li><hr class="dropdown-divider"></li>
-											<li><a class="dropdown-item small text-danger" href="{{ path('app_logout') }}">Sign Out</a></li>
+											<li><a class="dropdown-item small text-danger" href="{{ path('app_logout') }}">{{ 'menu.sign_out'|trans }}</a></li>
 										</ul>
 									</div>
 								{% else %}
-									<a href="{{ path('app_login') }}" class="btn btn-sm btn-outline-light ms-1 px-3 py-1">Sign In</a>
-									<a href="{{ path('app_register') }}" class="btn btn-sm btn-warning ms-1 px-3 py-1 text-dark fw-semibold">Register</a>
+									<a href="{{ path('app_login') }}" class="btn btn-sm btn-outline-light ms-2 px-3 py-1">{{ 'menu.sign_in'|trans }}</a>
 								{% endif %}
 							</div>
 						</div>
@@ -91,6 +90,16 @@
 						<div class="col-12 col-md-4 text-center text-md-start">
 							<span class="fw-semibold text-white">Piece Analyzer</span>
 							<span class="text-secondary small d-block">Copyright © Tim Bernhard, {{ "now"|date("Y") }}. All rights reserved.</span>
+							{% set currentLocale = app.request.locale|default('en') %}
+							{% set currentRoute = app.current_route|default('index') %}
+							{% set routeParams = app.current_route_parameters|default({}) %}
+							{% set queryParams = app.request.query.all %}
+							<div class="d-inline-flex align-items-center gap-2 mt-2 small text-secondary">
+								<span>🌐</span>
+								<a href="{{ path(currentRoute, routeParams|merge(queryParams)|merge({'_locale': 'en'})) }}" class="link-secondary text-decoration-none{% if currentLocale == 'en' %} text-white fw-semibold{% endif %}">English</a>
+								<span>·</span>
+								<a href="{{ path(currentRoute, routeParams|merge(queryParams)|merge({'_locale': 'de'})) }}" class="link-secondary text-decoration-none{% if currentLocale == 'de' %} text-white fw-semibold{% endif %}">Deutsch</a>
+							</div>
 						</div>
 						<div class="col-12 col-md-8 text-center text-md-end">
 							<p class="text-secondary small mb-0">

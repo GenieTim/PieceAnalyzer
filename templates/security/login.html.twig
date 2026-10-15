@@ -10,9 +10,9 @@
                 <div class="card-body p-4 p-md-5">
                     <div class="text-center mb-4">
                         <span class="fs-1">🧱</span>
-                        <h1 class="h3 fw-bold mt-2 mb-1">Sign In</h1>
+                        <h1 class="h3 fw-bold mt-2 mb-1">{{ 'auth.sign_in_title'|trans }}</h1>
                         <p class="text-body-secondary small mb-0">
-                            Log in to access contributor tools, user preferences, and price reporting.
+                            {{ 'auth.sign_in_desc'|trans }}
                         </p>
                     </div>
 
@@ -24,11 +24,11 @@
 
                     <form method="post">
                         <div class="mb-3">
-                            <label for="inputEmail" class="form-label small fw-semibold">Email</label>
+                            <label for="inputEmail" class="form-label small fw-semibold">{{ 'auth.email'|trans }}</label>
                             <input type="email" value="{{ last_username }}" name="_username" id="inputEmail" class="form-control" autocomplete="email" required autofocus>
                         </div>
                         <div class="mb-3">
-                            <label for="inputPassword" class="form-label small fw-semibold">Password</label>
+                            <label for="inputPassword" class="form-label small fw-semibold">{{ 'auth.password'|trans }}</label>
                             <input type="password" name="_password" id="inputPassword" class="form-control" autocomplete="current-password" required>
                         </div>
 
@@ -36,13 +36,13 @@
 
                         <div class="d-grid mt-4 mb-3">
                             <button class="btn btn-primary" type="submit">
-                                Sign In
+                                {{ 'auth.sign_in_title'|trans }}
                             </button>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center small text-body-secondary mt-3">
-                            <span>Don't have an account? <a href="{{ path('app_register') }}" class="fw-semibold text-decoration-none">Register</a></span>
-                            <a href="{{ path('app_resend_verification') }}" class="text-body-secondary text-decoration-none">Resend email verification</a>
+                            <span>{{ 'auth.dont_have_account'|trans }} <a href="{{ path('app_register') }}" class="fw-semibold text-decoration-none">{{ 'menu.register'|trans }}</a></span>
+                            <a href="{{ path('app_resend_verification') }}" class="text-body-secondary text-decoration-none">{{ 'auth.resend_verification'|trans }}</a>
                         </div>
                     </form>
                 </div>
