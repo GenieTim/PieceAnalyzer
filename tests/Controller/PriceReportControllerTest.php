@@ -462,6 +462,133 @@ class PriceReportControllerTest extends WebTestCase
         }
     }
 
+    public function testReportBatchPricesSuccessfulWithToken(): void
+    {
+        $client = static::createClient();
+        $this->em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $user = new User('batch_tester_' . $suffix . '@example.com', 'password');
+        $token = 'batch_token_' . bin2hex(random_bytes(16));
+        $user->setApiToken($token);
+        $this->em->persist($user);
+
+        $set1 = new Set();
+        $set1->setNo('BATCH_1_' . $suffix . '-1');
+        $set1->setName('Batch Set 1');
+        $this->em->persist($set1);
+
+        $set2 = new Set();
+        $set2->setNo('BATCH_2_' . $suffix . '-1');
+        $set2->setName('Batch Set 2');
+        $this->em->persist($set2);
+
+        $this->em->flush();
+
+        try {
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode([
+                    'items' => [
+                        [
+                            'setNo' => 'BATCH_1_' . $suffix,
+                            'retailer' => 'galaxus',
+                            'amountCents' => 2890,
+                            'currency' => 'CHF',
+                            'url' => 'https://www.galaxus.ch/product/batch1',
+                        ],
+                        [
+                            'setNo' => 'BATCH_2_' . $suffix,
+                            'retailer' => 'brack',
+                            'amountCents' => 37200,
+                            'currency' => 'CHF',
+                            'url' => 'https://www.brack.ch/product/batch2',
+                        ],
+                    ],
+                ])
+            );
+
+            $this->assertResponseIsSuccessful();
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertTrue($data['success']);
+            $this->assertSame(2, $data['count']);
+            $this->assertCount(2, $data['results']);
+
+            // Verify prices were persisted in database
+            $price1 = $this->em->getRepository(SetPrice::class)->findOneBy(['set' => $set1]);
+            $this->assertNotNull($price1);
+            $this->assertSame(2890, $price1->getAmount());
+
+            $price2 = $this->em->getRepository(SetPrice::class)->findOneBy(['set' => $set2]);
+            $this->assertNotNull($price2);
+            $this->assertSame(37200, $price2->getAmount());
+        } finally {
+            $this->em->remove($set1);
+            $this->em->remove($set2);
+            $this->em->remove($user);
+            $this->em->flush();
+        }
+    }
+
+    public function testReportToppreiseSourceAndUrlAllowed(): void
+    {
+        $client = static::createClient();
+        $this->em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $user = new User('toppreise_tester_' . $suffix . '@example.com', 'password');
+        $token = 'toppreise_token_' . bin2hex(random_bytes(16));
+        $user->setApiToken($token);
+        $this->em->persist($user);
+
+        $set = new Set();
+        $set->setNo('TOP_TEST_' . $suffix . '-1');
+        $set->setName('Toppreise Test Set');
+        $this->em->persist($set);
+        $this->em->flush();
+
+        try {
+            $client->request(
+                Request::METHOD_POST,
+                '/api/prices/report',
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+                ],
+                json_encode([
+                    'setNo' => 'TOP_TEST_' . $suffix,
+                    'retailer' => 'galaxus',
+                    'amountCents' => 2890,
+                    'currency' => 'CHF',
+                    'url' => 'https://www.toppreise.ch/preisvergleich/Lego/set-40809',
+                    'provider' => 'toppreise',
+                ])
+            );
+
+            $this->assertResponseIsSuccessful();
+            $data = json_decode((string) $client->getResponse()->getContent(), true);
+            $this->assertTrue($data['success']);
+
+            $price = $this->em->getRepository(SetPrice::class)->findOneBy(['set' => $set]);
+            $this->assertNotNull($price);
+            $this->assertSame('toppreise', $price->getProvider()->value);
+            $this->assertSame('https://www.toppreise.ch/preisvergleich/Lego/set-40809', $price->getUrl());
+        } finally {
+            $this->em->remove($set);
+            $this->em->remove($user);
+            $this->em->flush();
+        }
+    }
+
     #[\Override]
     protected function tearDown(): void
     {

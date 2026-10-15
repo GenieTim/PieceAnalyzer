@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,6 +16,12 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class BookmarkletController extends AbstractController
 {
+    public function __construct(
+        #[Autowire('%kernel.project_dir%')]
+        private readonly string $projectDir
+    ) {
+    }
+
     #[Route(path: '/bookmarklet', name: 'bookmarklet')]
     public function index(): Response
     {
@@ -24,129 +31,125 @@ class BookmarkletController extends AbstractController
         }
         $apiUrl = $this->generateUrl('api_price_report', [], UrlGeneratorInterface::ABSOLUTE_URL);
         $apiToken = $user->getApiToken();
-        $js = <<<JS
+
+        $extractorPath = $this->projectDir . '/assets/js/scraper/extractor.js';
+        $extractorJs = file_exists($extractorPath) ? (string) file_get_contents($extractorPath) : '';
+
+        $runnerJs = <<<JS
 (function(){
-    var host = window.location.hostname.toLowerCase();
-    var url = window.location.href;
-    var retailer = 'other';
-    var priceText = '';
-    var currency = 'CHF';
-    var titleText = (document.title || '') + ' ' + (document.querySelector('h1') ? document.querySelector('h1').innerText : '');
-    
-    // 1. Detect Retailer
-    if (host.indexOf('galaxus.ch') !== -1 || host.indexOf('digitec.ch') !== -1) {
-        retailer = 'galaxus';
-        currency = 'CHF';
-    } else if (host.indexOf('brack.ch') !== -1) {
-        retailer = 'brack';
-        currency = 'CHF';
-    } else if (host.indexOf('amazon.de') !== -1) {
-        retailer = 'amazon_de';
-        currency = 'EUR';
-    } else if (host.indexOf('amazon.com') !== -1) {
-        retailer = 'amazon_com';
-        currency = 'USD';
-    }
+    {$extractorJs}
 
-    // 2. Try JSON-LD Schema.org Product data
-    var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
-    for (var i = 0; i < ldScripts.length; i++) {
-        try {
-            var data = JSON.parse(ldScripts[i].innerText);
-            var items = Array.isArray(data) ? data : [data];
-            for (var j = 0; j < items.length; j++) {
-                var it = items[j];
-                if (it['@type'] === 'Product' || (it['@graph'] && Array.isArray(it['@graph']))) {
-                    var prod = it['@type'] === 'Product' ? it : it['@graph'].find(function(g){ return g['@type'] === 'Product'; });
-                    if (prod && prod.offers) {
-                        var off = Array.isArray(prod.offers) ? prod.offers[0] : prod.offers;
-                        if (off && (off.price || off.lowPrice)) {
-                            priceText = String(off.price || off.lowPrice);
-                            if (off.priceCurrency) currency = off.priceCurrency.toUpperCase();
-                            break;
-                        }
-                    }
-                }
-            }
-            if (priceText) break;
-        } catch(e) {}
-    }
+    var extractor = (typeof LegoPriceExtractor !== 'undefined') ? LegoPriceExtractor : (window.LegoPriceExtractor || {});
+    var items = (typeof extractor.extractAll === 'function') ? extractor.extractAll(document, window.location.href) : [];
 
-    // 3. Fallback: meta tags & DOM selectors
-    if (!priceText) {
-        var metaPrice = document.querySelector('meta[property="product:price:amount"], meta[itemprop="price"]');
-        if (metaPrice && metaPrice.content) {
-            priceText = metaPrice.content;
-            var metaCurr = document.querySelector('meta[property="product:price:currency"], meta[itemprop="priceCurrency"]');
-            if (metaCurr && metaCurr.content) currency = metaCurr.content.toUpperCase();
+    var apiUrl = '{$apiUrl}';
+    var apiToken = '{$apiToken}';
+
+    if (!items || items.length === 0) {
+        var setNo = prompt('Piece Analyzer: No price automatically detected.\\nEnter LEGO Set #:');
+        if (!setNo) return;
+        var priceInput = prompt('Enter price in CHF:');
+        if (!priceInput) return;
+        var amountCents = Math.round(parseFloat(priceInput.replace(',', '.')) * 100);
+        if (isNaN(amountCents) || amountCents <= 0) {
+            alert('Invalid price format.');
+            return;
         }
+        items = [{
+            setNo: setNo.trim(),
+            retailer: 'other',
+            amountCents: amountCents,
+            currency: 'CHF',
+            url: window.location.href,
+            provider: 'bookmarklet'
+        }];
     }
 
-    if (!priceText) {
-        var selectors = [
-            '[data-test="product-price"]',
-            '[data-test="price"]',
-            '[data-qa="product-detail-price"]',
-            '.productPrice',
-            '.a-price .a-offscreen',
-            '#corePrice_feature_div .a-offscreen',
-            'strong[class*="price"]',
-            'span[class*="price"]'
-        ];
-        for (var k = 0; k < selectors.length; k++) {
-            var el = document.querySelector(selectors[k]);
-            if (el && el.innerText && /[\d]/.test(el.innerText)) {
-                priceText = el.innerText;
-                break;
-            }
+    if (items.length === 1) {
+        var it = items[0];
+        var confirmedSet = prompt('Piece Analyzer Price Report\\n\\nConfirm or edit Set #:', it.setNo);
+        if (!confirmedSet) return;
+        var confirmedPrice = prompt('Enter price in ' + it.currency + ':', (it.amountCents / 100).toFixed(2));
+        if (!confirmedPrice) return;
+        it.setNo = confirmedSet.trim();
+        it.amountCents = Math.round(parseFloat(confirmedPrice.replace(',', '.')) * 100);
+        if (isNaN(it.amountCents) || it.amountCents <= 0) {
+            alert('Invalid price format.');
+            return;
         }
-    }
 
-    // 4. Extract Set Number
-    var setMatch = titleText.match(/\\b(?:LEGO|Set)?\\s*([1-9]\\d{3,5})\\b/i);
-    var detectedSet = setMatch ? setMatch[1] : '';
-
-    var setNo = prompt('Piece Analyzer Price Report\\n\\nConfirm or enter Set #:', detectedSet);
-    if (!setNo) return;
-
-    var cleanPrice = priceText.replace(/[^\\d.,]/g, '').replace(',', '.');
-    var priceInput = prompt('Enter price in ' + currency + ':', cleanPrice || '');
-    if (!priceInput) return;
-
-    var amountCents = Math.round(parseFloat(priceInput) * 100);
-    if (isNaN(amountCents) || amountCents <= 0) {
-        alert('Invalid price format.');
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiToken
+            },
+            body: JSON.stringify({
+                setNo: it.setNo,
+                retailer: it.retailer,
+                amountCents: it.amountCents,
+                currency: it.currency,
+                url: it.url,
+                provider: it.provider || 'bookmarklet',
+                token: apiToken
+            })
+        }).then(function(res){ return res.json(); })
+        .then(function(data){
+            if (data.success) {
+                alert('✓ Success! Set #' + data.setNo + ' (' + data.price + ') recorded in Piece Analyzer for ' + data.retailer + '!');
+            } else {
+                alert('Error: ' + (data.error || 'Failed to submit price.'));
+            }
+        }).catch(function(err){
+            alert('Could not submit price to Piece Analyzer: ' + err.message);
+        });
         return;
     }
 
-    fetch('{$apiUrl}', {
+    // Multiple items found (e.g. 24 offers on Toppreise, 21 items on Lego, 47 sets on Brack)
+    var summary = 'Piece Analyzer: Detected ' + items.length + ' prices on this page!\\n\\n';
+    if (items[0].merchantName) {
+        summary += 'Store offers for Set #' + items[0].setNo + ' across ' + items.length + ' merchants.\\n';
+    } else {
+        summary += 'Sets found: ' + items.slice(0, 5).map(function(x){ return '#' + x.setNo + ' (' + (x.amountCents/100).toFixed(2) + ' ' + x.currency + ')'; }).join(', ') + (items.length > 5 ? ' ... and ' + (items.length - 5) + ' more' : '') + '\\n';
+    }
+    summary += '\\nSubmit all ' + items.length + ' prices to Piece Analyzer?';
+
+    if (!confirm(summary)) return;
+
+    fetch(apiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer {$apiToken}'
+            'Authorization': 'Bearer ' + apiToken
         },
         body: JSON.stringify({
-            setNo: setNo.trim(),
-            retailer: retailer,
-            amountCents: amountCents,
-            currency: currency,
-            url: url,
-            provider: 'bookmarklet',
-            token: '{$apiToken}'
+            items: items.map(function(x){
+                return {
+                    setNo: x.setNo,
+                    retailer: x.retailer,
+                    amountCents: x.amountCents,
+                    currency: x.currency,
+                    url: x.url,
+                    provider: x.provider || 'bookmarklet'
+                };
+            }),
+            token: apiToken
         })
     }).then(function(res){ return res.json(); })
     .then(function(data){
         if (data.success) {
-            alert('✓ Success! Set #' + data.setNo + ' (' + data.price + ') recorded in Piece Analyzer for ' + data.retailer + '!');
+            alert('✓ Success! Recorded ' + data.count + ' prices in Piece Analyzer!');
         } else {
-            alert('Error: ' + (data.error || 'Failed to submit price.'));
+            alert('Error: ' + (data.error || 'Failed to submit prices.'));
         }
     }).catch(function(err){
-        alert('Could not submit price to Piece Analyzer: ' + err.message);
+        alert('Could not submit prices to Piece Analyzer: ' + err.message);
     });
 })();
 JS;
-        $bookmarkletHref = 'javascript:' . rawurlencode(trim(preg_replace('/\s+/', ' ', $js) ?? ''));
+
+        $bookmarkletHref = 'javascript:' . rawurlencode(trim(preg_replace('/\s+/', ' ', $runnerJs) ?? ''));
         return $this->render('bookmarklet/index.html.twig', [
             'bookmarkletHref' => $bookmarkletHref,
             'apiUrl' => $apiUrl,

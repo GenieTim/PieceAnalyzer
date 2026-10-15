@@ -68,95 +68,172 @@ class PriceReportController extends AbstractController
             return $this->jsonError('Rate limit exceeded (max 10 price reports per minute). Please wait.', 429, $request);
         }
 
-        $setNo = trim((string) ($data['setNo'] ?? ''));
-        if ($setNo === '') {
-            return $this->jsonError('Missing set number (setNo).', 400, $request);
+        $isBatch = isset($data['items']) && is_array($data['items']);
+        /** @var list<array<string, mixed>> $rawItems */
+        $rawItems = $isBatch ? $data['items'] : [$data];
+
+        if (empty($rawItems)) {
+            return $this->jsonError('No price report data provided.', 400, $request);
         }
 
-        // Match set by number, trying with and without '-1' suffix
-        $set = $setRepo->findOneBy(['no' => $setNo]);
-        if (!$set instanceof Set) {
-            $normalizedNo = str_contains($setNo, '-') ? $setNo : $setNo . '-1';
-            $set = $setRepo->findOneBy(['no' => $normalizedNo]);
+        if (count($rawItems) > 100) {
+            return $this->jsonError('Batch exceeds maximum limit of 100 items per request.', 400, $request);
         }
 
-        if (!$set instanceof Set) {
-            return $this->jsonError(sprintf('Set "%s" not found in database.', $setNo), 404, $request);
-        }
+        $results = [];
+        $recordedCount = 0;
+        $lastSet = null;
+        $lastSetPrice = null;
+        $lastRetailer = null;
 
-        // Validate Retailer
-        $retailerRaw = (string) ($data['retailer'] ?? 'other');
-        $retailer = Retailer::tryFrom($retailerRaw) ?? Retailer::OTHER;
-
-        // Validate Amount
-        $amountCents = (int) ($data['amountCents'] ?? 0);
-        if ($amountCents <= 0) {
-            if (isset($data['price']) && is_numeric($data['price']) && (float) $data['price'] > 0) {
-                $amountCents = (int) round(((float) $data['price']) * 100);
-            } else {
-                return $this->jsonError('Amount must be a positive number.', 400, $request);
+        foreach ($rawItems as $itemData) {
+            $setNo = trim((string) ($itemData['setNo'] ?? ''));
+            if ($setNo === '') {
+                if (!$isBatch) {
+                    return $this->jsonError('Missing set number (setNo).', 400, $request);
+                }
+                $results[] = ['success' => false, 'error' => 'Missing set number (setNo).'];
+                continue;
             }
-        }
 
-        // Validate Currency
-        $currency = strtoupper(trim((string) ($data['currency'] ?? 'CHF')));
-        if (!in_array($currency, ['CHF', 'EUR', 'USD', 'GBP'], true)) {
-            $currency = 'CHF';
-        }
-
-        // Validate and sanitize URL
-        $url = isset($data['url']) ? trim((string) $data['url']) : null;
-        if ($url !== null && $url !== '') {
-            $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
-            if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array($scheme, ['http', 'https'], true)) {
-                return $this->jsonError('Product URL must be a valid HTTP or HTTPS web address.', 400, $request);
+            // Match set by number, trying with and without '-1' suffix
+            $set = $setRepo->findOneBy(['no' => $setNo]);
+            if (!$set instanceof Set) {
+                $normalizedNo = str_contains($setNo, '-') ? $setNo : $setNo . '-1';
+                $set = $setRepo->findOneBy(['no' => $normalizedNo]);
             }
-            if (!$this->isValidRetailerUrl($retailer, $url)) {
-                return $this->jsonError('Product URL does not match the specified retailer domain.', 400, $request);
+
+            if (!$set instanceof Set) {
+                if (!$isBatch) {
+                    return $this->jsonError(sprintf('Set "%s" not found in database.', $setNo), 404, $request);
+                }
+                $results[] = ['setNo' => $setNo, 'success' => false, 'error' => sprintf('Set "%s" not found in database.', $setNo)];
+                continue;
             }
+
+            // Validate Retailer
+            $retailerRaw = (string) ($itemData['retailer'] ?? 'other');
+            $retailer = Retailer::tryFrom($retailerRaw) ?? Retailer::OTHER;
+
+            // Validate Amount
+            $amountCents = (int) ($itemData['amountCents'] ?? 0);
+            if ($amountCents <= 0) {
+                if (isset($itemData['price']) && is_numeric($itemData['price']) && (float) $itemData['price'] > 0) {
+                    $amountCents = (int) round(((float) $itemData['price']) * 100);
+                } else {
+                    if (!$isBatch) {
+                        return $this->jsonError('Amount must be a positive number.', 400, $request);
+                    }
+                    $results[] = ['setNo' => $setNo, 'success' => false, 'error' => 'Amount must be a positive number.'];
+                    continue;
+                }
+            }
+
+            // Validate Currency
+            $currency = strtoupper(trim((string) ($itemData['currency'] ?? 'CHF')));
+            if (!in_array($currency, ['CHF', 'EUR', 'USD', 'GBP'], true)) {
+                $currency = 'CHF';
+            }
+
+            // Validate Provider
+            $provider = PriceSourceProvider::USER_BOOKMARKLET;
+            if (isset($itemData['provider'])) {
+                $provider = PriceSourceProvider::tryFrom((string) $itemData['provider']) ?? PriceSourceProvider::USER_BOOKMARKLET;
+            }
+
+            // Validate and sanitize URL
+            $url = isset($itemData['url']) ? trim((string) $itemData['url']) : null;
+            if ($url !== null && $url !== '') {
+                $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+                if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array($scheme, ['http', 'https'], true)) {
+                    if (!$isBatch) {
+                        return $this->jsonError('Product URL must be a valid HTTP or HTTPS web address.', 400, $request);
+                    }
+                    $results[] = ['setNo' => $setNo, 'success' => false, 'error' => 'Product URL must be a valid HTTP or HTTPS web address.'];
+                    continue;
+                }
+                if (!$this->isValidRetailerUrl($retailer, $url, $provider)) {
+                    if (!$isBatch) {
+                        return $this->jsonError('Product URL does not match the specified retailer domain.', 400, $request);
+                    }
+                    $results[] = ['setNo' => $setNo, 'success' => false, 'error' => 'Product URL does not match the specified retailer domain.'];
+                    continue;
+                }
+            }
+
+            // Validate sanity bounds: price should not be absurd (e.g. 0.01 CHF for a 1000-piece set or > 100,000)
+            $decimalPrice = $amountCents / 100;
+            if ($amountCents > 10_000_000) {
+                if (!$isBatch) {
+                    return $this->jsonError('Reported price exceeds maximum allowed bounds.', 422, $request);
+                }
+                $results[] = ['setNo' => $setNo, 'success' => false, 'error' => 'Reported price exceeds maximum allowed bounds.'];
+                continue;
+            }
+            $pieceCount = $set->getPieceCount();
+            if ($pieceCount > 50 && $decimalPrice < 2.0) {
+                if (!$isBatch) {
+                    return $this->jsonError('Price is unreasonably low for this set size.', 422, $request);
+                }
+                $results[] = ['setNo' => $setNo, 'success' => false, 'error' => 'Price is unreasonably low for this set size.'];
+                continue;
+            }
+
+            $setPrice = new SetPrice(
+                set: $set,
+                amount: $amountCents,
+                currency: $currency,
+                retailer: $retailer,
+                provider: $provider
+            );
+            $status = $user->isTrusted()
+                ? PriceVerificationStatus::VERIFIED
+                : PriceVerificationStatus::UNVERIFIED;
+            $setPrice->setStatus($status);
+            $setPrice->setUrl($url);
+            $setPrice->setSubmittedBy($user);
+
+            $set->addPrice($setPrice);
+            $em->persist($setPrice);
+            $em->persist($set);
+
+            $recordedCount++;
+            $lastSet = $set;
+            $lastSetPrice = $setPrice;
+            $lastRetailer = $retailer;
+
+            $results[] = [
+                'success' => true,
+                'setNo' => $set->getNo(),
+                'name' => $set->getName(),
+                'price' => $setPrice->getFormattedPrice(),
+                'retailer' => $retailer->label(),
+                'status' => $setPrice->getStatus()->value,
+            ];
         }
 
-        // Validate sanity bounds: price should not be absurd (e.g. 0.01 CHF for a 1000-piece set or > 100,000)
-        $decimalPrice = $amountCents / 100;
-        if ($amountCents > 10_000_000) {
-            return $this->jsonError('Reported price exceeds maximum allowed bounds.', 422, $request);
-        }
-        $pieceCount = $set->getPieceCount();
-        if ($pieceCount > 50 && $decimalPrice < 2.0) {
-            return $this->jsonError('Price is unreasonably low for this set size.', 422, $request);
+        if ($recordedCount > 0) {
+            $em->flush();
         }
 
-        $provider = PriceSourceProvider::USER_BOOKMARKLET;
-        if (isset($data['provider'])) {
-            $provider = PriceSourceProvider::tryFrom((string) $data['provider']) ?? PriceSourceProvider::USER_BOOKMARKLET;
+        if ($isBatch) {
+            $response = new JsonResponse([
+                'success' => true,
+                'count' => $recordedCount,
+                'results' => $results,
+                'submittedBy' => $user->getUserIdentifier(),
+            ]);
+            $this->addCorsHeaders($response, $request);
+            return $response;
         }
-
-        $setPrice = new SetPrice(
-            set: $set,
-            amount: $amountCents,
-            currency: $currency,
-            retailer: $retailer,
-            provider: $provider
-        );
-        $status = $user->isTrusted()
-            ? PriceVerificationStatus::VERIFIED
-            : PriceVerificationStatus::UNVERIFIED;
-        $setPrice->setStatus($status);
-        $setPrice->setUrl($url);
-        $setPrice->setSubmittedBy($user);
-
-        $set->addPrice($setPrice);
-        $em->persist($setPrice);
-        $em->persist($set);
-        $em->flush();
 
         $response = new JsonResponse([
             'success' => true,
-            'setNo' => $set->getNo(),
-            'name' => $set->getName(),
-            'price' => $setPrice->getFormattedPrice(),
-            'retailer' => $retailer->label(),
-            'status' => $setPrice->getStatus()->value,
+            'setNo' => $lastSet?->getNo(),
+            'name' => $lastSet?->getName(),
+            'price' => $lastSetPrice?->getFormattedPrice(),
+            'retailer' => $lastRetailer?->label(),
+            'status' => $lastSetPrice?->getStatus()->value,
             'submittedBy' => $user->getUserIdentifier(),
         ]);
 
@@ -164,11 +241,21 @@ class PriceReportController extends AbstractController
         return $response;
     }
 
-    private function isValidRetailerUrl(Retailer $retailer, string $url): bool
+    private function isValidRetailerUrl(Retailer $retailer, string $url, ?PriceSourceProvider $provider = null): bool
     {
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
         if ($host === '') {
             return false;
+        }
+
+        // If prices are reported from a price comparison aggregator like Toppreise:
+        if ($provider === PriceSourceProvider::TOPPREISE || $this->isHostMatching($host, 'toppreise.ch')) {
+            return $this->isHostMatching($host, 'toppreise.ch')
+                || $this->isHostMatching($host, 'galaxus.ch')
+                || $this->isHostMatching($host, 'digitec.ch')
+                || $this->isHostMatching($host, 'brack.ch')
+                || $this->isHostMatching($host, 'lego.com')
+                || str_contains($host, 'amazon.');
         }
 
         return match ($retailer) {
