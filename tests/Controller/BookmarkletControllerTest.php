@@ -36,6 +36,33 @@ class BookmarkletControllerTest extends WebTestCase
         $this->assertSelectorExists('a[href^="javascript:"]');
         $this->assertSelectorTextContains('code', $user->getApiToken());
 
+        $crawler = $client->getCrawler();
+        $href = (string) $crawler->filter('a[href^="javascript:"]')->attr('href');
+        $this->assertStringStartsWith('javascript:', $href);
+        $decodedJs = rawurldecode(substr($href, 11));
+        $this->assertStringStartsWith('(function(){', $decodedJs);
+        $this->assertStringEndsWith('})();', $decodedJs);
+
+        // Verify JavaScript syntax using node if available
+        $tempFile = tempnam(sys_get_temp_dir(), 'bm_ctrl_');
+        $this->assertNotFalse($tempFile);
+        try {
+            file_put_contents($tempFile, $decodedJs);
+            $process = new \Symfony\Component\Process\Process(['node', '-c', $tempFile]);
+            $process->run();
+            if ($process->getExitCode() !== 127) {
+                $this->assertSame(
+                    0,
+                    $process->getExitCode(),
+                    'Rendered bookmarklet link must be syntactically valid JavaScript: ' . $process->getErrorOutput()
+                );
+            }
+        } finally {
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+        }
+
         // Cleanup
         $em->remove($user);
         $em->flush();
