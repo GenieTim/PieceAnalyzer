@@ -76,7 +76,7 @@ class SetRepository extends ServiceEntityRepository
         }
 
         $qb->leftJoin('s.pieces', 'p');
-        $qb->groupBy('s.id, s.no, s.name, s.price, s.priceCurrency, s.source, s.obsolete, s.year, s.image_url');
+        $qb->groupBy('s.id, s.no, s.name, s.price, s.priceCurrency, s.pieceCount, s.source, s.obsolete, s.year, s.image_url');
         $qb->orderBy('isUnpriced', 'ASC');
         $qb->addOrderBy('pricePerPiece', 'ASC');
         $qb->having('SUM(p.count) != 0');
