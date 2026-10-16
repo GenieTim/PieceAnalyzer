@@ -428,7 +428,7 @@
         // 1. Main Product from JSON-LD
         for (const ld of jsonLds) {
             if (ld['@type'] === 'Product' && ld.offers) {
-                const setNo = ld.productId || extractSetNumber(ld.name || '') || extractSetNumber(url);
+                const setNo = extractSetNumber(url) || extractSetNumber(ld.name || '') || extractSetNumber(String(ld.productID || ld.productId || ld.mpn || ld.sku || ''));
                 const off = Array.isArray(ld.offers) ? ld.offers[0] : ld.offers;
                 if (off && off.price && setNo) {
                     const parsed = parsePrice(String(off.price), off.priceCurrency || 'CHF');

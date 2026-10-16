@@ -50,12 +50,22 @@ class AppDataDownloadCsvCommand extends Command
         $io->writeln(sprintf('Downloading %d data dumps (force: %s)...', $total, $force ? 'yes' : 'no'));
         $io->newLine();
 
+        $isNeeded = $this->downloader->isDownloadNeeded($force);
+        if (!$isNeeded) {
+            $lastTimestamp = $this->downloader->getLastDownloadTimestamp() ?? (int) @filemtime($this->downloader->getDataPath() . '/sets.csv');
+            $ageHours = $lastTimestamp > 0 ? round((time() - $lastTimestamp) / 3600, 1) : 0;
+            $io->note(sprintf(
+                'Data dumps are already up to date (last downloaded %s hours ago). Rebrickable policy asks to download at most once per 24 hours. Use --force to override.',
+                $ageHours
+            ));
+        }
+
         $io->progressStart($total);
 
         $results = $this->downloader->downloadAll(
             $force,
             function (string $file, string $status, int $current, int $total) use ($io): void {
-                if ($status === 'done' || $status === 'failed') {
+                if ($status === 'done' || $status === 'failed' || $status === 'skipped') {
                     $io->progressAdvance();
                 }
             }
@@ -71,9 +81,14 @@ class AppDataDownloadCsvCommand extends Command
             if (!$success) {
                 $hasFailures = true;
             }
+            if (!$isNeeded && $success) {
+                $statusText = '<comment>SKIPPED (cached)</comment>';
+            } else {
+                $statusText = $success ? '<info>SUCCESS</info>' : '<error>FAILED</error>';
+            }
             $rows[] = [
                 $file,
-                $success ? '<info>SUCCESS</info>' : '<error>FAILED</error>',
+                $statusText,
             ];
         }
 
@@ -84,7 +99,12 @@ class AppDataDownloadCsvCommand extends Command
             return Command::FAILURE;
         }
 
-        $io->success('All Rebrickable CSV dumps downloaded and decompressed successfully.');
+        if (!$isNeeded) {
+            $io->success('All Rebrickable CSV dumps are up to date (< 24h old).');
+        } else {
+            $io->success('All Rebrickable CSV dumps downloaded and decompressed successfully.');
+        }
+
         return Command::SUCCESS;
     }
 }

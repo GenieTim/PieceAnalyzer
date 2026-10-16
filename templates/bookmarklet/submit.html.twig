@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="{{ app.request ? app.request.locale : 'en' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ success ? '✓ Price Recorded' : 'Price Report Error' }} — Piece Analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .submit-card {
+            max-width: 480px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="card submit-card bg-white p-4">
+        <div class="card-body text-center p-2">
+            {% if success %}
+                <div class="mb-3">
+                    <span class="display-4 text-success">✓</span>
+                </div>
+                <h1 class="h4 fw-bold mb-2">Price Recorded!</h1>
+                <p class="text-secondary small mb-3">Successfully submitted to Piece Analyzer</p>
+
+                <div class="list-group list-group-flush mb-4 text-start border rounded">
+                    {% for item in recorded %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                            <div>
+                                <span class="fw-bold font-monospace">#{{ item.setNo }}</span>
+                                {% if item.name %}
+                                    <div class="small text-muted text-truncate" style="max-width: 260px;">{{ item.name }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary-subtle text-primary-emphasis">{{ item.price }}</span>
+                                <div class="small text-muted">{{ item.retailer }}</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                {% if errors is not empty %}
+                    <div class="alert alert-warning small text-start py-2 px-3 mb-3">
+                        <strong>Some items could not be saved:</strong>
+                        <ul class="mb-0 ps-3">
+                            {% for err in errors %}
+                                <li>{{ err }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <p class="small text-muted mb-3" id="closeCountdown">
+                    This window will close in <strong id="secondsRemaining">3</strong>s...
+                </p>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <button class="btn btn-secondary btn-sm px-4" onclick="window.close()">Close Window</button>
+                    <a href="{{ path('list_all') }}" target="_blank" class="btn btn-outline-primary btn-sm">Open Piece Analyzer</a>
+                </div>
+
+                <script>
+                    (function() {
+                        var remaining = 3;
+                        var counterEl = document.getElementById('secondsRemaining');
+                        var interval = setInterval(function() {
+                            remaining--;
+                            if (counterEl) counterEl.textContent = remaining;
+                            if (remaining <= 0) {
+                                clearInterval(interval);
+                                window.close();
+                            }
+                        }, 1000);
+                    })();
+                </script>
+            {% else %}
+                <div class="mb-3">
+                    <span class="display-4 text-danger">⚠️</span>
+                </div>
+                <h1 class="h4 fw-bold mb-2">Price Submission Notice</h1>
+                
+                <div class="alert alert-danger small text-start py-2 px-3 mb-4">
+                    {% for err in errors %}
+                        <div>{{ err }}</div>
+                    {% else %}
+                        <div>Unable to process price report.</div>
+                    {% endfor %}
+                </div>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <button class="btn btn-secondary btn-sm px-4" onclick="window.close()">Close</button>
+                    <a href="{{ path('bookmarklet') }}" target="_blank" class="btn btn-primary btn-sm">Bookmarklet Settings</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

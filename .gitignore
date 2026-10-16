@@ -21,7 +21,8 @@
 nbproject
 .vscode
 .DS_Store
-
+/public/downloads/
+data/*_mappings.csv
 ###< custom ignores ###
 
 ###> symfony/webpack-encore-bundle ###

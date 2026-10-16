@@ -17,9 +17,9 @@ class BookmarkletGenerator
     /**
      * Generates the complete 'javascript:...' bookmarklet URL.
      */
-    public function generateBookmarklet(string $apiUrl, string $apiToken): string
+    public function generateBookmarklet(string $apiUrl, string $apiToken, ?string $submitUrl = null): string
     {
-        $runnerJs = $this->generateRunnerJs($apiUrl, $apiToken);
+        $runnerJs = $this->generateRunnerJs($apiUrl, $apiToken, $submitUrl);
         $cleanJs = $this->cleanJs($runnerJs);
 
         return 'javascript:' . rawurlencode($cleanJs);
@@ -28,13 +28,15 @@ class BookmarkletGenerator
     /**
      * Generates the raw runner JavaScript code with the extractor embedded.
      */
-    public function generateRunnerJs(string $apiUrl, string $apiToken): string
+    public function generateRunnerJs(string $apiUrl, string $apiToken, ?string $submitUrl = null): string
     {
+        $submitUrl ??= preg_replace('#/api/prices/report/?$#', '/bookmarklet/submit', $apiUrl);
         $extractorPath = $this->projectDir . '/assets/js/scraper/extractor.js';
         $extractorJs = file_exists($extractorPath) ? (string) file_get_contents($extractorPath) : '';
 
         $cleanExtractor = $this->stripComments($extractorJs);
         $encodedApiUrl = json_encode($apiUrl, JSON_UNESCAPED_SLASHES);
+        $encodedSubmitUrl = json_encode($submitUrl, JSON_UNESCAPED_SLASHES);
         $encodedApiToken = json_encode($apiToken, JSON_UNESCAPED_SLASHES);
 
         return <<<JS
@@ -51,7 +53,37 @@ class BookmarkletGenerator
         : [];
 
     var apiUrl = {$encodedApiUrl};
+    var submitUrl = {$encodedSubmitUrl};
     var apiToken = {$encodedApiToken};
+
+    function submitViaPopup(targetUrl, payload) {
+        var jsonStr = JSON.stringify(payload);
+        var urlWithData = targetUrl + (targetUrl.indexOf('?') === -1 ? '?' : '&')
+            + 'token=' + encodeURIComponent(payload.token || apiToken || '')
+            + '&data=' + encodeURIComponent(jsonStr);
+
+        if (urlWithData.length < 2040) {
+            window.open(urlWithData, '_blank', 'width=560,height=480,resizable=yes,scrollbars=yes');
+            return;
+        }
+
+        var popupName = 'pa_' + Math.floor(Math.random() * 1000000);
+        window.open('about:blank', popupName, 'width=560,height=480,resizable=yes,scrollbars=yes');
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = targetUrl;
+        form.target = popupName;
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'payload';
+        input.value = jsonStr;
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        setTimeout(function(){
+            try { document.body.removeChild(form); } catch(e){}
+        }, 1000);
+    }
 
     if (!items || items.length === 0) {
         var setNo = prompt('Piece Analyzer: No price automatically detected.\\nEnter LEGO Set #:');
@@ -73,6 +105,8 @@ class BookmarkletGenerator
         }];
     }
 
+    var isCspStrict = /galaxus\.|digitec\./i.test(window.location.hostname);
+
     if (items.length === 1) {
         var it = items[0];
         var confirmedSet = prompt('Piece Analyzer Price Report\\n\\nConfirm or edit Set #:', it.setNo);
@@ -86,21 +120,28 @@ class BookmarkletGenerator
             return;
         }
 
+        var payload = {
+            setNo: it.setNo,
+            retailer: it.retailer,
+            amountCents: it.amountCents,
+            currency: it.currency,
+            url: it.url,
+            provider: it.provider || 'bookmarklet',
+            token: apiToken
+        };
+
+        if (isCspStrict) {
+            submitViaPopup(submitUrl, payload);
+            return;
+        }
+
         fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + apiToken
             },
-            body: JSON.stringify({
-                setNo: it.setNo,
-                retailer: it.retailer,
-                amountCents: it.amountCents,
-                currency: it.currency,
-                url: it.url,
-                provider: it.provider || 'bookmarklet',
-                token: apiToken
-            })
+            body: JSON.stringify(payload)
         }).then(function(res){ return res.json(); })
         .then(function(data){
             if (data.success) {
@@ -110,7 +151,7 @@ class BookmarkletGenerator
                 alert('Error: ' + (data.error || 'Failed to submit price.'));
             }
         }).catch(function(err){
-            alert('Could not submit price to Piece Analyzer: ' + err.message);
+            submitViaPopup(submitUrl, payload);
         });
         return;
     }
@@ -130,25 +171,32 @@ class BookmarkletGenerator
 
     if (!confirm(summary)) return;
 
+    var batchPayload = {
+        items: items.map(function(x){
+            return {
+                setNo: x.setNo,
+                retailer: x.retailer,
+                amountCents: x.amountCents,
+                currency: x.currency,
+                url: x.url,
+                provider: x.provider || 'bookmarklet'
+            };
+        }),
+        token: apiToken
+    };
+
+    if (isCspStrict) {
+        submitViaPopup(submitUrl, batchPayload);
+        return;
+    }
+
     fetch(apiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + apiToken
         },
-        body: JSON.stringify({
-            items: items.map(function(x){
-                return {
-                    setNo: x.setNo,
-                    retailer: x.retailer,
-                    amountCents: x.amountCents,
-                    currency: x.currency,
-                    url: x.url,
-                    provider: x.provider || 'bookmarklet'
-                };
-            }),
-            token: apiToken
-        })
+        body: JSON.stringify(batchPayload)
     }).then(function(res){ return res.json(); })
     .then(function(data){
         if (data.success) {
@@ -157,7 +205,7 @@ class BookmarkletGenerator
             alert('Error: ' + (data.error || 'Failed to submit prices.'));
         }
     }).catch(function(err){
-        alert('Could not submit prices to Piece Analyzer: ' + err.message);
+        submitViaPopup(submitUrl, batchPayload);
     });
 })();
 JS;

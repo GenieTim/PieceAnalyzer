@@ -9,6 +9,8 @@ COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
 COPY assets ./assets
+COPY scripts ./scripts
+COPY extension ./extension
 COPY webpack.config.js ./
 
 RUN yarn build
@@ -65,13 +67,14 @@ RUN test -f .env || cp .env.example .env
 # Copy compiled frontend assets from assets_builder stage
 COPY --from=assets_builder /app/public/build ./public/build
 
-# Optimize class loading
+# Optimize class loading and build extension packages
 RUN composer dump-autoload --classmap-authoritative --no-dev && \
-    composer run-script --no-dev post-install-cmd
+    composer run-script --no-dev post-install-cmd && \
+    php bin/console app:extension:build
 
 # Set up runtime directories and ownership
-RUN mkdir -p var/cache var/log data && \
-    chown -R www-data:www-data var data public/build
+RUN mkdir -p var/cache var/log data public/downloads && \
+    chown -R www-data:www-data var data public/build public/downloads
 
 EXPOSE 80
 

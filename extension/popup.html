@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    :root {
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #212529;
+      --muted: #6c757d;
+      --border: #dee2e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 360px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+    }
+    header {
+      background: #212529;
+      color: #fff;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    header img { width: 20px; height: 20px; }
+    header button.icon-btn {
+      background: none;
+      border: none;
+      color: #adb5bd;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    header button.icon-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .content { padding: 12px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 12px;
+      background: #e9ecef;
+      color: #495057;
+      margin-bottom: 8px;
+    }
+    .badge-retailer { background: #e7f1ff; color: #0c63e4; }
+    .form-group { margin-bottom: 10px; }
+    .form-group:last-child { margin-bottom: 0; }
+    label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; }
+    input[type="text"], input[type="password"], input[type="number"], select {
+      width: 100%;
+      padding: 7px 10px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(13,110,253,0.2); }
+    .row { display: flex; gap: 8px; }
+    .col { flex: 1; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s ease-in-out;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { background: #e9ecef; color: var(--text); margin-top: 6px; }
+    .btn-secondary:hover { background: #dde2e6; }
+    .alert {
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+    .alert-success { background: #d1e7dd; color: #0f5132; }
+    .alert-danger { background: #f8d7da; color: #842029; }
+    .alert-info { background: #cff4fc; color: #055160; }
+    .items-list { max-height: 220px; overflow-y: auto; margin-bottom: 10px; }
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 12px;
+    }
+    .item-row:last-child { border-bottom: none; }
+    .settings-panel { display: none; }
+    .settings-panel.active { display: block; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="icons/icon-32.png" alt="Piece Analyzer">
+      <span>Piece Analyzer</span>
+    </div>
+    <button class="icon-btn" id="toggleSettings" title="Settings">⚙️</button>
+  </header>
+
+  <div class="content">
+    <div id="statusAlert"></div>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="card settings-panel">
+      <div class="form-group">
+        <label for="serverUrl">Piece Analyzer Server URL</label>
+        <input type="text" id="serverUrl" placeholder="https://piece-analyzer.be-we.ch">
+      </div>
+      <div class="form-group">
+        <label for="apiToken">Contributor API Token</label>
+        <input type="password" id="apiToken" placeholder="Paste your API token">
+      </div>
+      <button class="btn btn-primary" id="saveSettings" style="margin-top: 8px;">Save Settings</button>
+    </div>
+
+    <!-- Main Detection & Submit Panel -->
+    <div id="mainPanel">
+      <div id="noTokenAlert" class="alert alert-info" style="display: none;">
+        Please configure your <strong>Contributor API Token</strong> in Settings (⚙️) to submit prices.
+      </div>
+
+      <div class="card" id="detectionCard">
+        <div id="retailerBadge" class="badge badge-retailer">Detecting...</div>
+        
+        <div id="singleItemForm" style="display: none;">
+          <div class="form-group">
+            <label for="setNo">LEGO Set #</label>
+            <input type="text" id="setNo" placeholder="e.g. 75192">
+          </div>
+          <div class="row form-group">
+            <div class="col" style="flex: 2;">
+              <label for="price">Price</label>
+              <input type="number" step="0.01" id="price" placeholder="0.00">
+            </div>
+            <div class="col">
+              <label for="currency">Currency</label>
+              <select id="currency">
+                <option value="CHF">CHF</option>
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="multiItemsList" style="display: none;">
+          <div class="small" style="font-weight: 600; margin-bottom: 6px;" id="multiItemsTitle">Detected Sets:</div>
+          <div class="items-list" id="itemsListContainer"></div>
+        </div>
+
+        <div id="noDetection" style="display: none; text-align: center; padding: 10px 0; color: var(--muted);">
+          No LEGO sets detected on this page.<br>
+          <button class="btn btn-secondary btn-sm" id="manualEntryBtn" style="margin-top: 8px;">Enter Set Manually</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="submitBtn" disabled>Record Price</button>
+    </div>
+  </div>
+
+  <script src="extractor.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -29,6 +29,9 @@ class RebrickableDownloaderService
         'part_categories.csv.gz',
     ];
 
+    public const CACHE_TTL_SECONDS = 86400; // 24 hours (Rebrickable policy: updated ~00:00 UTC, max 1 download per 24 hours)
+    public const METADATA_FILE = '.rebrickable_last_download';
+
     private readonly string $dataPath;
 
     public function __construct(
@@ -52,6 +55,55 @@ class RebrickableDownloaderService
         return self::DUMP_FILES;
     }
 
+    public function recordDownloadSuccess(): void
+    {
+        $metaPath = $this->dataPath . '/' . self::METADATA_FILE;
+        @file_put_contents($metaPath, (string) time());
+    }
+
+    public function getLastDownloadTimestamp(): ?int
+    {
+        $metaPath = $this->dataPath . '/' . self::METADATA_FILE;
+        if (!file_exists($metaPath)) {
+            return null;
+        }
+        $val = (int) trim((string) @file_get_contents($metaPath));
+        return $val > 0 ? $val : null;
+    }
+
+    /**
+     * Check if a download from Rebrickable is needed based on file existence and 24h cache policy.
+     */
+    public function isDownloadNeeded(bool $force = false): bool
+    {
+        if ($force) {
+            return true;
+        }
+
+        foreach (self::DUMP_FILES as $file) {
+            $base = str_ends_with($file, '.gz') ? substr($file, 0, -3) : $file;
+            $target = $this->dataPath . '/' . $base;
+            if (!file_exists($target) || filesize($target) === 0) {
+                return true;
+            }
+        }
+
+        $lastTimestamp = $this->getLastDownloadTimestamp();
+        // If metadata file doesn't exist, fallback to mtime of sets.csv
+        if ($lastTimestamp === null) {
+            $setsTarget = $this->dataPath . '/sets.csv';
+            if (file_exists($setsTarget) && filesize($setsTarget) > 0) {
+                $lastTimestamp = (int) filemtime($setsTarget);
+            }
+        }
+
+        if ($lastTimestamp === null) {
+            return true;
+        }
+
+        return (time() - $lastTimestamp) >= self::CACHE_TTL_SECONDS;
+    }
+
     /**
      * Download and extract all Rebrickable CSV dumps.
      *
@@ -63,8 +115,45 @@ class RebrickableDownloaderService
     {
         $results = [];
         $total = count(self::DUMP_FILES);
-        $current = 0;
 
+        // Check if any file needs downloading
+        $needsDownload = $this->isDownloadNeeded($force);
+
+        if (!$needsDownload) {
+            $current = 0;
+            foreach (self::DUMP_FILES as $file) {
+                ++$current;
+                $base = str_ends_with($file, '.gz') ? substr($file, 0, -3) : $file;
+                $target = $this->dataPath . '/' . $base;
+                $success = file_exists($target) && filesize($target) > 0;
+                $results[$file] = $success;
+                if ($onProgress !== null) {
+                    $onProgress($file, 'start', $current, $total);
+                    $onProgress($file, 'skipped', $current, $total);
+                }
+            }
+            return $results;
+        }
+
+        // Try fast atomic all_downloads.zip first when a download is needed
+        if ($this->downloadZip($force)) {
+            $current = 0;
+            foreach (self::DUMP_FILES as $file) {
+                ++$current;
+                $base = str_ends_with($file, '.gz') ? substr($file, 0, -3) : $file;
+                $target = $this->dataPath . '/' . $base;
+                $success = file_exists($target) && filesize($target) > 0;
+                $results[$file] = $success;
+                if ($onProgress !== null) {
+                    $onProgress($file, 'start', $current, $total);
+                    $onProgress($file, $success ? 'done' : 'failed', $current, $total);
+                }
+            }
+            return $results;
+        }
+
+        // Fallback: download individual .gz files
+        $current = 0;
         foreach (self::DUMP_FILES as $file) {
             ++$current;
             if ($onProgress !== null) {
@@ -92,6 +181,62 @@ class RebrickableDownloaderService
     }
 
     /**
+     * Download and extract all_downloads.zip containing all Rebrickable CSVs.
+     */
+    public function downloadZip(bool $force = false): bool
+    {
+        if (!class_exists(\ZipArchive::class)) {
+            return false;
+        }
+
+        if (!is_dir($this->dataPath) && (!mkdir($this->dataPath, 0755, true) && !is_dir($this->dataPath))) {
+            return false;
+        }
+
+        $targetZipPath = $this->dataPath . '/all_downloads.zip.tmp';
+        $url = self::BASE_URL . 'all_downloads.zip';
+
+        $this->logger->info('Attempting bulk download from all_downloads.zip', ['url' => $url]);
+
+        try {
+            $downloaded = $this->saveUrlToPath($url, $targetZipPath);
+            if (!$downloaded || !file_exists($targetZipPath)) {
+                $this->cleanUpFiles([$targetZipPath]);
+                return false;
+            }
+
+            $zip = new \ZipArchive();
+            if ($zip->open($targetZipPath) !== true) {
+                $this->cleanUpFiles([$targetZipPath]);
+                return false;
+            }
+
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $stat = $zip->statIndex($i);
+                if ($stat === false) {
+                    continue;
+                }
+                $filename = basename($stat['name']);
+                if (str_ends_with($filename, '.csv')) {
+                    $zip->extractTo($this->dataPath, $stat['name']);
+                }
+            }
+            $zip->close();
+            $this->cleanUpFiles([$targetZipPath]);
+
+            $this->recordDownloadSuccess();
+            $this->logger->info('Successfully extracted all CSV dumps from all_downloads.zip');
+            return true;
+        } catch (Throwable $e) {
+            $this->logger->warning('Failed to download or extract all_downloads.zip, will fallback to individual files', [
+                'error' => $e->getMessage(),
+            ]);
+            $this->cleanUpFiles([$targetZipPath]);
+            return false;
+        }
+    }
+
+    /**
      * Download and decompress a single Rebrickable dump file.
      *
      * @param string $filename Name of the file, e.g. 'sets.csv.gz' or 'sets.csv'
@@ -115,13 +260,14 @@ class RebrickableDownloaderService
 
         $targetCsvPath = $this->dataPath . '/' . $csvFilename;
 
-        // Skip if not forced and file exists and is less than 24 hours old with non-zero size
+        // Skip if not forced and file exists and is less than CACHE_TTL_SECONDS old with non-zero size
         if (!$force && file_exists($targetCsvPath) && filesize($targetCsvPath) > 0) {
-            $mtime = (int) filemtime($targetCsvPath);
-            if ((time() - $mtime) < 86400) {
+            $lastDownload = $this->getLastDownloadTimestamp() ?? (int) filemtime($targetCsvPath);
+            if ((time() - $lastDownload) < self::CACHE_TTL_SECONDS) {
                 $this->logger->info('File is already up to date, skipping download', [
                     'file' => $csvFilename,
                     'path' => $targetCsvPath,
+                    'age_seconds' => time() - $lastDownload,
                 ]);
                 return true;
             }
@@ -162,6 +308,7 @@ class RebrickableDownloaderService
 
             $this->cleanUpFiles([$tempGzPath]);
 
+            $this->recordDownloadSuccess();
             $this->logger->info('Successfully downloaded and extracted Rebrickable dump', [
                 'file' => $csvFilename,
                 'bytes' => filesize($targetCsvPath),
@@ -183,10 +330,20 @@ class RebrickableDownloaderService
      */
     private function saveUrlToPath(string $url, string $destinationPath): bool
     {
+        $options = [
+            'timeout' => 300,
+            'headers' => [
+                'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+                'Accept' => '*/*',
+            ],
+        ];
+
+        if (class_exists(\Composer\CaBundle\CaBundle::class)) {
+            $options['cafile'] = \Composer\CaBundle\CaBundle::getSystemCaRootBundlePath();
+        }
+
         if ($this->httpClient instanceof \Symfony\Contracts\HttpClient\HttpClientInterface) {
-            $response = $this->httpClient->request('GET', $url, [
-                'timeout' => 120,
-            ]);
+            $response = $this->httpClient->request('GET', $url, $options);
 
             $statusCode = $response->getStatusCode();
             if ($statusCode !== 200) {
@@ -213,11 +370,18 @@ class RebrickableDownloaderService
             return true;
         }
 
+        $sslOptions = [];
+        if (class_exists(\Composer\CaBundle\CaBundle::class)) {
+            $sslOptions['cafile'] = \Composer\CaBundle\CaBundle::getSystemCaRootBundlePath();
+        }
+
         $context = stream_context_create([
             'http' => [
-                'timeout' => 120,
-                'user_agent' => 'PieceAnalyzer/1.0 (Symfony)',
+                'timeout' => 300,
+                'user_agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+                'header' => "Accept: */*\r\n",
             ],
+            'ssl' => $sslOptions,
         ]);
 
         $src = @fopen($url, 'rb', false, $context);

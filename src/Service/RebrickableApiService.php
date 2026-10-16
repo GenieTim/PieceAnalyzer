@@ -135,6 +135,13 @@ class RebrickableApiService implements LegoLoaderServiceInterface
         $pieces = $this->getPiecesOfSet($new_set);
         $new_set->setPieces($pieces);
 
+        $numParts = $details['num_parts'] ?? null;
+        if ($numParts !== null && is_numeric($numParts)) {
+            $new_set->setPieceCount((int) $numParts);
+        } else {
+            $new_set->getPieceCount();
+        }
+
         return $new_set;
     }
 

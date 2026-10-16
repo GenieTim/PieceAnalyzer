@@ -281,13 +281,15 @@ class CsvLegoLoaderService implements LegoLoaderServiceInterface, PriceLoaderSer
 
         $new_set->setImageUrl(isset($set['image_url']) ? (string) $set['image_url'] : null);
 
+        $pieces = $this->getPiecesOfSet($new_set);
+        $new_set->setPieces($pieces);
+
         $numParts = $set['num_parts'] ?? $set[self::SET_NUM_PARTS_KEY] ?? null;
         if ($numParts !== null && is_numeric($numParts)) {
             $new_set->setPieceCount((int) $numParts);
+        } else {
+            $new_set->getPieceCount();
         }
-
-        $pieces = $this->getPiecesOfSet($new_set);
-        $new_set->setPieces($pieces);
 
         return $new_set;
     }

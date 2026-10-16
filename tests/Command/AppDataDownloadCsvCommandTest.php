@@ -20,6 +20,7 @@ class AppDataDownloadCsvCommandTest extends TestCase
             'parts.csv.gz',
         ]);
         $downloader->method('getDataPath')->willReturn('/app/data');
+        $downloader->method('isDownloadNeeded')->willReturn(true);
         $downloader->method('downloadAll')->willReturnCallback(function (bool $force, ?callable $onProgress = null): array {
             if ($onProgress !== null) {
                 $onProgress('sets.csv.gz', 'done', 1, 2);
@@ -44,11 +45,32 @@ class AppDataDownloadCsvCommandTest extends TestCase
         $this->assertStringContainsString('All Rebrickable CSV dumps downloaded and decompressed successfully', $display);
     }
 
+    public function testExecuteSkippedWhenUpToDate(): void
+    {
+        $downloader = $this->createMock(RebrickableDownloaderService::class);
+        $downloader->method('getDumpFiles')->willReturn(['sets.csv.gz']);
+        $downloader->method('getDataPath')->willReturn('/app/data');
+        $downloader->method('isDownloadNeeded')->willReturn(false);
+        $downloader->method('getLastDownloadTimestamp')->willReturn(time() - 3600);
+        $downloader->method('downloadAll')->willReturn(['sets.csv.gz' => true]);
+
+        $command = new AppDataDownloadCsvCommand($downloader);
+        $tester = new CommandTester($command);
+
+        $exitCode = $tester->execute([]);
+
+        $this->assertSame(Command::SUCCESS, $exitCode);
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('SKIPPED (cached)', $display);
+        $this->assertStringContainsString('All Rebrickable CSV dumps are up to date', $display);
+    }
+
     public function testExecuteWithForceOption(): void
     {
         $downloader = $this->createMock(RebrickableDownloaderService::class);
         $downloader->method('getDumpFiles')->willReturn(['sets.csv.gz']);
         $downloader->method('getDataPath')->willReturn('/app/data');
+        $downloader->method('isDownloadNeeded')->willReturn(true);
         $downloader->expects($this->once())
             ->method('downloadAll')
             ->with($this->equalTo(true), $this->anything())

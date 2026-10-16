@@ -19,7 +19,8 @@
         "dev-server": "encore dev-server",
         "dev": "encore dev",
         "watch": "encore dev --watch",
-        "build": "encore production"
+        "build:extension": "node scripts/build-extension.js",
+        "build": "encore production && node scripts/build-extension.js"
     },
     "dependencies": {
         "@popperjs/core": "^2.11.8"
