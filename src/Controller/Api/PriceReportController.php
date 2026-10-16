@@ -21,6 +21,8 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class PriceReportController extends AbstractController
 {
+    public const int MAX_BATCH_SIZE = 1000;
+
     public function __construct(private readonly RateLimiterFactory $priceReportLimiter)
     {
     }
@@ -85,8 +87,12 @@ class PriceReportController extends AbstractController
             return $this->jsonError('No price report data provided.', 400, $request);
         }
 
-        if (count($rawItems) > 100) {
-            return $this->jsonError('Batch exceeds maximum limit of 100 items per request.', 400, $request);
+        if (count($rawItems) > self::MAX_BATCH_SIZE) {
+            return $this->jsonError(
+                sprintf('Batch exceeds maximum limit of %d items per request.', self::MAX_BATCH_SIZE),
+                400,
+                $request
+            );
         }
 
         $results = [];

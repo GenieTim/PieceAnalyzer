@@ -661,7 +661,7 @@ class PriceReportControllerTest extends WebTestCase
 
         try {
             $items = [];
-            for ($i = 0; $i < 101; $i++) {
+            for ($i = 0; $i < \App\Controller\Api\PriceReportController::MAX_BATCH_SIZE + 1; $i++) {
                 $items[] = [
                     'setNo' => '10294',
                     'retailer' => 'galaxus',
@@ -684,7 +684,10 @@ class PriceReportControllerTest extends WebTestCase
             $this->assertResponseStatusCodeSame(400);
             $data = json_decode((string) $client->getResponse()->getContent(), true);
             $this->assertFalse($data['success']);
-            $this->assertSame('Batch exceeds maximum limit of 100 items per request.', $data['error']);
+            $this->assertSame(
+                sprintf('Batch exceeds maximum limit of %d items per request.', \App\Controller\Api\PriceReportController::MAX_BATCH_SIZE),
+                $data['error']
+            );
         } finally {
             $cleanEm = static::getContainer()->get(EntityManagerInterface::class);
             $u = $cleanEm->getRepository(User::class)->findOneBy(['email' => $email]);
