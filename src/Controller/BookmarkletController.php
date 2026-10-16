@@ -24,7 +24,7 @@ class BookmarkletController extends AbstractController
 
     #[Route(path: '/bookmarklet', name: 'bookmarklet')]
     #[IsGranted('ROLE_USER')]
-    public function index(): Response
+    public function index(EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
         if (!$user instanceof User) {
@@ -33,6 +33,13 @@ class BookmarkletController extends AbstractController
         $apiUrl = $this->generateUrl('api_price_report', [], UrlGeneratorInterface::ABSOLUTE_URL);
         $submitUrl = $this->generateUrl('bookmarklet_submit', [], UrlGeneratorInterface::ABSOLUTE_URL);
         $apiToken = $user->getApiToken();
+
+        if ($apiToken === '') {
+            $user->regenerateApiToken();
+            $em->persist($user);
+            $em->flush();
+            $apiToken = $user->getApiToken();
+        }
 
         $bookmarkletHref = $this->bookmarkletGenerator->generateBookmarklet($apiUrl, $apiToken, $submitUrl);
 
@@ -84,53 +91,7 @@ class BookmarkletController extends AbstractController
         EntityManagerInterface $em,
         \Symfony\Component\RateLimiter\RateLimiterFactory $priceReportLimiter
     ): Response {
-        // 1. Authenticate user: Token or active session
-        $token = (string) ($request->query->get('token') ?? $request->request->get('token') ?? '');
-        $user = null;
-
-        if ($token !== '') {
-            $user = $em->getRepository(User::class)->findOneBy(['apiToken' => $token]);
-        }
-
-        if (!$user instanceof User && $this->getUser() instanceof User) {
-            $user = $this->getUser();
-        }
-
-        if (!$user instanceof User) {
-            return $this->render('bookmarklet/submit.html.twig', [
-                'success' => false,
-                'recorded' => [],
-                'errors' => ['Unauthorized. A valid contributor API token or active login session is required.'],
-            ], new Response('', Response::HTTP_UNAUTHORIZED));
-        }
-
-        if ($user->isApiTokenExpired()) {
-            return $this->render('bookmarklet/submit.html.twig', [
-                'success' => false,
-                'recorded' => [],
-                'errors' => ['Contributor API token has expired. Please regenerate your token in your profile.'],
-            ], new Response('', Response::HTTP_UNAUTHORIZED));
-        }
-
-        if (!$user->isEmailVerified()) {
-            return $this->render('bookmarklet/submit.html.twig', [
-                'success' => false,
-                'recorded' => [],
-                'errors' => ['Email address must be verified before reporting prices.'],
-            ], new Response('', Response::HTTP_FORBIDDEN));
-        }
-
-        // 2. Rate limit
-        $limiter = $priceReportLimiter->create($user->getUserIdentifier());
-        if (!$limiter->consume()->isAccepted()) {
-            return $this->render('bookmarklet/submit.html.twig', [
-                'success' => false,
-                'recorded' => [],
-                'errors' => ['Rate limit exceeded (max 10 price reports per minute). Please wait a moment.'],
-            ], new Response('', Response::HTTP_TOO_MANY_REQUESTS));
-        }
-
-        // 3. Extract items payload
+        // 1. Extract items payload early so token inside JSON payload is also accessible
         $rawPayload = (string) ($request->request->get('payload') ?? $request->query->get('data') ?? '');
         $data = [];
         if ($rawPayload !== '') {
@@ -148,6 +109,69 @@ class BookmarkletController extends AbstractController
                     $data = $decoded;
                 }
             }
+        }
+
+        // 2. Authenticate user: Token (query, post, payload, header) or active session
+        $token = (string) (
+            $request->query->get('token')
+            ?? $request->request->get('token')
+            ?? ($data['token'] ?? null)
+            ?? ''
+        );
+
+        if ($token === '') {
+            $authHeader = (string) $request->headers->get('Authorization', '');
+            if (str_starts_with($authHeader, 'Bearer ')) {
+                $token = substr($authHeader, 7);
+            }
+        }
+        $token = trim($token);
+
+        $user = null;
+        if ($token !== '') {
+            $user = $em->getRepository(User::class)->findOneBy(['apiToken' => $token]);
+        }
+
+        if (!$user instanceof User && $this->getUser() instanceof User) {
+            $user = $this->getUser();
+        }
+
+        if (!$user instanceof User) {
+            return $this->render('bookmarklet/submit.html.twig', [
+                'success' => false,
+                'recorded' => [],
+                'errors' => ['Unauthorized. A valid contributor API token or active login session is required.'],
+                'rawPayload' => $rawPayload,
+            ], new Response('', Response::HTTP_UNAUTHORIZED));
+        }
+
+        if ($user->isApiTokenExpired()) {
+            return $this->render('bookmarklet/submit.html.twig', [
+                'success' => false,
+                'recorded' => [],
+                'errors' => ['Contributor API token has expired. Please regenerate your token in your profile.'],
+                'rawPayload' => $rawPayload,
+            ], new Response('', Response::HTTP_UNAUTHORIZED));
+        }
+
+        if (!$user->isEmailVerified()) {
+            return $this->render('bookmarklet/submit.html.twig', [
+                'success' => false,
+                'recorded' => [],
+                'errors' => ['Email address must be verified before reporting prices.'],
+                'rawPayload' => $rawPayload,
+            ], new Response('', Response::HTTP_FORBIDDEN));
+        }
+
+        // 3. Rate limit
+        $limiter = $priceReportLimiter->create($user->getUserIdentifier());
+        if (!$limiter->consume()->isAccepted()) {
+            return $this->render('bookmarklet/submit.html.twig', [
+                'success' => false,
+                'recorded' => [],
+                'errors' => ['Rate limit exceeded (max 10 price reports per minute). Please wait a moment.'],
+                'rawPayload' => $rawPayload,
+            ], new Response('', Response::HTTP_TOO_MANY_REQUESTS));
         }
 
         if ($data === [] && $request->get('setNo')) {

@@ -57,9 +57,10 @@ class BookmarkletGenerator
     var apiToken = {$encodedApiToken};
 
     function submitViaPopup(targetUrl, payload) {
+        var token = (payload && payload.token) ? payload.token : (apiToken || '');
         var jsonStr = JSON.stringify(payload);
         var urlWithData = targetUrl + (targetUrl.indexOf('?') === -1 ? '?' : '&')
-            + 'token=' + encodeURIComponent(payload.token || apiToken || '')
+            + 'token=' + encodeURIComponent(token)
             + '&data=' + encodeURIComponent(jsonStr);
 
         if (urlWithData.length < 2040) {
@@ -71,13 +72,21 @@ class BookmarkletGenerator
         window.open('about:blank', popupName, 'width=560,height=480,resizable=yes,scrollbars=yes');
         var form = document.createElement('form');
         form.method = 'POST';
-        form.action = targetUrl;
+        form.action = targetUrl + (targetUrl.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(token);
         form.target = popupName;
-        var input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'payload';
-        input.value = jsonStr;
-        form.appendChild(input);
+
+        var tokenInput = document.createElement('input');
+        tokenInput.type = 'hidden';
+        tokenInput.name = 'token';
+        tokenInput.value = token;
+        form.appendChild(tokenInput);
+
+        var payloadInput = document.createElement('input');
+        payloadInput.type = 'hidden';
+        payloadInput.name = 'payload';
+        payloadInput.value = jsonStr;
+        form.appendChild(payloadInput);
+
         document.body.appendChild(form);
         form.submit();
         setTimeout(function(){

@@ -199,6 +199,155 @@ class BookmarkletControllerTest extends WebTestCase
         $em->flush();
     }
 
+    public function testSubmitPostWithTokenInPayload(): void
+    {
+        $client = static::createClient();
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $user = new User('post_submitter_' . $suffix . '@example.com', 'password');
+        $token = 'tok_' . bin2hex(random_bytes(16));
+        $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
+        $em->persist($user);
+
+        $set = new \App\Entity\Set();
+        $set->setNo('8002-' . $suffix);
+        $set->setName('Submit POST Test Set');
+        $set->setPieceCount(150);
+        $set->setSource(\App\Entity\Set::SOURCE_REBRICKABLE);
+        $em->persist($set);
+        $em->flush();
+
+        $payload = [
+            'items' => [
+                [
+                    'setNo' => '8002-' . $suffix,
+                    'retailer' => 'galaxus',
+                    'amountCents' => 24900,
+                    'currency' => 'CHF',
+                ],
+            ],
+            'token' => $token,
+        ];
+
+        // Simulate form POST from cross-origin popup without session cookie
+        $client->request(
+            Request::METHOD_POST,
+            '/en/bookmarklet/submit',
+            [
+                'payload' => json_encode($payload),
+            ]
+        );
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('h1', 'Price Recorded!');
+        $this->assertSelectorTextContains('.list-group', '#8002-' . $suffix);
+        $this->assertSelectorTextContains('.list-group', 'CHF 249.00');
+
+        // Cleanup
+        $em->clear();
+        $prices = $em->getRepository(\App\Entity\SetPrice::class)->findBy(['amount' => 24900]);
+        foreach ($prices as $p) {
+            $em->remove($p);
+        }
+        $reloadedSet = $em->getRepository(\App\Entity\Set::class)->findOneBy(['no' => '8002-' . $suffix]);
+        if ($reloadedSet) {
+            $em->remove($reloadedSet);
+        }
+        $reloadedUser = $em->getRepository(User::class)->findOneBy(['email' => $user->getEmail()]);
+        if ($reloadedUser) {
+            $em->remove($reloadedUser);
+        }
+        $em->flush();
+    }
+
+    public function testSubmitDirectUnlocalizedRoute(): void
+    {
+        $client = static::createClient();
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $user = new User('direct_submitter_' . $suffix . '@example.com', 'password');
+        $token = 'tok_' . bin2hex(random_bytes(16));
+        $user->setApiToken($token);
+        $user->setIsEmailVerified(true);
+        $em->persist($user);
+
+        $set = new \App\Entity\Set();
+        $set->setNo('8003-' . $suffix);
+        $set->setName('Submit Direct Test Set');
+        $set->setPieceCount(200);
+        $set->setSource(\App\Entity\Set::SOURCE_REBRICKABLE);
+        $em->persist($set);
+        $em->flush();
+
+        $payload = [
+            'setNo' => '8003-' . $suffix,
+            'retailer' => 'brack',
+            'amountCents' => 19900,
+            'currency' => 'CHF',
+            'token' => $token,
+        ];
+
+        // Request unlocalized /bookmarklet/submit
+        $client->request(
+            Request::METHOD_POST,
+            '/bookmarklet/submit',
+            [
+                'token' => $token,
+                'payload' => json_encode($payload),
+            ]
+        );
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('h1', 'Price Recorded!');
+        $this->assertSelectorTextContains('.list-group', '#8003-' . $suffix);
+
+        // Cleanup
+        $em->clear();
+        $prices = $em->getRepository(\App\Entity\SetPrice::class)->findBy(['amount' => 19900]);
+        foreach ($prices as $p) {
+            $em->remove($p);
+        }
+        $reloadedSet = $em->getRepository(\App\Entity\Set::class)->findOneBy(['no' => '8003-' . $suffix]);
+        if ($reloadedSet) {
+            $em->remove($reloadedSet);
+        }
+        $reloadedUser = $em->getRepository(User::class)->findOneBy(['email' => $user->getEmail()]);
+        if ($reloadedUser) {
+            $em->remove($reloadedUser);
+        }
+        $em->flush();
+    }
+
+    public function testIndexAutoGeneratesTokenIfEmpty(): void
+    {
+        $client = static::createClient();
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $user = new User('empty_tok_' . $suffix . '@example.com', 'password');
+        $user->setApiToken('');
+        $em->persist($user);
+        $em->flush();
+
+        $client->loginUser($user);
+        $client->request(Request::METHOD_GET, '/en/bookmarklet');
+
+        $this->assertResponseIsSuccessful();
+
+        $em->clear();
+        $reloadedUser = $em->getRepository(User::class)->findOneBy(['email' => $user->getEmail()]);
+        $this->assertNotNull($reloadedUser);
+        $this->assertNotEmpty($reloadedUser->getApiToken());
+        $this->assertSame(64, strlen((string) $reloadedUser->getApiToken()));
+
+        // Cleanup
+        $em->remove($reloadedUser);
+        $em->flush();
+    }
+
     public function testDownloadChromeExtension(): void
     {
         $client = static::createClient();

@@ -92,7 +92,7 @@
                 </div>
                 <h1 class="h4 fw-bold mb-2">Price Submission Notice</h1>
                 
-                <div class="alert alert-danger small text-start py-2 px-3 mb-4">
+                <div class="alert alert-danger small text-start py-2 px-3 mb-3">
                     {% for err in errors %}
                         <div>{{ err }}</div>
                     {% else %}
@@ -100,9 +100,30 @@
                     {% endfor %}
                 </div>
 
+                {% set isUnauthorized = false %}
+                {% for err in errors %}
+                    {% if 'Unauthorized' in err or 'token' in err %}
+                        {% set isUnauthorized = true %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if isUnauthorized and rawPayload is defined and rawPayload %}
+                    <form method="post" action="{{ path('bookmarklet_submit') }}" class="mb-4 text-start bg-light p-3 rounded border">
+                        <input type="hidden" name="payload" value="{{ rawPayload }}">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Enter your Contributor API Token to submit:</label>
+                        <div class="input-group input-group-sm mb-2">
+                            <input type="text" name="token" class="form-control font-monospace" placeholder="Paste your 64-character token" required autofocus>
+                            <button class="btn btn-primary fw-semibold" type="submit">Submit Price</button>
+                        </div>
+                        <div class="small text-muted">
+                            You can copy your token from <a href="{{ path('bookmarklet') }}" target="_blank">Piece Analyzer Bookmarklet Settings</a>.
+                        </div>
+                    </form>
+                {% endif %}
+
                 <div class="d-flex justify-content-center gap-2">
                     <button class="btn btn-secondary btn-sm px-4" onclick="window.close()">Close</button>
-                    <a href="{{ path('bookmarklet') }}" target="_blank" class="btn btn-primary btn-sm">Bookmarklet Settings</a>
+                    <a href="{{ path('bookmarklet') }}" target="_blank" class="btn btn-outline-primary btn-sm">Bookmarklet Settings</a>
                 </div>
             {% endif %}
         </div>

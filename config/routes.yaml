@@ -1,3 +1,14 @@
 root:
     path: /
     controller: App\Controller\IndexController::root
+
+bookmarklet_submit_direct:
+    path: /bookmarklet/submit
+    controller: App\Controller\BookmarkletController::submit
+    methods: [GET, POST]
+
+bookmarklet_extension_download_direct:
+    path: /bookmarklet/download/{browser}
+    controller: App\Controller\BookmarkletController::downloadExtension
+    defaults:
+        browser: 'chrome'
