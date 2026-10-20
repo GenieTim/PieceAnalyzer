@@ -83,6 +83,7 @@ services:
     restart: unless-stopped
     environment:
       PORT: 8000
+      MOZ_DISABLE_CONTENT_SANDBOX: "1"
     networks:
       - default
     healthcheck:
