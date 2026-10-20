@@ -137,7 +137,8 @@ def scrape_url(target_url, api_url=None, api_token=None, options=None):
     # Launch browser
     try:
         from camoufox.sync_api import Camoufox
-        with Camoufox(headless=options.get("headless", True), locale="de-CH") as page:
+        with Camoufox(headless=options.get("headless", True), locale="de-CH") as browser:
+            page = browser.new_page()
             page.goto(target_url, timeout=45000, wait_until="domcontentloaded")
             time.sleep(2.0)
             page.add_script_tag(content=extractor_source)
@@ -186,6 +187,11 @@ def scrape_url(target_url, api_url=None, api_token=None, options=None):
                 with urllib.request.urlopen(req) as resp:
                     res_body = resp.read().decode("utf-8")
                     print(f"[Scraper] API Result: {res_body}")
+
+            try:
+                page.close()
+            except Exception:
+                pass
 
             return unique_items
     except ImportError:

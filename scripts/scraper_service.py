@@ -55,6 +55,10 @@ class ScraperHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'status': 'success', 'items': items}).encode('utf-8'))
             except Exception as e:
+                import traceback
+                target = data.get('url') if 'data' in locals() and isinstance(data, dict) else 'unknown'
+                sys.stderr.write(f"[ScraperDaemon] Error processing /scrape for {target}: {e}\n")
+                traceback.print_exc(file=sys.stderr)
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()

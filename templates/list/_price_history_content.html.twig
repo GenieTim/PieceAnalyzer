@@ -182,7 +182,16 @@
     {% endif %}
 
     <!-- Price Recordings Table -->
-    <h6 class="fw-bold mb-2">{{ 'set.recorded_sources'|trans({'%count%': prices|length}) }}</h6>
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="fw-bold mb-0">
+            {{ 'set.recorded_sources'|trans({'%count%': prices|length}) }}
+            {% if excludeUsed|default(false) %}
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-normal ms-2" style="font-size: 0.75rem;">
+                    {{ 'filter.exclude_used_badge'|trans }}
+                </span>
+            {% endif %}
+        </h6>
+    </div>
     {% if prices is empty %}
         <div class="alert alert-light border text-center py-3 text-secondary">
             {{ 'set.no_prices_yet'|trans }}
@@ -199,6 +208,9 @@
                         <th class="py-2 text-center">{{ 'set.status'|trans }}</th>
                         <th class="py-2 d-none d-sm-table-cell">{{ 'set.provider'|trans }}</th>
                         <th class="py-2 text-end pe-3">{{ 'set.recorded'|trans }}</th>
+                        {% if app.user %}
+                            <th class="py-2 text-center" style="width: 44px;"></th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody class="small font-monospace">
@@ -248,12 +260,24 @@
                                     {{ p.provider.label }}
                                 {% endif %}
                                 {% if p.submittedBy %}
-                                    <span class="badge bg-light text-secondary border ms-1">{{ 'set.by_user'|trans({'%user%': p.submittedBy.userIdentifier|split('@')[0]}) }}</span>
+                                    <span class="badge bg-light text-secondary border ms-1">{{ 'set.by_user'|trans({'%user%': p.submittedBy.displayName}) }}</span>
                                 {% endif %}
                             </td>
                             <td class="text-end pe-3 text-body-secondary">
                                 {{ p.recordedAt|date('Y-m-d H:i') }}
                             </td>
+                            {% if app.user %}
+                                <td class="text-center px-1">
+                                    {% if p.submittedBy and p.submittedBy.id == app.user.id %}
+                                        <form action="{{ path('price_delete', {'id': p.id}) }}" method="post" class="d-inline" onsubmit="return confirm('{{ 'set.confirm_delete_price'|trans|e('js') }}');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete_price_' ~ p.id) }}">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1 border-0" title="{{ 'set.delete_own_price'|trans }}" aria-label="{{ 'set.delete_own_price'|trans }}">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                 </tbody>

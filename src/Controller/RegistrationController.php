@@ -66,8 +66,12 @@ class RegistrationController extends AbstractController
 
             $plainPassword = (string) $form->get('plainPassword')->getData();
             $currency = (string) $form->get('preferredCurrency')->getData();
+            $username = trim((string) ($form->get('username')->getData() ?? ''));
 
             $user = new User($email, '', false);
+            if ($username !== '') {
+                $user->setUsername($username);
+            }
             $user->setPassword($passwordHasher->hashPassword($user, $plainPassword));
             $user->setPreferredCurrency($currency);
             $token = $user->generateEmailVerificationToken(24);

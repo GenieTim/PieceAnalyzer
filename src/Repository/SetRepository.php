@@ -19,7 +19,10 @@ use Doctrine\Persistence\ManagerRegistry;
 class SetRepository extends ServiceEntityRepository
 {
     /** @var string[] */
-    private array $allowedCriteria = ['color', 'category', 'type', 'part', 'partNo', 'year', 'minYear', 'maxYear'];
+    private array $allowedCriteria = [
+        'color', 'category', 'type', 'part', 'partNo', 'year', 'minYear', 'maxYear',
+        'set', 'setId', 'setNo', 'name', 'excludeUsed',
+    ];
 
     public function __construct(
         ManagerRegistry $registry,
@@ -31,7 +34,8 @@ class SetRepository extends ServiceEntityRepository
     private function getMostValuableQueryBuilder(
         int $limit = 10,
         ?User $currentUser = null,
-        ?string $targetCurrency = null
+        ?string $targetCurrency = null,
+        bool $excludeUsed = false
     ): QueryBuilder {
         $qb = $this->createQueryBuilder('s');
         $target = $targetCurrency !== null
@@ -57,22 +61,42 @@ class SetRepository extends ServiceEntityRepository
             ELSE ((sp.amount / 100.0) * $chfRate)
         END)";
 
+        if ($excludeUsed) {
+            $qb->leftJoin('s.prices', 'sp_valid', 'WITH', "sp_valid.status = :verifiedStatus AND (sp_valid.itemCondition IS NULL OR sp_valid.itemCondition != 'used')");
+            $qb->setParameter('verifiedStatus', PriceVerificationStatus::VERIFIED);
+            $normValidPrice = "(CASE
+                WHEN sp_valid.currency = 'EUR' THEN ((sp_valid.amount / 100.0) * $eurRate)
+                WHEN sp_valid.currency = 'USD' THEN ((sp_valid.amount / 100.0) * $usdRate)
+                WHEN sp_valid.currency = 'GBP' THEN ((sp_valid.amount / 100.0) * $gbpRate)
+                ELSE ((sp_valid.amount / 100.0) * $chfRate)
+            END)";
+            $normGeneralPrice = "MIN($normValidPrice)";
+            $unpricedCondition = 'MIN(sp_valid.amount) IS NULL';
+        } else {
+            $normGeneralPrice = $normPrice;
+            $unpricedCondition = '(s.price IS NULL OR s.price = 0)';
+        }
+
         if ($currentUser instanceof User && $currentUser->getId() !== null) {
-            $qb->leftJoin('s.prices', 'sp', 'WITH', 'sp.submittedBy = :currentUser AND sp.status != :rejectedStatus');
+            $userPriceCondition = 'sp.submittedBy = :currentUser AND sp.status != :rejectedStatus';
+            if ($excludeUsed) {
+                $userPriceCondition .= " AND (sp.itemCondition IS NULL OR sp.itemCondition != 'used')";
+            }
+            $qb->leftJoin('s.prices', 'sp', 'WITH', $userPriceCondition);
             $distinctPriceFactor = '(CASE WHEN COUNT(DISTINCT sp.id) > 0 THEN COUNT(DISTINCT sp.id) ELSE 1 END)';
             $qb->addSelect("(SUM(p.count) / $distinctPriceFactor) AS HIDDEN pieceCount");
-            $pricePerPieceExpr = "((COALESCE(MIN($normUserPrice), $normPrice)) "
+            $pricePerPieceExpr = "((COALESCE(MIN($normUserPrice), $normGeneralPrice)) "
                 . "/ (SUM(p.count) / $distinctPriceFactor)) AS HIDDEN pricePerPiece";
             $qb->addSelect($pricePerPieceExpr);
-            $unpricedExpr = '(CASE WHEN (s.price IS NULL OR s.price = 0) AND MIN(sp.amount) IS NULL '
+            $unpricedExpr = "(CASE WHEN $unpricedCondition AND MIN(sp.amount) IS NULL "
                 . 'THEN 1 ELSE 0 END) AS HIDDEN isUnpriced';
             $qb->addSelect($unpricedExpr);
             $qb->setParameter('currentUser', $currentUser);
             $qb->setParameter('rejectedStatus', PriceVerificationStatus::REJECTED);
         } else {
             $qb->addSelect('SUM(p.count) AS HIDDEN pieceCount');
-            $qb->addSelect("($normPrice / SUM(p.count)) AS HIDDEN pricePerPiece");
-            $qb->addSelect('(CASE WHEN s.price IS NULL OR s.price = 0 THEN 1 ELSE 0 END) AS HIDDEN isUnpriced');
+            $qb->addSelect("($normGeneralPrice / SUM(p.count)) AS HIDDEN pricePerPiece");
+            $qb->addSelect("(CASE WHEN $unpricedCondition THEN 1 ELSE 0 END) AS HIDDEN isUnpriced");
         }
 
         $qb->leftJoin('s.pieces', 'p');
@@ -94,9 +118,10 @@ class SetRepository extends ServiceEntityRepository
         array $criteria = [],
         int $limit = 10,
         ?User $currentUser = null,
-        ?string $targetCurrency = null
+        ?string $targetCurrency = null,
+        bool $excludeUsed = false
     ): array {
-        return $this->getMostValuableByQuery($criteria, $limit, $currentUser, $targetCurrency)->getResult();
+        return $this->getMostValuableByQuery($criteria, $limit, $currentUser, $targetCurrency, $excludeUsed)->getResult();
     }
 
     /**
@@ -106,9 +131,41 @@ class SetRepository extends ServiceEntityRepository
         array $criteria = [],
         int $limit = 0,
         ?User $currentUser = null,
-        ?string $targetCurrency = null
+        ?string $targetCurrency = null,
+        bool $excludeUsed = false
     ): Query {
-        $qb = $this->getMostValuableQueryBuilder($limit, $currentUser, $targetCurrency);
+        if (isset($criteria['excludeUsed'])) {
+            $excludeUsed = (bool) $criteria['excludeUsed'];
+        }
+
+        $qb = $this->getMostValuableQueryBuilder($limit, $currentUser, $targetCurrency, $excludeUsed);
+
+        $setFilter = isset($criteria['setId']) && $criteria['setId'] !== '' && $criteria['setId'] !== null
+            ? trim((string) $criteria['setId'])
+            : (isset($criteria['set']) && $criteria['set'] !== '' && $criteria['set'] !== null
+                ? trim((string) $criteria['set'])
+                : (isset($criteria['setNo']) && $criteria['setNo'] !== '' && $criteria['setNo'] !== null
+                    ? trim((string) $criteria['setNo'])
+                    : ''));
+
+        if ($setFilter !== '') {
+            if (ctype_digit($setFilter)) {
+                $qb->andWhere('(s.id = :setIdVal OR s.no = :setNoExact OR s.no LIKE :setNoPrefix)');
+                $qb->setParameter('setIdVal', (int) $setFilter);
+                $qb->setParameter('setNoExact', $setFilter);
+                $qb->setParameter('setNoPrefix', $setFilter . '-%');
+            } else {
+                $qb->andWhere('(s.no = :setNoExact OR s.no LIKE :setNoLike OR LOWER(s.name) LIKE :setNameLike)');
+                $qb->setParameter('setNoExact', $setFilter);
+                $qb->setParameter('setNoLike', '%' . $setFilter . '%');
+                $qb->setParameter('setNameLike', '%' . strtolower($setFilter) . '%');
+            }
+        }
+
+        if (isset($criteria['name']) && trim((string) $criteria['name']) !== '') {
+            $qb->andWhere('LOWER(s.name) LIKE :setNameDirect');
+            $qb->setParameter('setNameDirect', '%' . strtolower(trim((string) $criteria['name'])) . '%');
+        }
 
         $part = isset($criteria['part']) ? trim((string) $criteria['part']) : (isset($criteria['partNo']) ? trim((string) $criteria['partNo']) : '');
         if ($part !== '') {
@@ -141,7 +198,12 @@ class SetRepository extends ServiceEntityRepository
             if (!in_array($key, $this->allowedCriteria, true)) {
                 continue;
             }
-            if ($key === 'part' || $key === 'partNo' || $key === 'year' || $key === 'minYear' || $key === 'maxYear') {
+            if (
+                in_array($key, [
+                'part', 'partNo', 'year', 'minYear', 'maxYear',
+                'set', 'setId', 'setNo', 'name', 'excludeUsed',
+                ], true)
+            ) {
                 continue;
             }
             if ($value === 0 || $value === '0' || $value === null || $value === '') {

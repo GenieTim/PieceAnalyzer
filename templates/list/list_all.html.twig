@@ -5,6 +5,7 @@
 {% block content %}
     <div class="container">
         {% set activePart = criteria.part|default('')|trim %}
+        {% set activeSet = criteria.set|default(criteria.setId|default(criteria.setNo|default('')))|trim %}
         {% set activeColor = criteria.color|default(0) %}
         {% set activeCategory = criteria.category|default(0) %}
         {% set activeMinYear = criteria.minYear|default(criteria.year|default(null)) %}
@@ -18,6 +19,8 @@
                 <p class="text-secondary small mb-0">
                     {% if isTargetPartSearch %}
                         {{ 'explorer.subtitle_part'|trans({'%part%': activePart}) }}
+                    {% elseif activeSet is not empty %}
+                        {{ 'explorer.subtitle_set'|trans({'%set%': activeSet}) }}
                     {% else %}
                         {{ 'explorer.subtitle_default'|trans }}
                     {% endif %}
@@ -36,24 +39,16 @@
             </div>
         </div>
 
-        {% if isTargetPartSearch %}
+        {% if isTargetPartSearch or activeSet is not empty or activeMinYear or activeColor > 0 or activeCategory > 0 or excludeUsed %}
             <div class="alert alert-light border shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 px-3 mb-3">
                 <div class="small">
-                    <strong>{{ 'filter.filtering_for_part'|trans }}</strong>
-                    <span class="badge bg-light text-dark border font-monospace px-2 py-1 ms-1">{{ activePart }}</span>
-                    {% if activeMinYear %}<span class="badge bg-light text-dark border ms-1">{{ 'table.filter_year_badge'|trans({'%year%': activeMinYear}) }}</span>{% endif %}
+                    <strong>{{ 'filter.active_filters'|trans }}</strong>
+                    {% if activeSet is not empty %}<span class="badge bg-light text-dark border font-monospace ms-1">{{ 'table.set_no'|trans }}: {{ activeSet }}</span>{% endif %}
+                    {% if isTargetPartSearch %}<span class="badge bg-light text-dark border font-monospace ms-1">{{ 'filter.filtering_for_part'|trans }} {{ activePart }}</span>{% endif %}
+                    {% if activeMinYear %}<span class="badge bg-light text-dark border ms-1">{{ 'filter.released_in_or_newer'|trans({'%year%': activeMinYear}) }}</span>{% endif %}
                     {% if activeColor > 0 %}<span class="badge bg-light text-dark border ms-1">{{ 'table.filter_color_badge'|trans({'%color%': activeColor}) }}</span>{% endif %}
                     {% if activeCategory > 0 %}<span class="badge bg-light text-dark border ms-1">{{ 'table.filter_category_badge'|trans({'%category%': activeCategory}) }}</span>{% endif %}
-                </div>
-                <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary py-1 px-2">{{ 'filter.clear_part_filter'|trans }}</a>
-            </div>
-        {% elseif activeMinYear %}
-            <div class="alert alert-light border shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 px-3 mb-3">
-                <div class="small">
-                    <strong>{{ 'filter.filtered_by_year'|trans }}</strong>
-                    <span class="badge bg-light text-dark border px-2 py-1 ms-1">{{ 'filter.released_in_or_newer'|trans({'%year%': activeMinYear}) }}</span>
-                    {% if activeColor > 0 %}<span class="badge bg-light text-dark border ms-1">Color #{{ activeColor }}</span>{% endif %}
-                    {% if activeCategory > 0 %}<span class="badge bg-light text-dark border ms-1">Category #{{ activeCategory }}</span>{% endif %}
+                    {% if excludeUsed %}<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1">{{ 'filter.exclude_used_badge'|trans }}</span>{% endif %}
                 </div>
                 <a href="{{ path('filter_items') }}" class="btn btn-sm btn-outline-secondary py-1 px-2">{{ 'filter.clear_filters'|trans }}</a>
             </div>
@@ -123,10 +118,12 @@
                         {% for set in pagination %}
                             {% set totalPieces = set.pieceCount %}
                             {% set targetPieces = isTargetPartSearch ? set.getMatchingPartCount(activePart, activeColor, activeCategory) : totalPieces %}
-                            {% set userPrice = app.user ? set.getUserPrice(app.user, activeCurr) : null %}
-                            {% set rawPrice = userPrice ? userPrice.decimalPrice : set.price %}
-                            {% set rawCurr = userPrice ? userPrice.currency : (set.priceCurrency|default('CHF')) %}
-                            {% set effectivePrice = convert_price(rawPrice, rawCurr, activeCurr) %}
+                            {% set userPrice = app.user ? set.getUserPrice(app.user, activeCurr, null, excludeUsed) : null %}
+                            {% set bestPrice = set.getBestPrice(activeCurr, null, excludeUsed) %}
+                            {% set activePriceObj = userPrice ?: bestPrice %}
+                            {% set rawPrice = activePriceObj ? activePriceObj.decimalPrice : (excludeUsed ? null : set.price) %}
+                            {% set rawCurr = activePriceObj ? activePriceObj.currency : (set.priceCurrency|default('CHF')) %}
+                            {% set effectivePrice = rawPrice is not null ? convert_price(rawPrice, rawCurr, activeCurr) : null %}
                             <tr>
                                 <td class="ps-3 d-none d-md-table-cell">
                                     <span class="font-monospace text-body-secondary small">{{ set.no }}</span>

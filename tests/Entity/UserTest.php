@@ -130,4 +130,33 @@ class UserTest extends TestCase
         $this->assertNull($user->getEmailVerificationTokenExpiresAt());
         $this->assertTrue($user->isEmailVerified());
     }
+
+    public function testUsernameAndDisplayName(): void
+    {
+        $user = new User('lego.master@example.com');
+        $this->assertNull($user->getUsername());
+        // Falls back to email prefix when username is not set
+        $this->assertSame('lego.master', $user->getDisplayName());
+
+        $user->setUsername('BrickBoss');
+        $this->assertSame('BrickBoss', $user->getUsername());
+        $this->assertSame('BrickBoss', $user->getDisplayName());
+
+        // Empty or whitespace username is treated as null
+        $user->setUsername('   ');
+        $this->assertNull($user->getUsername());
+        $this->assertSame('lego.master', $user->getDisplayName());
+    }
+
+    public function testExcludeUsedPricesPreference(): void
+    {
+        $user = new User('used_tester@example.com');
+        $this->assertFalse($user->shouldExcludeUsedPrices());
+
+        $user->setExcludeUsedPrices(true);
+        $this->assertTrue($user->shouldExcludeUsedPrices());
+
+        $user->setExcludeUsedPrices(false);
+        $this->assertFalse($user->shouldExcludeUsedPrices());
+    }
 }

@@ -136,4 +136,30 @@ class AppUserAdminCommandsTest extends KernelTestCase
         $this->assertStringContainsString('EUR', $output);
         $this->assertStringContainsString('USD', $output);
     }
+
+    public function testUserCreateCommandWithUsername(): void
+    {
+        self::bootKernel();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $this->cleanDatabase($em);
+
+        $application = new Application(self::$kernel);
+        $command = $application->find('app:user:create');
+        $tester = new CommandTester($command);
+
+        $tester->execute([
+            'email' => 'create_user@example.com',
+            'password' => 'secretPassword123!',
+            '--username' => 'MyCliUser',
+            '--verified' => true,
+        ]);
+        $tester->assertCommandIsSuccessful();
+
+        $em->clear();
+        $user = $em->getRepository(User::class)->findOneBy(['email' => 'create_user@example.com']);
+        $this->assertNotNull($user);
+        $this->assertSame('MyCliUser', $user->getUsername());
+        $this->assertSame('MyCliUser', $user->getDisplayName());
+        $this->assertTrue($user->isVerifiedContributor());
+    }
 }

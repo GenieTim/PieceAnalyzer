@@ -46,7 +46,7 @@
 								{% if app.user %}
 									<div class="nav-item dropdown">
 										<a class="nav-link dropdown-toggle small text-light text-decoration-none py-1 px-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-											👤 {{ app.user.userIdentifier }}
+											👤 {{ app.user.displayName }}
 										</a>
 										<ul class="dropdown-menu dropdown-menu-end shadow-sm">
 											<li><a class="dropdown-item small" href="{{ path('app_profile') }}">⚙️ {{ 'menu.profile'|trans }}</a></li>

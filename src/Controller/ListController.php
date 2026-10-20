@@ -6,15 +6,21 @@ namespace App\Controller;
 
 use App\Entity\Item;
 use App\Entity\Set;
+use App\Entity\SetPrice;
 use App\Entity\User;
 use App\Form\FilterFormType;
 use App\Repository\SetRepository;
+use App\Service\ExchangeRateService;
+use App\Service\UserPreferencesService;
+use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class ListController extends AbstractController
 {
@@ -37,33 +43,62 @@ class ListController extends AbstractController
         Request $request,
         PaginatorInterface $paginator,
         SetRepository $setRepo,
-        \App\Service\UserPreferencesService $preferencesService
+        UserPreferencesService $preferencesService
     ): Response {
         $form = $this->createForm(FilterFormType::class);
         $form->handleRequest($request);
+
         $criteria = [];
         if ($form->isSubmitted() && $form->isValid()) {
-            $criteria = (array) $form->getData();
-        } elseif (!$form->isSubmitted() && ($request->query->has('part') || $request->query->has('color') || $request->query->has('category') || $request->query->has('minYear') || $request->query->has('year'))) {
-            $minYear = $request->query->has('minYear')
-                ? $request->query->getInt('minYear')
-                : ($request->query->has('year') ? $request->query->getInt('year') : null);
-
-            $criteria = [
-                'part' => $request->query->get('part'),
-                'color' => $request->query->getInt('color'),
-                'category' => $request->query->getInt('category'),
-            ];
-            if ($minYear !== null && $minYear > 0) {
-                $criteria['minYear'] = $minYear;
+            $data = (array) $form->getData();
+            foreach ($data as $k => $v) {
+                if ($v !== null && $v !== '' && $v !== 0 && $v !== '0') {
+                    $criteria[$k] = $v;
+                }
             }
+        }
+
+        // Support direct / legacy GET parameters from query string
+        $queryFields = ['set', 'setId', 'setNo', 'part', 'color', 'category', 'minYear', 'maxYear', 'name'];
+        foreach ($queryFields as $qf) {
+            if ($request->query->has($qf) && !isset($criteria[$qf])) {
+                $val = $request->query->get($qf);
+                if ($val !== null && $val !== '' && $val !== '0') {
+                    $criteria[$qf] = is_numeric($val) ? (int) $val : $val;
+                }
+            }
+        }
+        if ($request->query->has('year') && !isset($criteria['minYear'])) {
+            $criteria['minYear'] = $request->query->getInt('year');
+        }
+
+        // Exclude used prices preference and query param
+        if ($request->query->has('excludeUsed')) {
+            $excludeUsed = $request->query->getBoolean('excludeUsed');
+            $criteria['excludeUsed'] = $excludeUsed;
+        } elseif (isset($criteria['excludeUsed'])) {
+            $excludeUsed = (bool) $criteria['excludeUsed'];
+        } else {
+            $excludeUsed = $preferencesService->shouldExcludeUsedPrices();
+            if ($excludeUsed) {
+                $criteria['excludeUsed'] = true;
+            }
+        }
+
+        if (!$form->isSubmitted() && $criteria !== []) {
             $form->submit($criteria, false);
         }
 
         $user = $this->getUser();
         $currency = $preferencesService->getCurrency();
         $pagination = $paginator->paginate(
-            $setRepo->getMostValuableByQuery($criteria, 0, $user instanceof User ? $user : null, $currency),
+            $setRepo->getMostValuableByQuery(
+                $criteria,
+                0,
+                $user instanceof User ? $user : null,
+                $currency,
+                $excludeUsed
+            ),
             $request->query->getInt('page', 1),
             50,
             ['wrap-queries' => true]
@@ -75,6 +110,7 @@ class ListController extends AbstractController
             'pagination' => $pagination,
             'form' => $form->createView(),
             'criteria' => $criteria,
+            'excludeUsed' => $excludeUsed,
         ]);
     }
 
@@ -84,20 +120,25 @@ class ListController extends AbstractController
     #[Route(path: '/set/{id}', name: 'set_detail', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function setDetail(
         Item $item,
-        \App\Service\UserPreferencesService $preferencesService,
-        \App\Service\ExchangeRateService $exchangeRateService,
+        Request $request,
+        UserPreferencesService $preferencesService,
+        ExchangeRateService $exchangeRateService,
         \App\Service\CsvLegoLoaderService $csvLoader
     ): Response {
         if (!$item instanceof Set) {
             throw $this->createNotFoundException('Item is not a LEGO set.');
         }
 
+        $excludeUsed = $request->query->has('excludeUsed')
+            ? $request->query->getBoolean('excludeUsed')
+            : $preferencesService->shouldExcludeUsedPrices();
+
         $currency = $preferencesService->getCurrency();
-        $prices = $item->getPricesSortedByDate('DESC');
-        $bestPrice = $item->getBestPrice($currency, $exchangeRateService);
-        $lowestPrice = $item->getHistoricalLowestPrice($currency, $exchangeRateService);
-        $highestPrice = $item->getHistoricalHighestPrice($currency, $exchangeRateService);
-        $savingsDelta = $item->getHistoricalSavingsDelta($currency, $exchangeRateService);
+        $prices = $item->getPricesSortedByDate('DESC', $excludeUsed);
+        $bestPrice = $item->getBestPrice($currency, $exchangeRateService, $excludeUsed);
+        $lowestPrice = $item->getHistoricalLowestPrice($currency, $exchangeRateService, $excludeUsed);
+        $highestPrice = $item->getHistoricalHighestPrice($currency, $exchangeRateService, $excludeUsed);
+        $savingsDelta = $item->getHistoricalSavingsDelta($currency, $exchangeRateService, $excludeUsed);
 
         // Pieces inventory sorted by count DESC, then part name
         $pieces = $item->getPieces()->toArray();
@@ -129,6 +170,7 @@ class ListController extends AbstractController
             'highestPrice' => $highestPrice,
             'savingsDelta' => $savingsDelta,
             'currentCurrency' => $currency,
+            'excludeUsed' => $excludeUsed,
         ]);
     }
 
@@ -174,12 +216,16 @@ class ListController extends AbstractController
             throw $this->createNotFoundException('Item is not a LEGO set.');
         }
 
+        $excludeUsed = $request->query->has('excludeUsed')
+            ? $request->query->getBoolean('excludeUsed')
+            : $preferencesService->shouldExcludeUsedPrices();
+
         $currency = $preferencesService->getCurrency();
-        $prices = $item->getPricesSortedByDate('DESC');
-        $bestPrice = $item->getBestPrice($currency, $exchangeRateService);
-        $lowestPrice = $item->getHistoricalLowestPrice($currency, $exchangeRateService);
-        $highestPrice = $item->getHistoricalHighestPrice($currency, $exchangeRateService);
-        $savingsDelta = $item->getHistoricalSavingsDelta($currency, $exchangeRateService);
+        $prices = $item->getPricesSortedByDate('DESC', $excludeUsed);
+        $bestPrice = $item->getBestPrice($currency, $exchangeRateService, $excludeUsed);
+        $lowestPrice = $item->getHistoricalLowestPrice($currency, $exchangeRateService, $excludeUsed);
+        $highestPrice = $item->getHistoricalHighestPrice($currency, $exchangeRateService, $excludeUsed);
+        $savingsDelta = $item->getHistoricalSavingsDelta($currency, $exchangeRateService, $excludeUsed);
 
         $isJson = $request->query->get('format') === 'json'
             || str_contains((string) $request->headers->get('Accept'), 'application/json');
@@ -207,6 +253,7 @@ class ListController extends AbstractController
                 'setNo' => $item->getNo(),
                 'name' => $item->getName(),
                 'currency' => $currency,
+                'excludeUsed' => $excludeUsed,
                 'bestPrice' => $bestPrice?->getFormattedPrice(),
                 'lowestHistoricalPrice' => $lowestPrice?->getFormattedPrice(),
                 'highestHistoricalPrice' => $highestPrice?->getFormattedPrice(),
@@ -232,6 +279,68 @@ class ListController extends AbstractController
             'highestPrice' => $highestPrice,
             'savingsDelta' => $savingsDelta,
             'currentCurrency' => $currency,
+            'excludeUsed' => $excludeUsed,
         ]);
+    }
+
+    /**
+     * Delete an own submitted price.
+     */
+    #[Route(path: '/price/{id}/delete', name: 'price_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
+    public function deletePrice(
+        SetPrice $price,
+        Request $request,
+        EntityManagerInterface $em,
+        ExchangeRateService $exchangeRateService
+    ): Response {
+        $user = $this->getUser();
+        if (!$user instanceof User || $price->getSubmittedBy()?->getId() !== $user->getId()) {
+            throw $this->createAccessDeniedException('For security purposes, you can only delete your own prices.');
+        }
+
+        if (!$this->isCsrfTokenValid('delete_price_' . $price->getId(), (string) $request->request->get('_token'))) {
+            $this->addFlash('alert', 'Invalid security token.');
+            return $this->redirectAfterPriceDelete($price, $request);
+        }
+
+        $set = $price->getSet();
+        if ($set instanceof Set) {
+            $set->removePrice($price);
+            $set->updateCachedBestPrice($exchangeRateService);
+            $em->persist($set);
+        }
+
+        $em->remove($price);
+        $em->flush();
+
+        $this->addFlash('success', 'Your price submission has been successfully deleted.');
+
+        if ($request->isXmlHttpRequest() || $request->query->get('format') === 'json') {
+            return new JsonResponse(['success' => true]);
+        }
+
+        return $this->redirectAfterPriceDelete($price, $request, $set);
+    }
+
+    private function redirectAfterPriceDelete(
+        SetPrice $price,
+        Request $request,
+        ?Set $set = null
+    ): RedirectResponse {
+        $targetSet = $set ?? $price->getSet();
+        $referer = $request->headers->get('referer');
+        if (is_string($referer) && $referer !== '') {
+            $refererHost = parse_url($referer, PHP_URL_HOST);
+            if ($refererHost === null || $refererHost === $request->getHost()) {
+                return $this->redirect($referer);
+            }
+        }
+
+        if ($targetSet instanceof Set && $targetSet->getId() !== null) {
+            return $this->redirectToRoute('set_detail', ['id' => $targetSet->getId()]);
+        }
+
+        return $this->redirectToRoute('filter_items');
     }
 }

@@ -15,6 +15,7 @@ class UserPreferencesService
 {
     public const SESSION_CURRENCY = 'pref_currency';
     public const SESSION_RETAILERS = 'pref_retailers';
+    public const SESSION_EXCLUDE_USED_PRICES = 'pref_exclude_used_prices';
     public const DEFAULT_CURRENCY = 'CHF';
 
     public function __construct(
@@ -92,6 +93,36 @@ class UserPreferencesService
         $user = $this->security->getUser();
         if ($user instanceof User) {
             $user->setPreferredRetailers($retailers);
+            $this->em->persist($user);
+            $this->em->flush();
+        }
+    }
+
+    public function shouldExcludeUsedPrices(): bool
+    {
+        $user = $this->security->getUser();
+        if ($user instanceof User) {
+            return $user->shouldExcludeUsedPrices();
+        }
+
+        $session = $this->getSession();
+        if ($session instanceof \Symfony\Component\HttpFoundation\Session\SessionInterface) {
+            return (bool) $session->get(self::SESSION_EXCLUDE_USED_PRICES, false);
+        }
+
+        return false;
+    }
+
+    public function setExcludeUsedPrices(bool $exclude): void
+    {
+        $session = $this->getSession();
+        if ($session instanceof \Symfony\Component\HttpFoundation\Session\SessionInterface) {
+            $session->set(self::SESSION_EXCLUDE_USED_PRICES, $exclude);
+        }
+
+        $user = $this->security->getUser();
+        if ($user instanceof User) {
+            $user->setExcludeUsedPrices($exclude);
             $this->em->persist($user);
             $this->em->flush();
         }

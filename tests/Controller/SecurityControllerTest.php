@@ -45,7 +45,7 @@ class SecurityControllerTest extends WebTestCase
             $this->assertResponseRedirects('/en/');
 
             $client->followRedirect();
-            $this->assertSelectorTextContains('nav', $testEmail);
+            $this->assertSelectorTextContains('nav', $user->getDisplayName());
 
             // Logout
             $client->request(Request::METHOD_GET, '/en/logout');

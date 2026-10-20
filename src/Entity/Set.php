@@ -135,7 +135,8 @@ class Set extends Item
         ?string $currency = null,
         bool $verifiedOnly = false,
         ?User $submittedBy = null,
-        ?\App\Service\ExchangeRateService $exchangeRateService = null
+        ?\App\Service\ExchangeRateService $exchangeRateService = null,
+        bool $excludeUsed = false
     ): ?SetPrice {
         $targetCurrency = $currency !== null ? strtoupper(trim($currency)) : null;
 
@@ -149,6 +150,9 @@ class Set extends Item
                 continue;
             }
             if ($submittedBy instanceof User && $p->getSubmittedBy()?->getId() !== $submittedBy->getId()) {
+                continue;
+            }
+            if ($excludeUsed && $p->getItemCondition() === 'used') {
                 continue;
             }
             $candidates[] = $p;
@@ -225,21 +229,29 @@ class Set extends Item
     /**
      * Get the best (lowest) recorded price, optionally filtered or normalized by currency.
      */
-    public function getBestPrice(?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?SetPrice
-    {
+    public function getBestPrice(
+        ?string $currency = null,
+        ?\App\Service\ExchangeRateService $exchangeRateService = null,
+        bool $excludeUsed = false
+    ): ?SetPrice {
         return $this->findExtremumPrice(
             findLowest: true,
             currency: $currency,
             verifiedOnly: true,
-            exchangeRateService: $exchangeRateService
+            exchangeRateService: $exchangeRateService,
+            excludeUsed: $excludeUsed
         );
     }
 
     /**
      * Get the price submitted by a specific user (if any, excluding rejected).
      */
-    public function getUserPrice(?User $user, ?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?SetPrice
-    {
+    public function getUserPrice(
+        ?User $user,
+        ?string $currency = null,
+        ?\App\Service\ExchangeRateService $exchangeRateService = null,
+        bool $excludeUsed = false
+    ): ?SetPrice {
         if (!$user instanceof User || $user->getId() === null) {
             return null;
         }
@@ -249,33 +261,42 @@ class Set extends Item
             currency: $currency,
             verifiedOnly: false,
             submittedBy: $user,
-            exchangeRateService: $exchangeRateService
+            exchangeRateService: $exchangeRateService,
+            excludeUsed: $excludeUsed
         );
     }
 
     /**
      * Get the lowest historical price recorded across all non-rejected prices.
      */
-    public function getHistoricalLowestPrice(?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?SetPrice
-    {
+    public function getHistoricalLowestPrice(
+        ?string $currency = null,
+        ?\App\Service\ExchangeRateService $exchangeRateService = null,
+        bool $excludeUsed = false
+    ): ?SetPrice {
         return $this->findExtremumPrice(
             findLowest: true,
             currency: $currency,
             verifiedOnly: false,
-            exchangeRateService: $exchangeRateService
+            exchangeRateService: $exchangeRateService,
+            excludeUsed: $excludeUsed
         );
     }
 
     /**
      * Get the highest historical price recorded across all non-rejected prices (e.g. MSRP baseline).
      */
-    public function getHistoricalHighestPrice(?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?SetPrice
-    {
+    public function getHistoricalHighestPrice(
+        ?string $currency = null,
+        ?\App\Service\ExchangeRateService $exchangeRateService = null,
+        bool $excludeUsed = false
+    ): ?SetPrice {
         return $this->findExtremumPrice(
             findLowest: false,
             currency: $currency,
             verifiedOnly: false,
-            exchangeRateService: $exchangeRateService
+            exchangeRateService: $exchangeRateService,
+            excludeUsed: $excludeUsed
         );
     }
 
@@ -284,11 +305,14 @@ class Set extends Item
      *
      * @return array{highest: SetPrice, lowest: SetPrice, savingsAmount: float, savingsPercent: float, targetCurrency?: string}|null
      */
-    public function getHistoricalSavingsDelta(?string $currency = null, ?\App\Service\ExchangeRateService $exchangeRateService = null): ?array
-    {
+    public function getHistoricalSavingsDelta(
+        ?string $currency = null,
+        ?\App\Service\ExchangeRateService $exchangeRateService = null,
+        bool $excludeUsed = false
+    ): ?array {
         $targetCurr = $currency !== null ? strtoupper(trim($currency)) : 'CHF';
-        $lowest = $this->getHistoricalLowestPrice($targetCurr, $exchangeRateService);
-        $highest = $this->getHistoricalHighestPrice($targetCurr, $exchangeRateService);
+        $lowest = $this->getHistoricalLowestPrice($targetCurr, $exchangeRateService, $excludeUsed);
+        $highest = $this->getHistoricalHighestPrice($targetCurr, $exchangeRateService, $excludeUsed);
 
         if (!$lowest instanceof SetPrice || !$highest instanceof SetPrice) {
             return null;
@@ -341,9 +365,12 @@ class Set extends Item
     /**
      * @return list<SetPrice>
      */
-    public function getPricesSortedByDate(string $direction = 'DESC'): array
+    public function getPricesSortedByDate(string $direction = 'DESC', bool $excludeUsed = false): array
     {
         $prices = $this->prices->toArray();
+        if ($excludeUsed) {
+            $prices = array_filter($prices, static fn(SetPrice $p): bool => $p->getItemCondition() !== 'used');
+        }
         $asc = strtoupper($direction) === 'ASC';
 
         usort($prices, static function (SetPrice $a, SetPrice $b) use ($asc): int {
@@ -357,9 +384,9 @@ class Set extends Item
     /**
      * Get the effective price for a user: their own price if they submitted one, otherwise best available price.
      */
-    public function getEffectivePriceFor(?User $user = null, ?string $currency = null): ?SetPrice
+    public function getEffectivePriceFor(?User $user = null, ?string $currency = null, bool $excludeUsed = false): ?SetPrice
     {
-        return $this->getUserPrice($user, $currency) ?? $this->getBestPrice($currency);
+        return $this->getUserPrice($user, $currency, excludeUsed: $excludeUsed) ?? $this->getBestPrice($currency, excludeUsed: $excludeUsed);
     }
 
     /**

@@ -23,6 +23,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::STRING, length: 180, unique: true)]
     private string $email = '';
 
+    #[ORM\Column(type: Types::STRING, length: 50, nullable: true)]
+    private ?string $username = null;
+
+    #[ORM\Column(name: 'exclude_used_prices', type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $excludeUsedPrices = false;
+
     /**
      * @var list<string> The user roles
      */
@@ -78,6 +84,44 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setEmail(string $email): static
     {
         $this->email = strtolower(trim($email));
+
+        return $this;
+    }
+
+    public function getUsername(): ?string
+    {
+        return $this->username;
+    }
+
+    public function setUsername(?string $username): static
+    {
+        $this->username = $username !== null && trim($username) !== '' ? trim($username) : null;
+
+        return $this;
+    }
+
+    public function getDisplayName(): string
+    {
+        if ($this->username !== null && trim($this->username) !== '') {
+            return trim($this->username);
+        }
+
+        if ($this->email !== '') {
+            $parts = explode('@', $this->email);
+            return $parts[0] !== '' ? $parts[0] : $this->email;
+        }
+
+        return 'anonymous';
+    }
+
+    public function shouldExcludeUsedPrices(): bool
+    {
+        return $this->excludeUsedPrices;
+    }
+
+    public function setExcludeUsedPrices(bool $exclude): static
+    {
+        $this->excludeUsedPrices = $exclude;
 
         return $this;
     }

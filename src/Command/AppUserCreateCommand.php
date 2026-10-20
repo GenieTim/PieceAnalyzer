@@ -31,6 +31,7 @@ class AppUserCreateCommand extends Command
         $this
             ->addArgument('email', InputArgument::REQUIRED, 'User email address')
             ->addArgument('password', InputArgument::OPTIONAL, 'User password (prompted interactively if omitted)')
+            ->addOption('username', null, InputOption::VALUE_REQUIRED, 'Optional display username')
             ->addOption('admin', null, InputOption::VALUE_NONE, 'Grant ROLE_ADMIN')
             ->addOption('verified', null, InputOption::VALUE_NONE, 'Mark as verified contributor (reports are auto-verified)')
         ;
@@ -59,6 +60,10 @@ class AppUserCreateCommand extends Command
         }
 
         $user = new User($email);
+        $username = $input->getOption('username') !== null ? trim((string) $input->getOption('username')) : null;
+        if ($username !== null && $username !== '') {
+            $user->setUsername($username);
+        }
         $user->setPassword($this->hasher->hashPassword($user, $password));
         $user->setIsEmailVerified(true);
         if ($isAdmin) {

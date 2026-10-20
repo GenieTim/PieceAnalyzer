@@ -9,6 +9,7 @@ use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\Email;
@@ -21,6 +22,20 @@ class RegistrationFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
+            ->add('username', TextType::class, [
+                'label' => 'Username',
+                'required' => false,
+                'attr' => [
+                    'autocomplete' => 'username',
+                    'placeholder' => 'e.g. MasterBuilder (optional)',
+                ],
+                'constraints' => [
+                    new Length([
+                        'max' => 50,
+                        'maxMessage' => 'Username cannot be longer than {{ limit }} characters',
+                    ]),
+                ],
+            ])
             ->add('email', EmailType::class, [
                 'label' => 'Email Address',
                 'attr' => [

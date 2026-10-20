@@ -296,7 +296,22 @@ class HeadlessScraperService
         ]);
 
         if ($response->getStatusCode() !== 200) {
-            throw new \RuntimeException(sprintf('Scraper HTTP service returned HTTP %d', $response->getStatusCode()));
+            $errorDetails = '';
+            try {
+                $errorData = $response->toArray(false);
+                if (isset($errorData['error'])) {
+                    $errorDetails = ': ' . (is_string($errorData['error']) ? $errorData['error'] : json_encode($errorData['error']));
+                }
+            } catch (\Throwable) {
+                try {
+                    $raw = $response->getContent(false);
+                    if ($raw !== '') {
+                        $errorDetails = ': ' . substr($raw, 0, 200);
+                    }
+                } catch (\Throwable) {
+                }
+            }
+            throw new \RuntimeException(sprintf('Scraper HTTP service returned HTTP %d%s', $response->getStatusCode(), $errorDetails));
         }
 
         /** @var array<string, mixed> $data */

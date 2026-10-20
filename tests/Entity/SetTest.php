@@ -91,4 +91,45 @@ class SetTest extends TestCase
         $this->assertNull($set->getPrice());
         $this->assertNull($set->getPriceCurrency());
     }
+
+    public function testExcludeUsedPricesFromPriceCalculations(): void
+    {
+        $set = new Set();
+        $set->setNo('75257-1');
+
+        // Used price (cheaper, from BrickLink)
+        $usedPrice = new \App\Entity\SetPrice(
+            set: $set,
+            amount: 7000, // 70.00 CHF
+            currency: 'CHF',
+            retailer: \App\Enum\Retailer::BRICKLINK,
+            provider: \App\Enum\PriceSourceProvider::BRICKSET,
+            itemCondition: 'used'
+        );
+
+        // New price (MSRP/Retailer, 120.00 CHF)
+        $newPrice = new \App\Entity\SetPrice(
+            set: $set,
+            amount: 12000, // 120.00 CHF
+            currency: 'CHF',
+            retailer: \App\Enum\Retailer::GALAXUS,
+            provider: \App\Enum\PriceSourceProvider::USER_BOOKMARKLET,
+            itemCondition: 'new'
+        );
+
+        $set->addPrice($usedPrice);
+        $set->addPrice($newPrice);
+
+        // Default: includes used prices, so best price is the used price (70.00 CHF)
+        $this->assertSame($usedPrice, $set->getBestPrice('CHF'));
+        $this->assertSame($usedPrice, $set->getHistoricalLowestPrice('CHF'));
+        $this->assertCount(2, $set->getPricesSortedByDate('DESC', excludeUsed: false));
+
+        // When excludeUsed is true: skips used price and selects the new price (120.00 CHF)
+        $this->assertSame($newPrice, $set->getBestPrice('CHF', excludeUsed: true));
+        $this->assertSame($newPrice, $set->getHistoricalLowestPrice('CHF', excludeUsed: true));
+        $filteredPrices = $set->getPricesSortedByDate('DESC', excludeUsed: true);
+        $this->assertCount(1, $filteredPrices);
+        $this->assertSame($newPrice, $filteredPrices[0]);
+    }
 }

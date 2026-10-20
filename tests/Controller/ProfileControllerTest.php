@@ -60,16 +60,21 @@ class ProfileControllerTest extends WebTestCase
 
         $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, '/en/profile/preferences', [
             '_token' => $token,
+            'username' => 'MyCustomUsername',
             'currency' => 'EUR',
             'retailers' => ['galaxus', 'amazon_de'],
+            'exclude_used_prices' => '1',
         ]);
 
         $this->assertResponseRedirects('/en/profile');
 
         $em->clear();
         $updated = $em->find(User::class, $user->getId());
+        $this->assertSame('MyCustomUsername', $updated?->getUsername());
+        $this->assertSame('MyCustomUsername', $updated?->getDisplayName());
         $this->assertSame('EUR', $updated?->getPreferredCurrency());
         $this->assertSame(['galaxus', 'amazon_de'], $updated?->getPreferredRetailers());
+        $this->assertTrue($updated?->shouldExcludeUsedPrices());
     }
 
     public function testChangePasswordSuccess(): void

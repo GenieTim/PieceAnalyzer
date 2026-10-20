@@ -269,6 +269,165 @@ class ListControllerTest extends WebTestCase
         }
     }
 
+    public function testFilterFormMethodIsGetAndBindsFlatQueryParams(): void
+    {
+        $client = static::createClient();
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/filter?set=75192&excludeUsed=1');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorExists('form[method="get"]');
+        $this->assertSelectorExists('input[name="set"]');
+        $this->assertSelectorExists('input[name="excludeUsed"]');
+
+        $content = (string) $client->getResponse()->getContent();
+        $this->assertStringContainsString('75192', $content);
+        $this->assertStringContainsString('Used excluded', $content);
+    }
+
+    public function testFilterBySetIdAndSetNo(): void
+    {
+        $client = static::createClient();
+        $em = $client->getContainer()->get(\Doctrine\ORM\EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $set = new \App\Entity\Set();
+        $set->setNo('FIND_' . $suffix . '-1');
+        $set->setName('Unique Search Target ' . $suffix);
+        $set->setPrice(49.99);
+        $set->setPriceCurrency('CHF');
+        $em->persist($set);
+
+        $piece = new \App\Entity\Piece();
+        $piece->setNo('P_' . $suffix);
+        $piece->setName('Piece for ' . $suffix);
+        $piece->setCategory(1);
+        $piece->setColor(1);
+        $piece->setCount(10);
+        $piece->setSet($set);
+        $set->addPiece($piece);
+        $em->persist($piece);
+        $em->flush();
+
+        try {
+            // Filter by set number
+            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/filter?set=' . urlencode('FIND_' . $suffix));
+            $this->assertResponseIsSuccessful();
+            $this->assertStringContainsString('Unique Search Target ' . $suffix, (string) $client->getResponse()->getContent());
+
+            // Filter by database setId
+            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, '/en/filter?setId=' . $set->getId());
+            $this->assertResponseIsSuccessful();
+            $this->assertStringContainsString('Unique Search Target ' . $suffix, (string) $client->getResponse()->getContent());
+        } finally {
+            $cleanupEm = $client->getContainer()->get(\Doctrine\ORM\EntityManagerInterface::class);
+            $s = $cleanupEm->getRepository(\App\Entity\Set::class)->findOneBy(['no' => 'FIND_' . $suffix . '-1']);
+            if ($s !== null) {
+                $cleanupEm->remove($s);
+                $cleanupEm->flush();
+            }
+        }
+    }
+
+    public function testDeleteOwnPriceSuccessAndSecurity(): void
+    {
+        $client = static::createClient();
+        $em = $client->getContainer()->get(\Doctrine\ORM\EntityManagerInterface::class);
+
+        $suffix = bin2hex(random_bytes(4));
+        $owner = new \App\Entity\User('owner_' . $suffix . '@example.com', 'password');
+        $owner->setUsername('PriceOwner_' . $suffix);
+        $otherUser = new \App\Entity\User('other_' . $suffix . '@example.com', 'password');
+        $otherUser->setUsername('OtherGuy_' . $suffix);
+        $em->persist($owner);
+        $em->persist($otherUser);
+
+        $set = new \App\Entity\Set();
+        $set->setNo('DEL_' . $suffix . '-1');
+        $set->setName('Delete Test Set ' . $suffix);
+        $em->persist($set);
+
+        $ownPrice = new \App\Entity\SetPrice(
+            set: $set,
+            amount: 4500, // 45.00 CHF
+            currency: 'CHF',
+            retailer: \App\Enum\Retailer::GALAXUS,
+            provider: \App\Enum\PriceSourceProvider::USER_BOOKMARKLET
+        );
+        $ownPrice->setSubmittedBy($owner);
+        $set->addPrice($ownPrice);
+        $set->updateCachedBestPrice();
+        $em->persist($ownPrice);
+        $em->flush();
+
+        $priceId = $ownPrice->getId();
+        $this->assertNotNull($priceId);
+        $this->assertSame(45.0, $set->getPrice());
+
+        try {
+            // 1. Unauthorized attempt (other user tries to delete owner's price) -> 403 Access Denied
+            $client->loginUser($otherUser);
+            // Verify delete button is NOT rendered for another user
+            $crawlerOther = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/en/item/%d/prices', $set->getId()));
+            $this->assertResponseIsSuccessful();
+            $this->assertSame(0, $crawlerOther->filter(sprintf('form[action$="/price/%d/delete"]', $priceId))->count());
+
+            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, sprintf('/en/price/%d/delete', $priceId), [
+                '_token' => 'some_token',
+            ]);
+            $this->assertResponseStatusCodeSame(403);
+
+            // Price still exists in DB
+            $reloaded = $em->getRepository(\App\Entity\SetPrice::class)->find($priceId);
+            $this->assertNotNull($reloaded);
+
+            // 2. Owner views price page: delete button IS rendered with valid CSRF token
+            $client->loginUser($owner);
+            $crawlerOwner = $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/en/item/%d/prices', $set->getId()));
+            $this->assertResponseIsSuccessful();
+            $deleteForm = $crawlerOwner->filter(sprintf('form[action$="/price/%d/delete"]', $priceId));
+            $this->assertSame(1, $deleteForm->count());
+            $csrfTokenOwner = $deleteForm->filter('input[name="_token"]')->attr('value');
+
+            // Invalid CSRF token -> redirect with alert
+            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, sprintf('/en/price/%d/delete', $priceId), [
+                '_token' => 'invalid_csrf_token',
+            ]);
+            $this->assertResponseRedirects();
+            $reloaded = $em->getRepository(\App\Entity\SetPrice::class)->find($priceId);
+            $this->assertNotNull($reloaded);
+
+            // 3. Authorized deletion by owner with valid CSRF token -> success!
+            $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_POST, sprintf('/en/price/%d/delete', $priceId), [
+                '_token' => $csrfTokenOwner,
+            ]);
+            $this->assertResponseRedirects();
+
+            // Price must be deleted from DB and set cached price recalculated to null
+            $cleanupEm = $client->getContainer()->get(\Doctrine\ORM\EntityManagerInterface::class);
+            $deletedPrice = $cleanupEm->getRepository(\App\Entity\SetPrice::class)->find($priceId);
+            $this->assertNull($deletedPrice);
+
+            $reloadedSet = $cleanupEm->getRepository(\App\Entity\Set::class)->findOneBy(['no' => 'DEL_' . $suffix . '-1']);
+            $this->assertNotNull($reloadedSet);
+            $this->assertNull($reloadedSet->getPrice());
+        } finally {
+            $cleanupEm = $client->getContainer()->get(\Doctrine\ORM\EntityManagerInterface::class);
+            $s = $cleanupEm->getRepository(\App\Entity\Set::class)->findOneBy(['no' => 'DEL_' . $suffix . '-1']);
+            if ($s !== null) {
+                $cleanupEm->remove($s);
+            }
+            $u1 = $cleanupEm->getRepository(\App\Entity\User::class)->findOneBy(['email' => 'owner_' . $suffix . '@example.com']);
+            if ($u1 !== null) {
+                $cleanupEm->remove($u1);
+            }
+            $u2 = $cleanupEm->getRepository(\App\Entity\User::class)->findOneBy(['email' => 'other_' . $suffix . '@example.com']);
+            if ($u2 !== null) {
+                $cleanupEm->remove($u2);
+            }
+            $cleanupEm->flush();
+        }
+    }
+
     #[\Override]
     protected function tearDown(): void
     {

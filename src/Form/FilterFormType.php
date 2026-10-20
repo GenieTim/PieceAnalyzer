@@ -7,11 +7,13 @@ namespace App\Form;
 use App\Repository\PieceRepository;
 use App\Service\CsvLegoLoaderService;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class FilterFormType extends AbstractType
 {
@@ -29,6 +31,13 @@ class FilterFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
+            ->add('set', TextType::class, [
+                'label' => 'filter.set_label',
+                'required' => false,
+                'attr' => [
+                    'placeholder' => 'filter.set_placeholder',
+                ],
+            ])
             ->add('part', TextType::class, [
                 'label' => 'filter.part_label',
                 'required' => false,
@@ -57,10 +66,29 @@ class FilterFormType extends AbstractType
                 'multiple' => false,
                 'required' => false,
             ])
+            ->add('excludeUsed', CheckboxType::class, [
+                'label' => 'filter.exclude_used',
+                'required' => false,
+            ])
             ->add('search', SubmitType::class, [
                 'label' => 'filter.submit',
             ])
         ;
+    }
+
+    #[\Override]
+    public function configureOptions(OptionsResolver $resolver): void
+    {
+        $resolver->setDefaults([
+            'method' => 'GET',
+            'csrf_protection' => false,
+        ]);
+    }
+
+    #[\Override]
+    public function getBlockPrefix(): string
+    {
+        return '';
     }
 
     /**

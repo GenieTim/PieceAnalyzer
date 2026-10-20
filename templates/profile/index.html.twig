@@ -18,8 +18,12 @@
                         <div class="card-body">
                             <ul class="list-group list-group-flush small">
                                 <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary">{{ 'profile.username'|trans }}</span>
+                                    <span class="fw-semibold font-monospace">{{ user.username|default('—') }}</span>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
                                     <span class="text-secondary">{{ 'profile.email'|trans }}</span>
-                                    <span class="fw-semibold font-monospace">{{ user.userIdentifier }}</span>
+                                    <span class="fw-semibold font-monospace">{{ user.email }}</span>
                                 </li>
                                 <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
                                     <span class="text-secondary">{{ 'profile.contributor_status'|trans }}</span>
@@ -101,6 +105,12 @@
                                 <input type="hidden" name="_token" value="{{ csrf_token('update_preferences') }}">
 
                                 <div class="mb-3">
+                                    <label for="usernameInput" class="form-label small fw-semibold">{{ 'profile.username_label'|trans }}</label>
+                                    <input type="text" id="usernameInput" name="username" class="form-control form-control-sm font-monospace" value="{{ user.username }}" placeholder="e.g. MasterBuilder" maxlength="50">
+                                    <div class="form-text small text-secondary">{{ 'profile.username_help'|trans }}</div>
+                                </div>
+
+                                <div class="mb-3">
                                     <label for="currencySelect" class="form-label small fw-semibold">{{ 'profile.preferred_currency'|trans }}</label>
                                     <select id="currencySelect" name="currency" class="form-select form-select-sm">
                                         <option value="CHF" {% if currentCurrency == 'CHF' %}selected{% endif %}>CHF — Swiss Franc</option>
@@ -108,6 +118,17 @@
                                         <option value="USD" {% if currentCurrency == 'USD' %}selected{% endif %}>USD — US Dollar ($)</option>
                                         <option value="GBP" {% if currentCurrency == 'GBP' %}selected{% endif %}>GBP — British Pound (£)</option>
                                     </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold d-block">{{ 'profile.price_options'|trans }}</label>
+                                    <div class="form-check form-switch small">
+                                        <input class="form-check-input" type="checkbox" role="switch" name="exclude_used_prices" id="excludeUsedPricesSwitch" value="1" {% if excludeUsedPrices %}checked{% endif %}>
+                                        <label class="form-check-label" for="excludeUsedPricesSwitch">
+                                            {{ 'profile.exclude_used_prices'|trans }}
+                                        </label>
+                                    </div>
+                                    <div class="form-text small text-secondary">{{ 'profile.exclude_used_help'|trans }}</div>
                                 </div>
 
                                 <div class="mb-3">
