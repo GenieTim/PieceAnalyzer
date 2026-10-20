@@ -47,7 +47,9 @@ class ScraperHTTPRequestHandler(BaseHTTPRequestHandler):
                     self.wfile.write(b'{"error":"Missing url field"}\n')
                     return
 
-                options = data.get('options', {})
+                options = data.get('options')
+                if not isinstance(options, dict):
+                    options = {}
                 items = scrape_url(url, options=options)
 
                 self.send_response(200)

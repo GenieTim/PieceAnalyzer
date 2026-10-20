@@ -290,7 +290,7 @@ class HeadlessScraperService
         $response = $this->httpClient->request('POST', $endpoint, [
             'json' => [
                 'url' => $url,
-                'options' => $options,
+                'options' => $options === [] ? new \stdClass() : $options,
             ],
             'timeout' => 60.0,
         ]);

@@ -117,7 +117,7 @@ def get_browser_context():
 
 
 def scrape_url(target_url, api_url=None, api_token=None, options=None):
-    if options is None:
+    if options is None or not isinstance(options, dict):
         options = {}
 
     scroll = options.get("scroll", True)
@@ -161,6 +161,8 @@ def scrape_url(target_url, api_url=None, api_token=None, options=None):
             seen = set()
             unique_items = []
             for item in all_items:
+                if not isinstance(item, dict):
+                    continue
                 key = f"{item.get('setNo')}:{item.get('retailer')}:{item.get('merchantName', '')}:{item.get('amountCents')}"
                 if key not in seen:
                     seen.add(key)
@@ -222,6 +224,8 @@ def scrape_url(target_url, api_url=None, api_token=None, options=None):
             seen = set()
             unique_items = []
             for item in all_items:
+                if not isinstance(item, dict):
+                    continue
                 key = f"{item.get('setNo')}:{item.get('retailer')}:{item.get('merchantName', '')}:{item.get('amountCents')}"
                 if key not in seen:
                     seen.add(key)
