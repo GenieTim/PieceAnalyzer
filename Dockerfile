@@ -16,12 +16,13 @@ COPY webpack.config.js ./
 RUN yarn build
 
 # Stage 2: Production FrankenPHP container
-FROM dunglas/frankenphp:1-php8.4.27-bookworm AS runner
+# Built with latest FrankenPHP 1.x on PHP 8.4 to patch CVE-2026-109618 / CVE-2026-109619 (PHP2Shell)
+FROM dunglas/frankenphp:1-php8.4-bookworm AS runner
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies and security updates
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     acl \
     file \
     gettext \
