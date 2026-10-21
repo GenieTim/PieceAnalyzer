@@ -16,7 +16,7 @@ COPY webpack.config.js ./
 RUN yarn build
 
 # Stage 2: Production FrankenPHP container
-FROM dunglas/frankenphp:1-php8.4-bookworm AS runner
+FROM dunglas/frankenphp:1-php8.4.27-bookworm AS runner
 
 WORKDIR /app
 
