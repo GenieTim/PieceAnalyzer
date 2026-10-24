@@ -31,6 +31,7 @@ services:
     volumes:
       - app_data:/app/data
       - app_var:/app/var
+      - /app/var/cache
     networks:
       - default
       - coolify
@@ -66,6 +67,7 @@ services:
     volumes:
       - app_data:/app/data
       - app_var:/app/var
+      - /app/var/cache
     networks:
       - default
       - coolify

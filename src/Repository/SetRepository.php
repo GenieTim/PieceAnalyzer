@@ -101,8 +101,8 @@ class SetRepository extends ServiceEntityRepository
 
         $qb->leftJoin('s.pieces', 'p');
         $qb->groupBy('s.id, s.no, s.name, s.price, s.priceCurrency, s.pieceCount, s.source, s.obsolete, s.year, s.image_url');
-        $qb->orderBy('isUnpriced', 'ASC');
-        $qb->addOrderBy('pricePerPiece', 'ASC');
+        $qb->orderBy('isUnpriced', \SortDirection::Ascending);
+        $qb->addOrderBy('pricePerPiece', \SortDirection::Ascending);
         $qb->having('SUM(p.count) != 0');
         if ($limit > 0) {
             $qb->setMaxResults($limit);

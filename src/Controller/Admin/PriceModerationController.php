@@ -53,7 +53,7 @@ class PriceModerationController extends AbstractController
             ->leftJoin('sp.set', 's')
             ->leftJoin('sp.submittedBy', 'u')
             ->addSelect('s', 'u')
-            ->orderBy('sp.recordedAt', 'DESC')
+            ->orderBy('sp.recordedAt', \SortDirection::Descending)
             ->setMaxResults(100);
 
         if ($statusFilter !== 'all') {
