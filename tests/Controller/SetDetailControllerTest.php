@@ -126,6 +126,29 @@ class SetDetailControllerTest extends WebTestCase
         $this->assertResponseRedirects(sprintf('/en/set/%d', $set->getId()));
     }
 
+    public function testSetDetailPageSuccessfulWhenSourceIsNullInDatabase(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $this->cleanDatabase($em);
+
+        $set = new Set();
+        $set->setNo('8043-1');
+        $set->setName('Motorized Excavator');
+        $em->persist($set);
+        $em->flush();
+
+        $setId = $set->getId();
+
+        // Simulate database row with NULL source
+        $em->getConnection()->executeStatement('UPDATE lego_set SET source = NULL WHERE id = ?', [$setId]);
+        $em->clear();
+
+        $client->request(\Symfony\Component\HttpFoundation\Request::METHOD_GET, sprintf('/en/set/%d', $setId));
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('h1', 'Motorized Excavator');
+    }
+
     public function testSetDetailNotFound(): void
     {
         $client = static::createClient();

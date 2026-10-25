@@ -132,4 +132,41 @@ class SetTest extends TestCase
         $this->assertCount(1, $filteredPrices);
         $this->assertSame($newPrice, $filteredPrices[0]);
     }
+
+    public function testSourceDefaultsNullHandlingAndUninitializedSafety(): void
+    {
+        $set = new Set();
+        $this->assertSame(0, $set->getSource());
+        $this->assertFalse($set->isRebrickable());
+        $this->assertFalse($set->isBricklink());
+
+        $set->setSource(Set::SOURCE_REBRICKABLE);
+        $this->assertSame(Set::SOURCE_REBRICKABLE, $set->getSource());
+        $this->assertTrue($set->isRebrickable());
+        $this->assertFalse($set->isBricklink());
+
+        $set->setSource(Set::SOURCE_BRICKLINK);
+        $this->assertSame(Set::SOURCE_BRICKLINK, $set->getSource());
+        $this->assertFalse($set->isRebrickable());
+        $this->assertTrue($set->isBricklink());
+
+        $set->setSource(null);
+        $this->assertSame(0, $set->getSource());
+
+        // Test uninitialized / unset property safety (as caused by reflection or lazy ghost hydration)
+        $refProp = new \ReflectionProperty(Set::class, 'source');
+        $refProp->setValue($set, null);
+        $this->assertSame(0, $set->getSource());
+        $this->assertFalse($set->isRebrickable());
+
+        // Unset directly to verify null coalescing handles uninitialized state without FatalError
+        $unsetter = \Closure::bind(function (Set $s): void {
+            unset($s->source);
+        }, null, Set::class);
+        $unsetter($set);
+
+        $this->assertSame(0, $set->getSource());
+        $this->assertFalse($set->isRebrickable());
+        $this->assertFalse($set->isBricklink());
+    }
 }

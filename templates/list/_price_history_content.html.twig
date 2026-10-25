@@ -14,9 +14,11 @@
             <a href="{{ path('set_detail', {'id': set.id}) }}" class="btn btn-sm btn-primary">
                 {{ 'set.view_set_page'|trans }} →
             </a>
-            {% set externalUrl = set.source == 'rebrickable' ? ('https://rebrickable.com/sets/' ~ set.no) : ('https://www.bricklink.com/v2/catalog/catalogitem.page?S=' ~ set.no) %}
+            {% set isRebrickable = set.isRebrickable or set.source == 2 or set.source == 'rebrickable' %}
+            {% set externalUrl = isRebrickable ? ('https://rebrickable.com/sets/' ~ set.no) : ('https://www.bricklink.com/v2/catalog/catalogitem.page?S=' ~ set.no) %}
+            {% set externalLabel = isRebrickable ? 'set.view_on_rebrickable'|trans : 'set.view_on_bricklink'|trans %}
             <a href="{{ externalUrl }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
-                {{ 'set.view_on_rebrickable'|trans }} ↗
+                {{ externalLabel }} ↗
             </a>
 
         </div>

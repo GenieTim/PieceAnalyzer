@@ -124,6 +124,7 @@ set:
   price_history_title: "Historique des prix & tendances"
   back_to_explorer: "← Retour à l'explorateur de sets"
   view_on_rebrickable: "Voir sur Rebrickable"
+  view_on_bricklink: "Voir sur BrickLink"
   view_price_history: "Voir l'historique des prix & tendances"
   best_price: "Meilleur prix actuel"
   lowest_price: "Plus bas historique"

@@ -41,8 +41,8 @@ class Set extends Item
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true)]
     private ?int $pieceCount = null;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]
-    private int $source = 0;
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true)]
+    private ?int $source = 0;
 
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: true)]
     private ?bool $obsolete = null;
@@ -448,14 +448,24 @@ class Set extends Item
 
     public function getSource(): int
     {
-        return $this->source;
+        return $this->source ?? 0;
     }
 
-    public function setSource(int $source): static
+    public function setSource(?int $source): static
     {
-        $this->source = $source;
+        $this->source = $source ?? 0;
 
         return $this;
+    }
+
+    public function isRebrickable(): bool
+    {
+        return ($this->source ?? 0) === self::SOURCE_REBRICKABLE;
+    }
+
+    public function isBricklink(): bool
+    {
+        return ($this->source ?? 0) === self::SOURCE_BRICKLINK;
     }
 
     public function getObsolete(): ?bool
