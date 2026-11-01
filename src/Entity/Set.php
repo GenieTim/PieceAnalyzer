@@ -14,7 +14,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'idx_set_price', columns: ['price'])]
 #[ORM\Index(name: 'idx_set_year', columns: ['year'])]
 #[ORM\Index(name: 'idx_set_source', columns: ['source'])]
+#[ORM\Index(name: 'idx_set_piece_count', columns: ['piece_count'])]
 #[ORM\Entity(repositoryClass: \App\Repository\SetRepository::class)]
+#[ORM\HasLifecycleCallbacks]
 class Set extends Item
 {
     public const SOURCE_BRICKLINK = 1;
@@ -420,7 +422,11 @@ class Set extends Item
     public function setPieces(Collection $pieces): static
     {
         $this->pieces = $pieces;
-        $this->pieceCount = null;
+        $count = 0;
+        foreach ($pieces as $p) {
+            $count += (int) $p->getCount();
+        }
+        $this->pieceCount = $count > 0 ? $count : null;
 
         return $this;
     }
@@ -430,7 +436,7 @@ class Set extends Item
         if (!$this->pieces->contains($p)) {
             $this->pieces->add($p);
             $p->setSet($this);
-            $this->pieceCount = null;
+            $this->pieceCount = ($this->pieceCount ?? 0) + (int) $p->getCount();
         }
 
         return $this;
@@ -440,7 +446,7 @@ class Set extends Item
     {
         if ($this->pieces->removeElement($p) && $p->getSet() === $this) {
             $p->setSet(null);
-            $this->pieceCount = null;
+            $this->pieceCount = max(0, ($this->pieceCount ?? 0) - (int) $p->getCount());
         }
 
         return $this;
@@ -502,6 +508,18 @@ class Set extends Item
         $this->year = $year;
 
         return $this;
+    }
+
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    public function updatePieceCount(): void
+    {
+        if ($this->pieceCount === null || $this->pieceCount === 0) {
+            $count = $this->getPieceCount();
+            if ($count > 0) {
+                $this->pieceCount = $count;
+            }
+        }
     }
 
     public function getPieceCount(): int

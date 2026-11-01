@@ -28,10 +28,10 @@ services:
       ERROR_EMAIL_FROM: ${ERROR_EMAIL_FROM:-errors@piece-analyzer.be-we.ch}
       # Automatically creates database and updates schema on container start (1 = enabled, 0 = disabled)
       AUTO_DB_INIT: ${AUTO_DB_INIT:-1}
+      APP_CACHE_DIR: ${APP_CACHE_DIR:-/app/cache}
     volumes:
       - app_data:/app/data
       - app_var:/app/var
-      - /app/var/cache
     networks:
       - default
       - coolify
@@ -62,12 +62,12 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@piece-analyzer.be-we.ch}
       ERROR_EMAIL_FROM: ${ERROR_EMAIL_FROM:-errors@piece-analyzer.be-we.ch}
       AUTO_DB_INIT: 0
+      APP_CACHE_DIR: ${APP_CACHE_DIR:-/app/cache}
     healthcheck:
       disable: true
     volumes:
       - app_data:/app/data
       - app_var:/app/var
-      - /app/var/cache
     networks:
       - default
       - coolify

@@ -11,6 +11,44 @@ class Kernel extends BaseKernel
 {
     use MicroKernelTrait;
 
+    #[\Override]
+    public function getCacheDir(): string
+    {
+        if (isset($_SERVER['APP_CACHE_DIR']) && $_SERVER['APP_CACHE_DIR'] !== '') {
+            return $_SERVER['APP_CACHE_DIR'] . '/' . $this->environment;
+        }
+
+        if (isset($_ENV['APP_CACHE_DIR']) && $_ENV['APP_CACHE_DIR'] !== '') {
+            return $_ENV['APP_CACHE_DIR'] . '/' . $this->environment;
+        }
+
+        $envVal = getenv('APP_CACHE_DIR');
+        if ($envVal !== false && $envVal !== '') {
+            return $envVal . '/' . $this->environment;
+        }
+
+        return parent::getCacheDir();
+    }
+
+    #[\Override]
+    public function getBuildDir(): string
+    {
+        if (isset($_SERVER['APP_BUILD_DIR']) && $_SERVER['APP_BUILD_DIR'] !== '') {
+            return $_SERVER['APP_BUILD_DIR'] . '/' . $this->environment;
+        }
+
+        if (isset($_ENV['APP_BUILD_DIR']) && $_ENV['APP_BUILD_DIR'] !== '') {
+            return $_ENV['APP_BUILD_DIR'] . '/' . $this->environment;
+        }
+
+        $envVal = getenv('APP_BUILD_DIR');
+        if ($envVal !== false && $envVal !== '') {
+            return $envVal . '/' . $this->environment;
+        }
+
+        return $this->getCacheDir();
+    }
+
     protected function configureContainer(ContainerConfigurator $container): void
     {
         $container->import('../config/{packages}/*.yaml');

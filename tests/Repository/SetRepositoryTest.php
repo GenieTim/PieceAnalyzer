@@ -86,4 +86,37 @@ class SetRepositoryTest extends TestCase
 
         $this->assertSame($query, $resultQuery);
     }
+
+    public function testGetMostValuableByQueryWithoutPieceCriteriaUsesFastPath(): void
+    {
+        $registry = $this->createMock(ManagerRegistry::class);
+        $em = $this->createMock(EntityManagerInterface::class);
+        $classMetadata = new ClassMetadata(Set::class);
+
+        $registry->method('getManagerForClass')->willReturn($em);
+        $em->method('getClassMetadata')->willReturn($classMetadata);
+
+        $qb = $this->createMock(QueryBuilder::class);
+        $query = $this->getMockBuilder(Query::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $em->method('createQueryBuilder')->willReturn($qb);
+        $qb->method('select')->willReturnSelf();
+        $qb->method('from')->willReturnSelf();
+        // Crucial: leftJoin for pieces must NOT be called
+        $qb->expects($this->never())->method('leftJoin');
+        $qb->method('addSelect')->willReturnSelf();
+        $qb->method('andWhere')->willReturnSelf();
+        $qb->method('orderBy')->willReturnSelf();
+        $qb->method('addOrderBy')->willReturnSelf();
+        $qb->method('setMaxResults')->willReturnSelf();
+        $qb->method('setParameter')->willReturnSelf();
+        $qb->method('getQuery')->willReturn($query);
+
+        $repo = new SetRepository($registry);
+        $resultQuery = $repo->getMostValuableByQuery(['minYear' => 2020], 10);
+
+        $this->assertSame($query, $resultQuery);
+    }
 }

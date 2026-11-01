@@ -51,6 +51,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint
 # Production environment defaults
 ENV APP_ENV=prod \
     APP_DEBUG=0 \
+    APP_CACHE_DIR=/app/cache \
     SERVER_NAME=:80
 
 # Copy composer files for optimal layer caching
@@ -74,8 +75,8 @@ RUN composer dump-autoload --classmap-authoritative --no-dev && \
     php bin/console app:extension:build
 
 # Set up runtime directories and ownership
-RUN mkdir -p var/cache var/log data public/downloads && \
-    chown -R www-data:www-data var data public/build public/downloads
+RUN mkdir -p /app/cache var/log data public/downloads && \
+    chown -R www-data:www-data /app/cache var data public/build public/downloads
 
 EXPOSE 80
 

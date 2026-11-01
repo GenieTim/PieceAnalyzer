@@ -35,7 +35,8 @@ class SetRepository extends ServiceEntityRepository
         int $limit = 10,
         ?User $currentUser = null,
         ?string $targetCurrency = null,
-        bool $excludeUsed = false
+        bool $excludeUsed = false,
+        bool $hasPieceCriteria = false
     ): QueryBuilder {
         $qb = $this->createQueryBuilder('s');
         $target = $targetCurrency !== null
@@ -77,37 +78,75 @@ class SetRepository extends ServiceEntityRepository
             $unpricedCondition = '(s.price IS NULL OR s.price = 0)';
         }
 
-        if ($currentUser instanceof User && $currentUser->getId() !== null) {
+        $hasUserPrice = ($currentUser instanceof User && $currentUser->getId() !== null);
+        if ($hasUserPrice) {
             $userPriceCondition = 'sp.submittedBy = :currentUser AND sp.status != :rejectedStatus';
             if ($excludeUsed) {
                 $userPriceCondition .= " AND (sp.itemCondition IS NULL OR sp.itemCondition != 'used')";
             }
             $qb->leftJoin('s.prices', 'sp', 'WITH', $userPriceCondition);
-            $distinctPriceFactor = '(CASE WHEN COUNT(DISTINCT sp.id) > 0 THEN COUNT(DISTINCT sp.id) ELSE 1 END)';
-            $qb->addSelect("(SUM(p.count) / $distinctPriceFactor) AS HIDDEN pieceCount");
-            $pricePerPieceExpr = "((COALESCE(MIN($normUserPrice), $normGeneralPrice)) "
-                . "/ (SUM(p.count) / $distinctPriceFactor)) AS HIDDEN pricePerPiece";
-            $qb->addSelect($pricePerPieceExpr);
-            $unpricedExpr = "(CASE WHEN $unpricedCondition AND MIN(sp.amount) IS NULL "
-                . 'THEN 1 ELSE 0 END) AS HIDDEN isUnpriced';
-            $qb->addSelect($unpricedExpr);
             $qb->setParameter('currentUser', $currentUser);
             $qb->setParameter('rejectedStatus', PriceVerificationStatus::REJECTED);
-        } else {
-            $qb->addSelect('SUM(p.count) AS HIDDEN pieceCount');
-            $qb->addSelect("($normGeneralPrice / SUM(p.count)) AS HIDDEN pricePerPiece");
-            $qb->addSelect("(CASE WHEN $unpricedCondition THEN 1 ELSE 0 END) AS HIDDEN isUnpriced");
         }
 
-        $qb->leftJoin('s.pieces', 'p');
-        $qb->groupBy('s.id, s.no, s.name, s.price, s.priceCurrency, s.pieceCount, s.source, s.obsolete, s.year, s.image_url');
+        $effectivePriceExpr = $hasUserPrice
+            ? "(COALESCE(MIN($normUserPrice), $normGeneralPrice))"
+            : $normGeneralPrice;
+
+        $unpricedExpr = $hasUserPrice
+            ? "(CASE WHEN $unpricedCondition AND MIN(sp.amount) IS NULL THEN 1 ELSE 0 END) AS HIDDEN isUnpriced"
+            : "(CASE WHEN $unpricedCondition THEN 1 ELSE 0 END) AS HIDDEN isUnpriced";
+        $qb->addSelect($unpricedExpr);
+
+        if ($hasPieceCriteria) {
+            $qb->leftJoin('s.pieces', 'p');
+            $distinctPriceFactor = $hasUserPrice
+                ? '(CASE WHEN COUNT(DISTINCT sp.id) > 0 THEN COUNT(DISTINCT sp.id) ELSE 1 END)'
+                : '1';
+            $pieceCountExpr = "(SUM(p.count) / $distinctPriceFactor)";
+            $qb->addSelect("$pieceCountExpr AS HIDDEN pieceCount");
+            $qb->addSelect("($effectivePriceExpr / $pieceCountExpr) AS HIDDEN pricePerPiece");
+            $qb->groupBy('s.id, s.no, s.name, s.price, s.priceCurrency, s.pieceCount, s.source, s.obsolete, s.year, s.image_url');
+            $qb->having('SUM(p.count) != 0');
+        } else {
+            // Fast path: use cached s.pieceCount column, avoiding massive join and aggregation across all pieces
+            $qb->addSelect('s.pieceCount AS HIDDEN pieceCount');
+            $qb->addSelect("($effectivePriceExpr / s.pieceCount) AS HIDDEN pricePerPiece");
+            $qb->andWhere('s.pieceCount IS NOT NULL AND s.pieceCount > 0');
+            if ($excludeUsed || $hasUserPrice) {
+                $qb->groupBy('s.id, s.no, s.name, s.price, s.priceCurrency, s.pieceCount, s.source, s.obsolete, s.year, s.image_url');
+            }
+        }
+
         $qb->orderBy('isUnpriced', \SortDirection::Ascending);
         $qb->addOrderBy('pricePerPiece', \SortDirection::Ascending);
-        $qb->having('SUM(p.count) != 0');
         if ($limit > 0) {
             $qb->setMaxResults($limit);
         }
         return $qb;
+    }
+
+    /**
+     * @param array<string, mixed> $criteria
+     */
+    public function hasPieceCriteria(array $criteria): bool
+    {
+        $part = isset($criteria['part']) && $criteria['part'] !== '' && $criteria['part'] !== null
+            ? trim((string) $criteria['part'])
+            : (isset($criteria['partNo']) && $criteria['partNo'] !== '' && $criteria['partNo'] !== null
+                ? trim((string) $criteria['partNo'])
+                : '');
+        if ($part !== '') {
+            return true;
+        }
+
+        foreach (['color', 'category', 'type'] as $key) {
+            if (isset($criteria[$key]) && $criteria[$key] !== 0 && $criteria[$key] !== '0' && $criteria[$key] !== null && $criteria[$key] !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -138,7 +177,8 @@ class SetRepository extends ServiceEntityRepository
             $excludeUsed = (bool) $criteria['excludeUsed'];
         }
 
-        $qb = $this->getMostValuableQueryBuilder($limit, $currentUser, $targetCurrency, $excludeUsed);
+        $hasPieceCriteria = $this->hasPieceCriteria($criteria);
+        $qb = $this->getMostValuableQueryBuilder($limit, $currentUser, $targetCurrency, $excludeUsed, $hasPieceCriteria);
 
         $setFilter = isset($criteria['setId']) && $criteria['setId'] !== '' && $criteria['setId'] !== null
             ? trim((string) $criteria['setId'])

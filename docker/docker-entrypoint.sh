@@ -7,8 +7,9 @@ if [ "${1#-}" != "$1" ]; then
 fi
 
 if [ "$1" = "frankenphp" ] || [ "$1" = "bin/console" ] || [ "$1" = "php" ]; then
-    # Ensure var/cache, var/log, data directories exist
-    mkdir -p var/cache var/log data
+    CACHE_DIR="${APP_CACHE_DIR:-var/cache}"
+    # Ensure cache, log, and data directories exist
+    mkdir -p "$CACHE_DIR" var/log data
 
     # Initialize / update database schema automatically if AUTO_DB_INIT is enabled (default: 1)
     case "${AUTO_DB_INIT:-1}" in
@@ -21,11 +22,6 @@ if [ "$1" = "frankenphp" ] || [ "$1" = "bin/console" ] || [ "$1" = "php" ]; then
     esac
 
     if [ "$AUTO_INIT" = "1" ]; then
-        # Clear stale metadata cache from persistent volume so schema updates see current code
-        if [ "$APP_ENV" = "prod" ]; then
-            rm -rf var/cache/prod var/cache/dev
-        fi
-
         echo ">> Checking and initializing database schema..."
         case "$DATABASE_URL" in
             sqlite:*)
@@ -46,16 +42,13 @@ if [ "$1" = "frankenphp" ] || [ "$1" = "bin/console" ] || [ "$1" = "php" ]; then
         php bin/console doctrine:schema:update --force --no-interaction 2>&1 || true
         echo ">> Setting up Messenger transports..."
         php bin/console messenger:setup-transports --no-interaction 2>&1 || true
-
-        # Warm up cache if in prod
-        if [ "$APP_ENV" = "prod" ]; then
-            php bin/console cache:warmup 2>&1 || true
-        fi
+        echo ">> Ensuring set piece counts are up to date..."
+        php bin/console app:data:recalculate-piece-counts --no-interaction 2>&1 || true
     fi
 
-    # Fix permissions for www-data if running as root (must run after cache warmup and DB init)
+    # Fix permissions for www-data if running as root
     if [ "$(id -u)" = "0" ]; then
-        chown -R www-data:www-data var data public/build public/downloads 2>/dev/null || true
+        chown -R www-data:www-data "$CACHE_DIR" var data public/build public/downloads 2>/dev/null || true
     fi
 fi
 
